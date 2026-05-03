@@ -1,0 +1,28 @@
+{
+  "name": "website-media-omni-phase-2",
+  "version": "1.0.0",
+  "description": "Media Omni - Performance Marketing Team Website",
+  "scripts": {
+    "dev": "echo 'Static HTML site - open index.html in browser'",
+    "build": "echo 'No build required for static site'",
+    "test": "echo 'No tests configured'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KaI1312ndq/Website-Media-Omni-Phase-2.git"
+  },
+  "keywords": [
+    "performance-marketing",
+    "vercel",
+    "speed-insights"
+  ],
+  "author": "Media Omni Team",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KaI1312ndq/Website-Media-Omni-Phase-2/issues"
+  },
+  "homepage": "https://github.com/KaI1312ndq/Website-Media-Omni-Phase-2#readme",
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
+  }
+}
