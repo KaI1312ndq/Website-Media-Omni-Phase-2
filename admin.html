@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS Admin — Media Omni</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%232563EB'/><stop offset='100%25' stop-color='%2306B6D4'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><text x='50%25' y='56%25' dominant-baseline='central' text-anchor='middle' font-size='14' font-weight='900' fill='white' font-family='Arial'>A</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div id="sp"></div>
+
+<nav id="main-nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
+    <div class="nav-links">
+      <a href="/blog.html" class="nav-link">← Blog</a>
+      <a href="/dashboard.html" class="nav-link">Dashboard</a>
+      <span id="nav-admin-badge" style="font-family:var(--f-mono);font-size:.65rem;font-weight:700;padding:.25rem .65rem;border-radius:var(--r-pill);background:rgba(239,68,68,.1);color:var(--error)">Admin Only</span>
+    </div>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+  </div>
+  <div class="nav-mob" id="nav-mob">
+    <a href="/blog.html" class="nav-mob-link">← Blog</a>
+    <a href="/dashboard.html" class="nav-mob-link">Dashboard</a>
+  </div>
+</nav>
+<div class="mob-overlay" id="mob-overlay"></div>
+
+<div class="admin-wrap">
+  <!-- API SETUP -->
+  <div class="api-card rv" id="api-setup-card">
+    <h3>⚙️ Cài đặt Blog API</h3>
+    <p>Paste URL Apps Script Google Sheets để bật CMS. URL này lưu vào localStorage — chỉ cần nhập 1 lần.</p>
+    <div class="api-input-row">
+      <input class="ed-input" id="api-url-inp" type="url" placeholder="https://script.google.com/macros/s/...">
+      <button class="btn-save" style="flex:none;padding:11px 20px" onclick="saveApiUrl()">Lưu URL</button>
+    </div>
+    <p style="margin-top:10px;font-size:.75rem;color:var(--faint)">Chưa có Apps Script? Mở Google Sheets → Extensions → Apps Script → paste code từ tài liệu nội bộ → Deploy Web App.</p>
+  </div>
+
+  <!-- HEADER -->
+  <div class="admin-hdr rv">
+    <div>
+      <h1>Blog CMS</h1>
+      <p id="admin-sub">Quản lý nội dung blog Media Omni.</p>
+    </div>
+    <button class="btn-primary" onclick="newPost()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Bài viết mới
+    </button>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor-layout" id="editor-section" style="display:none">
+    <div class="editor-main">
+      <label class="ed-label">Tiêu đề *</label>
+      <input class="ed-input" id="ed-title" type="text" placeholder="Tiêu đề bài viết...">
+
+      <label class="ed-label">Tóm tắt (excerpt)</label>
+      <textarea class="ed-input" id="ed-excerpt" rows="2" placeholder="Một câu mô tả ngắn xuất hiện ở card..."></textarea>
+
+      <label class="ed-label">Nội dung</label>
+      <div class="ed-toolbar">
+        <button class="tb-btn" onclick="ins('**','**')">B</button>
+        <button class="tb-btn" onclick="ins('*','*')" style="font-style:italic">I</button>
+        <button class="tb-btn" onclick="ins('\n## ','')">H2</button>
+        <button class="tb-btn" onclick="ins('\n### ','')">H3</button>
+        <button class="tb-btn" onclick="ins('\n- ','')">List</button>
+        <button class="tb-btn" onclick="ins('\n> ','')">Quote</button>
+        <button class="tb-btn" onclick="ins('\n---\n','')">Divider</button>
+        <button class="tb-btn" onclick="ins('[text](url)','')">Link</button>
+      </div>
+      <textarea class="ed-content" id="ed-content" placeholder="Viết nội dung bài viết (Markdown)...&#10;&#10;## Tiêu đề phần&#10;&#10;Nội dung đoạn văn...&#10;&#10;- Bullet point 1&#10;- Bullet point 2"></textarea>
+    </div>
+
+    <div class="editor-side">
+      <label class="ed-label">Thumbnail (emoji hoặc URL)</label>
+      <div class="thumb-preview" id="thumb-preview" style="background:linear-gradient(135deg,#050F2C,#0A2A6E)">🎯</div>
+      <input class="ed-input" id="ed-thumb" type="text" placeholder="🎯 hoặc https://..." oninput="updateThumb()">
+
+      <label class="ed-label" style="margin-top:14px">Màu nền thumbnail</label>
+      <input class="ed-input" id="ed-bg" type="text" placeholder="linear-gradient(135deg,#050F2C,#0A2A6E)" oninput="updateThumb()">
+
+      <label class="ed-label" style="margin-top:14px">Tags</label>
+      <div class="tags-wrap" id="tags-wrap" onclick="document.getElementById('tag-inp').focus()">
+        <input class="tag-add-inp" id="tag-inp" placeholder="Nhập tag, Enter để thêm" onkeydown="addTag(event)">
+      </div>
+
+      <label class="ed-label" style="margin-top:14px">Tác giả</label>
+      <input class="ed-input" id="ed-author" type="text" placeholder="Nguyễn Đức Quảng">
+
+      <label class="ed-label" style="margin-top:14px">Ngày xuất bản</label>
+      <input class="ed-input" id="ed-date" type="date">
+
+      <label class="ed-label" style="margin-top:14px">Trạng thái</label>
+      <div class="status-btns">
+        <button class="s-btn active-draft" id="s-draft" onclick="setStatus('draft')">📝 Draft</button>
+        <button class="s-btn" id="s-pub" onclick="setStatus('published')">🚀 Published</button>
+      </div>
+
+      <div class="editor-actions">
+        <button class="btn-discard" onclick="cancelEdit()">Huỷ</button>
+        <button class="btn-save" id="btn-save" onclick="savePost()">Lưu bài →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POST LIST -->
+  <div class="posts-section rv">
+    <div class="posts-hdr">
+      <h2>Tất cả bài viết</h2>
+      <span id="post-count" style="font-family:var(--f-mono);font-size:.72rem;color:var(--faint)"></span>
+    </div>
+    <div class="posts-table">
+      <div class="pt-head">
+        <span>Tiêu đề</span><span>Tags</span><span>Ngày</span><span>Trạng thái</span><span>Thao tác</span>
+      </div>
+      <div id="posts-body"><div class="no-posts">⏳ Đang tải...</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
+<script src="/js/shared.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>
