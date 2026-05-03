@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản lý tài khoản — Media Omni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/users.css">
+</head>
+<body>
+<div id="sp"></div>
+<nav id="main-nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link">← Dashboard</a>
+      <a href="/admin" class="nav-link">Blog CMS</a>
+      <span style="font-family:var(--f-mono);font-size:.65rem;font-weight:700;padding:.25rem .65rem;border-radius:var(--r-pill);background:rgba(239,68,68,.1);color:var(--error)">Admin Only</span>
+    </div>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+  </div>
+  <div class="nav-mob" id="nav-mob">
+    <a href="/dashboard" class="nav-mob-link">← Dashboard</a>
+    <a href="/admin" class="nav-mob-link">Blog CMS</a>
+  </div>
+</nav>
+<div class="mob-overlay" id="mob-overlay"></div>
+<div class="users-wrap">
+  <div class="users-hdr">
+    <div>
+      <h1>Quản lý tài khoản</h1>
+      <p>Tạo, chỉnh sửa và phân quyền tài khoản thành viên Media Omni.</p>
+    </div>
+    <button class="btn-primary" onclick="openCreate()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Tạo tài khoản
+    </button>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="sc-val" id="s-total">—</div><div class="sc-lbl">Tổng tài khoản</div></div>
+    <div class="stat-card"><div class="sc-val" id="s-active">—</div><div class="sc-lbl">Đang hoạt động</div></div>
+    <div class="stat-card"><div class="sc-val" id="s-member">—</div><div class="sc-lbl">Members</div></div>
+    <div class="stat-card"><div class="sc-val" id="s-admin">—</div><div class="sc-lbl">Admins</div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="list" onclick="switchTab('list')">👥 Danh sách</button>
+    <button class="tab-btn" data-tab="create" onclick="switchTab('create')">➕ Tạo / Sửa</button>
+  </div>
+  <div id="tab-list">
+    <div class="search-bar">
+      <input class="sb-input" id="user-search" type="text" placeholder="Tìm theo tên hoặc username..." oninput="doSearch()">
+      <button class="sb-filter active" onclick="setFilter('ALL',this)">Tất cả</button>
+      <button class="sb-filter" onclick="setFilter('admin',this)">Admin</button>
+      <button class="sb-filter" onclick="setFilter('member',this)">Member</button>
+      <button class="sb-filter" onclick="setFilter('upbase',this)">UpBase</button>
+    </div>
+    <div class="user-table">
+      <div class="ut-head">
+        <span>Họ tên</span><span>Username</span><span>Role</span><span>Trạng thái</span><span>Ngày tạo</span><span>Thao tác</span>
+      </div>
+      <div id="user-tbody"><div class="no-users">⏳ Đang tải...</div></div>
+    </div>
+    <div class="form-panel" style="margin-top:24px">
+      <h2>🔑 Đổi mật khẩu của tôi</h2>
+      <p>Chỉ ảnh hưởng đến tài khoản đang đăng nhập.</p>
+      <div class="pass-row">
+        <input class="fp-input" id="my-newpass" type="password" placeholder="Mật khẩu mới (tối thiểu 6 ký tự)">
+        <button class="pass-save" onclick="changeMyPass()">Đổi mật khẩu</button>
+      </div>
+    </div>
+  </div>
+  <div id="tab-create" style="display:none">
+    <div class="form-panel">
+      <h2 id="form-title">Tạo tài khoản mới</h2>
+      <p id="form-sub">Điền thông tin để tạo tài khoản mới cho thành viên.</p>
+      <div class="fp-grid">
+        <div class="fp-full"><label class="fp-label">Họ và tên *</label><input class="fp-input" id="f-name" type="text" placeholder="Nguyễn Văn A"></div>
+        <div><label class="fp-label">Username *</label><input class="fp-input" id="f-username" type="text" placeholder="nguyenvana" autocomplete="off"></div>
+        <div id="f-pass-row"><label class="fp-label">Mật khẩu</label><input class="fp-input" id="f-pass" type="password" placeholder="Để trống = giữ nguyên khi sửa" autocomplete="new-password"></div>
+        <div><label class="fp-label">Role</label>
+          <select class="fp-input" id="f-role">
+            <option value="member">Member — Truy cập cơ bản</option>
+            <option value="admin">Admin — Toàn quyền</option>
+            <option value="upbase">UpBase — Xem quiz</option>
+          </select>
+        </div>
+        <div><label class="fp-label">Trạng thái</label>
+          <select class="fp-input" id="f-status">
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </div>
+      </div>
+      <div class="fp-actions">
+        <button class="fp-cancel" onclick="switchTab('list')">Huỷ</button>
+        <button class="fp-submit" id="f-submit" onclick="saveUser()">Tạo tài khoản →</button>
+      </div>
+    </div>
+    <div style="margin-top:20px;background:var(--paper2);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px">
+      <div style="font-family:var(--f-mono);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:16px">Phân quyền theo Role</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div style="padding:16px;background:var(--white);border-radius:var(--r-md);border:1px solid rgba(239,68,68,.2)"><div style="font-family:var(--f-mono);font-size:.7rem;font-weight:800;color:var(--error);margin-bottom:8px">ADMIN</div><div style="font-size:.78rem;color:var(--muted);line-height:1.7">✅ Toàn bộ Dashboard<br>✅ Viết & Publish Blog<br>✅ Quản lý tài khoản<br>✅ Xem điểm team<br>✅ Blog CMS</div></div>
+        <div style="padding:16px;background:var(--white);border-radius:var(--r-md);border:1px solid rgba(37,99,235,.2)"><div style="font-family:var(--f-mono);font-size:.7rem;font-weight:800;color:var(--blue);margin-bottom:8px">MEMBER</div><div style="font-size:.78rem;color:var(--muted);line-height:1.7">✅ Quiz Hub<br>✅ Daily Tasks<br>✅ Viết & Publish Blog<br>✅ Xem điểm cá nhân<br>❌ Quản lý tài khoản</div></div>
+        <div style="padding:16px;background:var(--white);border-radius:var(--r-md);border:1px solid rgba(16,185,129,.2)"><div style="font-family:var(--f-mono);font-size:.7rem;font-weight:800;color:var(--success);margin-bottom:8px">UPBASE</div><div style="font-size:.78rem;color:var(--muted);line-height:1.7">✅ Quiz kiến thức<br>✅ Xem trang chủ<br>❌ Tasks & Blog<br>❌ Quản lý</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
+<script src="/js/shared.js"></script>
+<script src="/js/users.js"></script>
+</body>
+</html>
