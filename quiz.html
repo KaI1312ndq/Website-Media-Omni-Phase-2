@@ -19,14 +19,14 @@
     <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
     <div class="nav-links">
       <a href="/" class="nav-link">← Home</a>
-      <a href="/dashboard.html" class="nav-link">Dashboard</a>
+      <a href="/dashboard" class="nav-link">Dashboard</a>
       <span style="font-size:.84rem;color:rgba(255,255,255,.7)" id="nav-user"></span>
     </div>
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
   </div>
   <div class="nav-mob" id="nav-mob">
     <a href="/" class="nav-mob-link">← Home</a>
-    <a href="/dashboard.html" class="nav-mob-link">Dashboard</a>
+    <a href="/dashboard" class="nav-mob-link">Dashboard</a>
   </div>
 </nav>
 <div class="mob-overlay" id="mob-overlay"></div>
@@ -246,7 +246,7 @@
 // Auth check
 document.addEventListener('DOMContentLoaded', () => {
   const u = Auth.get();
-  if (!u) { location.href = '/dashboard.html'; return; }
+  if (!u) { location.href = '/dashboard'; return; }
   document.getElementById('nav-user').textContent = u.name;
 });
 function selType(t) {
