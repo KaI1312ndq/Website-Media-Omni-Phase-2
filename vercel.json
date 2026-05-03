@@ -1,11 +1,17 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
-  "routes": [
-    { "src": "/hub/(.*)", "dest": "/hub/$1.html" },
-    { "src": "/(dashboard|quiz|blog|admin)", "dest": "/$1.html" },
-    { "src": "/(css|js)/(.*)", "dest": "/$1/$2" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/404.html", "status": 404 }
+  "rewrites": [
+    { "source": "/hub/:page", "destination": "/hub/:page.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/quiz", "destination": "/quiz.html" },
+    { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ],
+  "redirects": [
+    { "source": "/dashboard.html", "destination": "/dashboard", "permanent": false },
+    { "source": "/quiz.html", "destination": "/quiz", "permanent": false },
+    { "source": "/blog.html", "destination": "/blog", "permanent": false },
+    { "source": "/admin.html", "destination": "/admin", "permanent": false }
   ]
 }
