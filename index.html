@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%232563EB'/><stop offset='100%25' stop-color='%2306B6D4'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><text x='50%25' y='56%25' dominant-baseline='central' text-anchor='middle' font-size='14' font-weight='900' fill='white' font-family='Arial'>MO</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/shared.css">
 <link rel="stylesheet" href="/css/home.css">
 </head>
@@ -24,15 +24,14 @@
       MediaOmni
     </a>
     <div class="nav-links">
-      <a href="#hero"         class="nav-link active">Home</a>
-      <a href="#services"     class="nav-link">Services</a>
-      <a href="#results"      class="nav-link">Results</a>
-      <a href="#team"         class="nav-link">Team</a>
-      <a href="#blog"         class="nav-link">Blog</a>
-      <a href="#quiz-preview" class="nav-link">Quiz</a>
-      <a href="/dashboard" class="nav-link">Team Hub</a>
+      <a href="#hero"      class="nav-link active">Home</a>
+      <a href="#services"  class="nav-link">Services</a>
+      <a href="#brands"    class="nav-link">Brands</a>
+      <a href="#partners"  class="nav-link">Partners</a>
+      <a href="#team"      class="nav-link">Team</a>
+      <a href="#blog"      class="nav-link">Blog</a>
       <button class="nav-cta" onclick="openLogin()">
-        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         Đăng nhập
       </button>
     </div>
@@ -41,38 +40,36 @@
     </button>
   </div>
   <div class="nav-mob" id="nav-mob">
-    <button class="nav-mob-link" onclick="scrollTo('#hero')">Home</button>
-    <button class="nav-mob-link" onclick="scrollTo('#services')">Services</button>
-    <button class="nav-mob-link" onclick="scrollTo('#results')">Results</button>
-    <button class="nav-mob-link" onclick="scrollTo('#team')">Team</button>
-    <button class="nav-mob-link" onclick="scrollTo('#blog')">Blog</button>
-    <button class="nav-mob-link" onclick="scrollTo('#quiz-preview')">Quiz Hub</button>
-    <a href="/dashboard" class="nav-mob-link">Team Hub</a>
+    <a href="#hero"     class="nav-mob-link">Home</a>
+    <a href="#services" class="nav-mob-link">Services</a>
+    <a href="#brands"   class="nav-mob-link">Brands</a>
+    <a href="#partners" class="nav-mob-link">Partners</a>
+    <a href="#team"     class="nav-mob-link">Team</a>
+    <a href="#blog"     class="nav-mob-link">Blog</a>
     <button class="nav-mob-link" onclick="openLogin()">Đăng nhập</button>
   </div>
 </nav>
 <div class="mob-overlay" id="mob-overlay"></div>
 
-<!-- HERO -->
+<!-- ═══ HERO ═══ -->
 <section id="hero">
   <div class="hero-glow-1"></div>
   <div class="hero-glow-2"></div>
   <div class="hero-grid-bg"></div>
   <div class="hero-wrap">
-    <!-- LEFT -->
     <div>
       <div class="hero-eyebrow">
         <span class="tag tag--white">
-          <span class="live-dot" style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block;animation:blink 2s ease-in-out infinite"></span>
-          UpBase Vietnam · Performance Team
+          <span class="live-dot"></span>
+          UpBase Vietnam · Ecommerce Enabler
         </span>
       </div>
       <h1 class="hero-title">
-        <span class="hero-line"><span class="hero-line-inner ld1">356B NMV.</span></span>
-        <span class="hero-line"><span class="hero-line-inner ld2"><span class="grad-text">7x ROAS.</span></span></span>
-        <span class="hero-line"><span class="hero-line-inner ld3">40+ Brands.</span></span>
+        <span class="hero-line"><span class="hero-line-inner ld1">Media Omni</span></span>
+        <span class="hero-line"><span class="hero-line-inner ld2"><span class="grad-text">Dream Team</span></span></span>
+        <span class="hero-line"><span class="hero-line-inner ld3">2025.</span></span>
       </h1>
-      <p class="hero-sub">Media Omni vận hành performance marketing đa kênh cho các brand ecommerce hàng đầu Việt Nam — TikTok Shop, Shopee, Meta, Google — với kết quả đo lường bằng số thật.</p>
+      <p class="hero-sub">12 Growth Operators. 40+ Brands. 356B NMV. Vận hành performance marketing đa kênh — TikTok Shop, Shopee, Meta, Google — với kết quả đo lường bằng số thật.</p>
       <div class="hero-actions">
         <a href="#services" class="btn-primary">
           Khám phá năng lực
@@ -84,25 +81,26 @@
         </button>
       </div>
       <div class="hero-stats">
-        <div class="hs-item"><div class="hs-val"><span class="blue-grad">323B</span></div><div class="hs-lbl">GMV Ads</div></div>
-        <div class="hs-item"><div class="hs-val"><span class="blue-grad">356B</span></div><div class="hs-lbl">NMV Total</div></div>
+        <div class="hs-item"><div class="hs-val"><span class="blue-grad">356B</span></div><div class="hs-lbl">NMV 2025</div></div>
         <div class="hs-item"><div class="hs-val"><span class="blue-grad">&gt;7x</span></div><div class="hs-lbl">ROAS TB</div></div>
-        <div class="hs-item"><div class="hs-val"><span class="blue-grad">62B</span></div><div class="hs-lbl">Budget</div></div>
+        <div class="hs-item"><div class="hs-val"><span class="blue-grad">40+</span></div><div class="hs-lbl">Brands</div></div>
+        <div class="hs-item"><div class="hs-val"><span class="blue-grad">12</span></div><div class="hs-lbl">Operators</div></div>
       </div>
     </div>
-    <!-- RIGHT: Dashboard card -->
+    <!-- Dashboard card -->
     <div class="hero-dash" style="position:relative">
       <div class="float-card fc-top">
         <div class="fc-ico" style="background:rgba(52,211,153,.15)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
         </div>
-        <div><div class="fc-lbl">NMV Total</div><div class="fc-val">356B ↑</div></div>
+        <div><div class="fc-lbl">NMV Total 2025</div><div class="fc-val">356B ↑</div></div>
       </div>
-
       <div class="dash-card">
         <div class="dash-hdr">
           <div class="dash-title-row">
-            <div class="dash-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="dash-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
             <span class="dash-name">Media Omni Dashboard</span>
           </div>
           <div class="dash-live"><span class="live-dot"></span>Live 2025</div>
@@ -125,26 +123,28 @@
             <path class="c-area" d="M0,42 L0,34 C60,28 80,22 120,16 C160,10 180,6 220,3 C260,0 280,1 300,0 L300,42Z"/>
             <path class="c-line" d="M0,34 C60,28 80,22 120,16 C160,10 180,6 220,3 C260,0 280,1 300,0"/>
             <circle class="c-dot" cx="120" cy="16" r="3" fill="#06B6D4"/>
-            <circle class="c-dot" cx="220" cy="3"  r="3" fill="#06B6D4"/>
-            <circle class="c-dot" cx="300" cy="0"  r="3.5" fill="#2563EB"/>
+            <circle class="c-dot" cx="300" cy="0" r="3.5" fill="#2563EB"/>
           </svg>
         </div>
         <div class="dash-platforms">
-          <!-- TikTok -->
-          <div class="plat-btn" title="TikTok"><svg viewBox="0 0 24 24" width="16"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" fill="#010101"/></svg></div>
-          <!-- Shopee -->
-          <div class="plat-btn" title="Shopee"><svg viewBox="0 0 24 24" width="16"><path d="M12 2C9.5 2 7.5 3.9 7.5 6.3H6L4.5 20h15L18 6.3h-1.5C16.5 3.9 14.5 2 12 2zm0 1.8c1.8 0 3.2 1.3 3.4 3H8.6C8.8 5.1 10.2 3.8 12 3.8zm0 6.5c-2.3 0-4.2-1.5-4.8-3.5h1.5c.5 1.2 1.7 2 3.3 2s2.8-.8 3.3-2h1.5c-.6 2-2.5 3.5-4.8 3.5z" fill="#EE4D2D"/></svg></div>
-          <!-- Meta -->
-          <div class="plat-btn" title="Meta"><svg viewBox="0 0 24 24" width="16"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#0866FF"/></svg></div>
-          <!-- Google -->
-          <div class="plat-btn" title="Google"><svg viewBox="0 0 24 24" width="16"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></div>
-          <div class="plat-btn plat-more" title="40+ shops"><span style="color:var(--cyan);font-size:.5rem;font-weight:700;line-height:1.3">+40<br>shops</span></div>
+          <div class="plat-btn" title="TikTok">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" fill="white"/></svg>
+          </div>
+          <div class="plat-btn" title="Shopee">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2C9.5 2 7.5 3.9 7.5 6.3H6L4.5 20h15L18 6.3h-1.5C16.5 3.9 14.5 2 12 2zm0 1.8c1.8 0 3.2 1.3 3.4 3H8.6C8.8 5.1 10.2 3.8 12 3.8zm0 6.5c-2.3 0-4.2-1.5-4.8-3.5h1.5c.5 1.2 1.7 2 3.3 2s2.8-.8 3.3-2h1.5c-.6 2-2.5 3.5-4.8 3.5z" fill="white"/></svg>
+          </div>
+          <div class="plat-btn" title="Meta">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="white"/></svg>
+          </div>
+          <div class="plat-btn" title="Google">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          </div>
+          <div class="plat-btn plat-more"><span style="color:var(--cyan);font-size:.5rem;font-weight:700;line-height:1.3">+40<br>shops</span></div>
         </div>
       </div>
-
       <div class="float-card fc-bot">
         <div class="fc-ico" style="background:rgba(37,99,235,.2)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
         <div><div class="fc-lbl">ROAS Trung bình</div><div class="fc-val">&gt;7x</div></div>
       </div>
@@ -152,116 +152,352 @@
   </div>
 </section>
 
-<!-- TICKER -->
-<section id="ticker"><div class="ticker-track" id="ticker-track"></div></section>
+<!-- ═══ TICKER ═══ -->
+<section id="ticker">
+  <div class="ticker-track" id="ticker-track"></div>
+</section>
 
-<!-- SERVICES -->
+<!-- ═══ SERVICES ═══ -->
 <section id="services">
   <div class="container">
     <div class="sec-hd rv">
-      <div class="sec-label">Năng lực</div>
-      <h2 class="sec-title">Vận hành đa nền tảng.<br>Hiệu suất tối ưu.</h2>
-      <p class="sec-sub">Phủ sóng toàn bộ hành trình từ awareness đến conversion, trên mọi kênh.</p>
+      <div class="sec-label">Scope of Work</div>
+      <h2 class="sec-title">Vận hành đa kênh.<br>Mỗi platform, một playbook riêng.</h2>
+      <p class="sec-sub">Media Omni không chỉ chạy ads — chúng tôi vận hành toàn bộ hệ thống performance marketing từ strategy đến execution.</p>
     </div>
-    <div class="svc-grid-top">
-      <div class="svc-card rv d1">
-        <div class="svc-ico" style="background:linear-gradient(135deg,#000,#333)"><svg viewBox="0 0 24 24" width="26"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" fill="white"/></svg></div>
-        <h3>TikTok Ads & Shop</h3>
-        <p>Tối ưu toàn diện từ content ads, shop ads đến live — bùng nổ GMV trên nền tảng số 1.</p>
-        <div class="svc-chips"><span class="chip">GMV Growth</span><span class="chip">Shop Ads</span><span class="chip">Live Boost</span></div>
+
+    <!-- TikTok -->
+    <div class="svc-detail-card rv d1">
+      <div class="svc-detail-left">
+        <div class="svc-detail-icon" style="background:linear-gradient(135deg,#010101,#2d2d2d)">
+          <svg width="28" height="28" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" fill="white"/></svg>
+        </div>
+        <h3 class="svc-detail-name">TikTok Ads & Shop</h3>
+        <p class="svc-detail-sub">Demand creation — bùng nổ GMV từ content đến conversion</p>
+        <div class="svc-chips" style="margin-top:16px">
+          <span class="chip">GMV Growth</span><span class="chip">Shop Ads</span><span class="chip">Live Boost</span><span class="chip">ROAS ~6x</span>
+        </div>
       </div>
-      <div class="svc-card rv d2">
-        <div class="svc-ico" style="background:linear-gradient(135deg,#EE4D2D,#FF7849)"><svg viewBox="0 0 24 24" width="26"><path d="M12 2C9.5 2 7.5 3.9 7.5 6.3H6L4.5 20h15L18 6.3h-1.5C16.5 3.9 14.5 2 12 2zm0 1.8c1.8 0 3.2 1.3 3.4 3H8.6C8.8 5.1 10.2 3.8 12 3.8zm0 6.5c-2.3 0-4.2-1.5-4.8-3.5h1.5c.5 1.2 1.7 2 3.3 2s2.8-.8 3.3-2h1.5c-.6 2-2.5 3.5-4.8 3.5z" fill="white"/></svg></div>
-        <h3>Shopee Ads</h3>
-        <p>Search, discovery và sponsored ads — tối ưu visibility và chuyển đổi trên Shopee.</p>
-        <div class="svc-chips"><span class="chip">Search Ads</span><span class="chip">Discovery</span><span class="chip">ROAS</span></div>
-      </div>
-      <div class="svc-card rv d3">
-        <div class="svc-ico" style="background:linear-gradient(135deg,#0866FF,#3B82F6)"><svg viewBox="0 0 24 24" width="26"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="white"/></svg></div>
-        <h3>Meta Ads & CPAS</h3>
-        <p>Facebook, Instagram và CPAS kết hợp Shopee/Lazada — scaling đúng đối tượng, đúng thời điểm.</p>
-        <div class="svc-chips"><span class="chip">CPAS</span><span class="chip">Retargeting</span><span class="chip">Scaling</span></div>
+      <div class="svc-detail-right">
+        <div class="svc-scope-title">Scope of Work</div>
+        <div class="svc-scope-grid">
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+            <div><div class="ssi-name">Video Ads</div><div class="ssi-desc">Setup, optimize In-Feed Ads, TopView, Brand Takeover. A/B test creative liên tục.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></div>
+            <div><div class="ssi-name">Shop Ads (PGM/LGM)</div><div class="ssi-desc">Vận hành Product Guarantee & Live Guarantee Ads. Tối ưu ROAS theo từng SKU.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+            <div><div class="ssi-name">Live Commerce Boost</div><div class="ssi-desc">Boost traffic vào phiên live. Kết hợp Affiliate + Ads để maximize concurrent viewers.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+            <div><div class="ssi-name">Performance Reporting</div><div class="ssi-desc">Dashboard realtime, phân tích GMV/ROAS/CPO daily. Điều chỉnh budget theo signal.</div></div>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="svc-grid-bot">
-      <div class="svc-card rv d4">
-        <div class="svc-ico" style="background:linear-gradient(135deg,#4285F4,#34A853)"><svg viewBox="0 0 24 24" width="26"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="white"/></svg></div>
-        <h3>Google Ads</h3>
-        <p>Search, Shopping, YouTube và Performance Max — capture đúng intent mua hàng.</p>
-        <div class="svc-chips"><span class="chip">Search</span><span class="chip">Shopping</span><span class="chip">PMAX</span></div>
+
+    <!-- Shopee -->
+    <div class="svc-detail-card rv d2">
+      <div class="svc-detail-left">
+        <div class="svc-detail-icon" style="background:linear-gradient(135deg,#EE4D2D,#ff7849)">
+          <svg width="28" height="28" viewBox="0 0 24 24"><path d="M12 2C9.5 2 7.5 3.9 7.5 6.3H6L4.5 20h15L18 6.3h-1.5C16.5 3.9 14.5 2 12 2zm0 1.8c1.8 0 3.2 1.3 3.4 3H8.6C8.8 5.1 10.2 3.8 12 3.8zm0 6.5c-2.3 0-4.2-1.5-4.8-3.5h1.5c.5 1.2 1.7 2 3.3 2s2.8-.8 3.3-2h1.5c-.6 2-2.5 3.5-4.8 3.5z" fill="white"/></svg>
+        </div>
+        <h3 class="svc-detail-name">Shopee Ads</h3>
+        <p class="svc-detail-sub">Intent capture — convert khách hàng đang có nhu cầu mua</p>
+        <div class="svc-chips" style="margin-top:16px">
+          <span class="chip">Search Ads</span><span class="chip">Discovery</span><span class="chip">ROAS ~9x</span><span class="chip">Flash Sale</span>
+        </div>
       </div>
-      <div class="svc-card rv d5">
-        <div class="svc-ico" style="background:var(--g-blue)"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" width="26"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg></div>
-        <h3>Omni-channel Strategy</h3>
-        <p>Kết nối toàn bộ điểm chạm — data đồng bộ, attribution rõ ràng, tối ưu cross-channel.</p>
-        <div class="svc-chips"><span class="chip">Strategy</span><span class="chip">Data</span><span class="chip">Attribution</span></div>
+      <div class="svc-detail-right">
+        <div class="svc-scope-title">Scope of Work</div>
+        <div class="svc-scope-grid">
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+            <div><div class="ssi-name">Search & Discovery Ads</div><div class="ssi-desc">Keyword research, bidding strategy, tối ưu CPC. Phủ đầy từ khóa category và brand.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+            <div><div class="ssi-name">Flash Sale & Mega Campaign</div><div class="ssi-desc">Chuẩn bị campaign cho 9.9, 10.10, 11.11 — từ budget allocation đến creative brief.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+            <div><div class="ssi-name">Shop & Listing Optimization</div><div class="ssi-desc">Tối ưu listing, ảnh, mô tả cho SEO Shopee. Phối hợp với team Content.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div><div class="ssi-name">ROAS Tracking & Optimization</div><div class="ssi-desc">Monitor Direct/Indirect GMV, optimize toward ROAS ~9x. Weekly review với client.</div></div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <!-- Meta -->
+    <div class="svc-detail-card rv d3">
+      <div class="svc-detail-left">
+        <div class="svc-detail-icon" style="background:linear-gradient(135deg,#0866FF,#3b82f6)">
+          <svg width="28" height="28" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="white"/></svg>
+        </div>
+        <h3 class="svc-detail-name">Meta Ads & CPAS</h3>
+        <p class="svc-detail-sub">Scaling đúng đối tượng — Facebook, Instagram và CPAS kết hợp marketplace</p>
+        <div class="svc-chips" style="margin-top:16px">
+          <span class="chip">CPAS</span><span class="chip">Retargeting</span><span class="chip">Scaling</span><span class="chip">Lead Gen</span>
+        </div>
+      </div>
+      <div class="svc-detail-right">
+        <div class="svc-scope-title">Scope of Work</div>
+        <div class="svc-scope-grid">
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div><div class="ssi-name">Audience Strategy</div><div class="ssi-desc">Xây dựng audience stack: cold → warm → retarget. Custom + Lookalike theo từng objective.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+            <div><div class="ssi-name">CPAS — Collaborative Ads</div><div class="ssi-desc">Kết nối catalog Shopee/Lazada vào Meta Ads. Drive traffic có intent thẳng vào gian hàng.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+            <div><div class="ssi-name">Creative Testing</div><div class="ssi-desc">DCO, A/B test format (video/carousel/static). Phối hợp với Content team brief đúng spec.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+            <div><div class="ssi-name">Lead Generation</div><div class="ssi-desc">Instant Form, Messenger, Website Lead. CRM sync, nurturing flow cho brand offline.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google -->
+    <div class="svc-detail-card rv d4">
+      <div class="svc-detail-left">
+        <div class="svc-detail-icon" style="background:linear-gradient(135deg,#4285F4,#34A853)">
+          <svg width="28" height="28" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="white"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="white" opacity=".8"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="white" opacity=".6"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="white" opacity=".9"/></svg>
+        </div>
+        <h3 class="svc-detail-name">Google Ads</h3>
+        <p class="svc-detail-sub">Capture đúng intent — Search, Shopping, YouTube, Performance Max</p>
+        <div class="svc-chips" style="margin-top:16px">
+          <span class="chip">Search</span><span class="chip">Shopping</span><span class="chip">PMax</span><span class="chip">YouTube</span>
+        </div>
+      </div>
+      <div class="svc-detail-right">
+        <div class="svc-scope-title">Scope of Work</div>
+        <div class="svc-scope-grid">
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+            <div><div class="ssi-name">Search Campaigns</div><div class="ssi-desc">Keyword strategy, match type, ad copy. Tối ưu Quality Score và CPC.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+            <div><div class="ssi-name">Shopping & PMax</div><div class="ssi-desc">Feed optimization, product group bidding. Performance Max với asset group theo ngành.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+            <div><div class="ssi-name">YouTube Ads</div><div class="ssi-desc">Skippable, Non-skip, Bumper 6s. Brand awareness và remarketing video.</div></div>
+          </div>
+          <div class="svc-scope-item">
+            <div class="ssi-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <div><div class="ssi-name">Local & GDN</div><div class="ssi-desc">Local campaigns cho chuỗi cửa hàng. GDN retargeting theo hành vi website.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
-<!-- RESULTS -->
-<section id="results">
+<!-- ═══ BRANDS ═══ -->
+<section id="brands">
   <div class="container">
-    <div class="sec-hd-flex rv">
-      <div>
-        <div class="sec-label">Kết quả thực tế</div>
-        <h2 class="sec-title">Số liệu chứng minh<br>năng lực.</h2>
-      </div>
-      <a href="#contact" class="btn-outline">Xem tất cả case study <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+    <div class="sec-hd rv">
+      <div class="sec-label">Thương hiệu đã hợp tác</div>
+      <h2 class="sec-title">40+ Brands tin tưởng<br>Media Omni.</h2>
+      <p class="sec-sub">Từ Health & Beauty đến FMCG — chúng tôi đã vận hành cho các thương hiệu hàng đầu Việt Nam và quốc tế.</p>
     </div>
-    <div class="results-grid">
-      <div class="case-card rv-l d1">
-        <div class="cc-top"><span class="case-brand">L'Occitane</span><span class="tag">Beauty</span></div>
-        <p class="cc-desc">Meta Ads — Khai trương cửa hàng mới. Tối ưu awareness và thu thập lead chất lượng cao.</p>
-        <div class="cc-metrics">
-          <div class="cm-cell"><span class="cm-val">3M+</span><span class="cm-lbl">Reach</span></div>
-          <div class="cm-cell"><span class="cm-val">20K+</span><span class="cm-lbl">Engagement</span></div>
-          <div class="cm-cell"><span class="cm-val">1.5K+</span><span class="cm-lbl">Leads</span></div>
-        </div>
-        <div class="case-tags"><span class="chip">Meta Ads</span><span class="chip">Lead Gen</span></div>
+  </div>
+  <!-- Logo marquee — full width -->
+  <div class="brands-marquee-wrap">
+    <div class="brands-fade-l"></div>
+    <div class="brands-fade-r"></div>
+    <div class="brands-track-outer">
+      <div class="brands-track" id="brands-track-1">
+        <!-- Row 1 logos -->
+        <div class="brand-logo-item">L'Occitane</div>
+        <div class="brand-logo-item">Ziaja</div>
+        <div class="brand-logo-item">KeyShu</div>
+        <div class="brand-logo-item">thegioididong</div>
+        <div class="brand-logo-item">BzuBzu</div>
+        <div class="brand-logo-item">Traphaco</div>
+        <div class="brand-logo-item">Yves Rocher</div>
+        <div class="brand-logo-item">EUBOS</div>
+        <div class="brand-logo-item">NUCOS</div>
+        <div class="brand-logo-item">Cindy Bloom</div>
+        <div class="brand-logo-item">TSUBAKI</div>
+        <div class="brand-logo-item">Pierre Cardin</div>
+        <div class="brand-logo-item">Dh Natural</div>
+        <div class="brand-logo-item">Meracine</div>
+        <div class="brand-logo-item">BABE Lab</div>
+        <div class="brand-logo-item">82x</div>
+        <div class="brand-logo-item">Venus Beauty</div>
+        <div class="brand-logo-item">Cozy</div>
+        <div class="brand-logo-item">Instax Fujifilm</div>
+        <div class="brand-logo-item">Astalift</div>
+        <!-- duplicate for infinite scroll -->
+        <div class="brand-logo-item">L'Occitane</div>
+        <div class="brand-logo-item">Ziaja</div>
+        <div class="brand-logo-item">KeyShu</div>
+        <div class="brand-logo-item">thegioididong</div>
+        <div class="brand-logo-item">BzuBzu</div>
+        <div class="brand-logo-item">Traphaco</div>
+        <div class="brand-logo-item">Yves Rocher</div>
+        <div class="brand-logo-item">EUBOS</div>
+        <div class="brand-logo-item">NUCOS</div>
+        <div class="brand-logo-item">Cindy Bloom</div>
+        <div class="brand-logo-item">TSUBAKI</div>
+        <div class="brand-logo-item">Pierre Cardin</div>
+        <div class="brand-logo-item">Dh Natural</div>
+        <div class="brand-logo-item">Meracine</div>
+        <div class="brand-logo-item">BABE Lab</div>
+        <div class="brand-logo-item">82x</div>
+        <div class="brand-logo-item">Venus Beauty</div>
+        <div class="brand-logo-item">Cozy</div>
+        <div class="brand-logo-item">Instax Fujifilm</div>
+        <div class="brand-logo-item">Astalift</div>
       </div>
-      <div class="case-card rv-r d2">
-        <div class="cc-top"><span class="case-brand">Vitabiotics</span><span class="tag">Health</span></div>
-        <p class="cc-desc">Shopee Ads — Tăng traffic và doanh thu gian hàng. Đạt TOP 4 ngành TPCH.</p>
-        <div class="cc-metrics">
-          <div class="cm-cell"><span class="cm-val">TOP 4</span><span class="cm-lbl">TPCH Shopee</span></div>
-          <div class="cm-cell"><span class="cm-val">35%</span><span class="cm-lbl">Traffic/Ads</span></div>
-          <div class="cm-cell"><span class="cm-val">3.09B</span><span class="cm-lbl">GMV Target</span></div>
-        </div>
-        <div class="case-tags"><span class="chip">Shopee Ads</span><span class="chip">TPCH</span></div>
-      </div>
-      <div class="case-card rv-l d3">
-        <div class="cc-top"><span class="case-brand">Ziaja</span><span class="tag tag--cyan">Intimate</span></div>
-        <p class="cc-desc">CPAS Meta × Shopee — tăng traffic gian hàng và đo lường cross-channel attribution.</p>
-        <div class="cc-metrics">
-          <div class="cm-cell"><span class="cm-val">+11%</span><span class="cm-lbl">Traffic</span></div>
-          <div class="cm-cell"><span class="cm-val">1.5x</span><span class="cm-lbl">ROAS ngành</span></div>
-          <div class="cm-cell"><span class="cm-val">CPAS</span><span class="cm-lbl">Meta×Shopee</span></div>
-        </div>
-        <div class="case-tags"><span class="chip">CPAS</span><span class="chip">Attribution</span></div>
-      </div>
-      <div class="case-card rv-r d4">
-        <div class="cc-top"><span class="case-brand">UpBeauty</span><span class="tag">Skincare</span></div>
-        <p class="cc-desc">Meta Ads — Tối ưu bán hàng chuyển đổi. Content + ads + CRM kết hợp đồng bộ.</p>
-        <div class="cc-metrics">
-          <div class="cm-cell"><span class="cm-val">60+</span><span class="cm-lbl">Content/tháng</span></div>
-          <div class="cm-cell"><span class="cm-val">100%</span><span class="cm-lbl">Phản hồi</span></div>
-          <div class="cm-cell"><span class="cm-val">10%</span><span class="cm-lbl">Chốt/Chat</span></div>
-        </div>
-        <div class="case-tags"><span class="chip">Meta Ads</span><span class="chip">Conversion</span></div>
+    </div>
+    <div class="brands-track-outer" style="margin-top:16px">
+      <div class="brands-track brands-track-reverse" id="brands-track-2">
+        <div class="brand-logo-item">Ekseption</div>
+        <div class="brand-logo-item">Bye Bye Blemish</div>
+        <div class="brand-logo-item">Rejuran</div>
+        <div class="brand-logo-item">Pigeon</div>
+        <div class="brand-logo-item">KARMART</div>
+        <div class="brand-logo-item">HITACHI</div>
+        <div class="brand-logo-item">SCC</div>
+        <div class="brand-logo-item">Cathy Doll</div>
+        <div class="brand-logo-item">Nature's Way</div>
+        <div class="brand-logo-item">BNP Baniphar</div>
+        <div class="brand-logo-item">A Bonne</div>
+        <div class="brand-logo-item">Khaokho Talaypu</div>
+        <div class="brand-logo-item">Beko</div>
+        <div class="brand-logo-item">Blissberry</div>
+        <div class="brand-logo-item">Lipit</div>
+        <div class="brand-logo-item">Vitabiotics</div>
+        <div class="brand-logo-item">KAINE</div>
+        <div class="brand-logo-item">Hikid</div>
+        <div class="brand-logo-item">DociLEE</div>
+        <div class="brand-logo-item">Earth Choice</div>
+        <div class="brand-logo-item">Miss Saigon</div>
+        <!-- duplicate -->
+        <div class="brand-logo-item">Ekseption</div>
+        <div class="brand-logo-item">Bye Bye Blemish</div>
+        <div class="brand-logo-item">Rejuran</div>
+        <div class="brand-logo-item">Pigeon</div>
+        <div class="brand-logo-item">KARMART</div>
+        <div class="brand-logo-item">HITACHI</div>
+        <div class="brand-logo-item">SCC</div>
+        <div class="brand-logo-item">Cathy Doll</div>
+        <div class="brand-logo-item">Nature's Way</div>
+        <div class="brand-logo-item">BNP Baniphar</div>
+        <div class="brand-logo-item">A Bonne</div>
+        <div class="brand-logo-item">Khaokho Talaypu</div>
+        <div class="brand-logo-item">Beko</div>
+        <div class="brand-logo-item">Blissberry</div>
+        <div class="brand-logo-item">Lipit</div>
+        <div class="brand-logo-item">Vitabiotics</div>
+        <div class="brand-logo-item">KAINE</div>
+        <div class="brand-logo-item">Hikid</div>
+        <div class="brand-logo-item">DociLEE</div>
+        <div class="brand-logo-item">Earth Choice</div>
+        <div class="brand-logo-item">Miss Saigon</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- TEAM -->
+<!-- ═══ PARTNERS ═══ -->
+<section id="partners">
+  <div class="container">
+    <div class="sec-hd rv" style="text-align:center;align-items:center">
+      <div class="sec-label" style="justify-content:center">Platform Partners</div>
+      <h2 class="sec-title">Đối tác chính thức<br>trên mọi nền tảng.</h2>
+      <p class="sec-sub" style="margin:0 auto">Được công nhận bởi các nền tảng hàng đầu — TikTok Shop Partner, Shopee Strategic Partner, Google Partner, Meta Business Partner.</p>
+    </div>
+    <div class="partners-grid rv">
+      <div class="partner-card">
+        <div class="partner-logo-wrap">
+          <svg width="32" height="32" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" fill="#010101"/></svg>
+        </div>
+        <div class="partner-name">TikTok Shop</div>
+        <div class="partner-tier">
+          <span class="partner-badge partner-badge--diamond">Kim Cương 2025</span>
+        </div>
+        <div class="partner-desc">TikTok Shop Partner xuất sắc — Top partner theo GMV toàn quốc.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-logo-wrap">
+          <svg width="32" height="32" viewBox="0 0 24 24"><path d="M12 2C9.5 2 7.5 3.9 7.5 6.3H6L4.5 20h15L18 6.3h-1.5C16.5 3.9 14.5 2 12 2zm0 1.8c1.8 0 3.2 1.3 3.4 3H8.6C8.8 5.1 10.2 3.8 12 3.8zm0 6.5c-2.3 0-4.2-1.5-4.8-3.5h1.5c.5 1.2 1.7 2 3.3 2s2.8-.8 3.3-2h1.5c-.6 2-2.5 3.5-4.8 3.5z" fill="#EE4D2D"/></svg>
+        </div>
+        <div class="partner-name">Shopee</div>
+        <div class="partner-tier">
+          <span class="partner-badge partner-badge--premium">Strategic Partner</span>
+        </div>
+        <div class="partner-desc">Shopee Strategic Partner — Top 5 Đối tác Toàn diện Xuất sắc 2025.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-logo-wrap">
+          <svg width="32" height="32" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        </div>
+        <div class="partner-name">Google</div>
+        <div class="partner-tier">
+          <span class="partner-badge partner-badge--google">Google Partner</span>
+        </div>
+        <div class="partner-desc">Google Partner certified — Search, Shopping, YouTube, Performance Max.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-logo-wrap">
+          <svg width="32" height="32" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#0866FF"/></svg>
+        </div>
+        <div class="partner-name">Meta</div>
+        <div class="partner-tier">
+          <span class="partner-badge partner-badge--meta">Business Partner</span>
+        </div>
+        <div class="partner-desc">Meta Business Partner — Facebook, Instagram Ads và CPAS specialist.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-logo-wrap" style="background:linear-gradient(135deg,#1EB1FA,#0E6ECE)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 12 18.54a19.5 19.5 0 0 1-5-5A19.79 19.79 0 0 1 3.08 8.18 2 2 0 0 1 5.05 6h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L9.91 13.5a16 16 0 0 0 6 6"/></svg>
+        </div>
+        <div class="partner-name">Lark</div>
+        <div class="partner-tier">
+          <span class="partner-badge partner-badge--lark">Lark Partner</span>
+        </div>
+        <div class="partner-desc">Lark Partner chính thức — triển khai và vận hành hệ thống Lark cho doanh nghiệp.</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-logo-wrap" style="background:linear-gradient(135deg,#F97316,#EF4444)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </div>
+        <div class="partner-name">Lazada</div>
+        <div class="partner-tier">
+          <span class="partner-badge partner-badge--lazada">Certified Partner</span>
+        </div>
+        <div class="partner-desc">Lazada Partners Certified — CPAS và vận hành ads trên Lazada marketplace.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TEAM ═══ -->
 <section id="team">
   <div class="container">
     <div class="sec-hd rv">
       <div class="sec-label">Đội ngũ</div>
       <h2 class="sec-title">12 Growth Operators.</h2>
-      <p class="sec-sub">Mỗi người một thế mạnh, một hệ thống vận hành.</p>
+      <p class="sec-sub">Mỗi người một thế mạnh — cùng một hệ thống vận hành.</p>
     </div>
     <div class="team-scroll-wrap rv" id="team-scroll-wrap">
       <div class="team-row" id="team-row"></div>
@@ -270,7 +506,7 @@
   </div>
 </section>
 
-<!-- QUIZ PREVIEW -->
+<!-- ═══ QUIZ PREVIEW ═══ -->
 <section id="quiz-preview">
   <div class="quiz-glow-1"></div>
   <div class="quiz-glow-2"></div>
@@ -291,7 +527,7 @@
   </div>
 </section>
 
-<!-- BLOG PREVIEW -->
+<!-- ═══ BLOG PREVIEW ═══ -->
 <section id="blog">
   <div class="container">
     <div class="sec-hd-flex rv">
@@ -300,13 +536,15 @@
         <h2 class="sec-title">Kiến thức thực chiến<br>từ Media Omni.</h2>
         <p class="sec-sub">Case study, framework và playbook — chia sẻ để cùng grow.</p>
       </div>
-      <a href="/blog" class="btn-outline">Xem tất cả bài viết <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      <a href="/blog" class="btn-outline">Xem tất cả bài viết
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
     </div>
     <div class="blog-grid" id="blog-preview-grid"></div>
   </div>
 </section>
 
-<!-- CONTACT -->
+<!-- ═══ CONTACT ═══ -->
 <section id="contact">
   <div class="contact-glow-1"></div>
   <div class="contact-glow-2"></div>
@@ -317,9 +555,9 @@
       <h2 class="sec-title sec-title--white" style="font-size:clamp(2rem,4vw,3.2rem);margin-bottom:16px;text-align:center">Làm việc cùng<br>Media Omni.</h2>
       <p class="sec-sub sec-sub--white" style="margin:0 auto 36px;text-align:center">Thương hiệu cần tăng trưởng đa kênh? Data-driven, performance-focused, results-guaranteed.</p>
       <div class="contact-actions">
-        <a href="mailto:media.omni@upbase.vn" class="btn-primary" style="font-size:1rem;padding:16px 36px">
+        <a href="mailto:quangnd@upbase.asia" class="btn-primary" style="font-size:1rem;padding:16px 36px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Gửi email ngay
+          quangnd@upbase.asia
         </a>
         <button class="btn-ghost" style="font-size:1rem;padding:16px 36px" onclick="openLogin()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -327,8 +565,14 @@
         </button>
       </div>
       <div class="contact-info">
-        <span class="contact-info-item"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>media.omni@upbase.vn</span>
-        <span class="contact-info-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>UpBase Vietnam</span>
+        <span class="contact-info-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.8" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          quangnd@upbase.asia
+        </span>
+        <span class="contact-info-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          UpBase Vietnam
+        </span>
       </div>
     </div>
   </div>
@@ -342,7 +586,7 @@
         <div class="footer-brand-name">MediaOmni / UpBase</div>
         <p>Team Performance Marketing thuộc UpBase — Ecommerce Enabler hàng đầu Việt Nam.</p>
       </div>
-      <div class="footer-col"><h4>Company</h4><a href="#hero">Giới thiệu</a><a href="#team">Đội ngũ</a><a href="#contact">Liên hệ</a></div>
+      <div class="footer-col"><h4>Company</h4><a href="#hero">Giới thiệu</a><a href="#team">Đội ngũ</a><a href="mailto:quangnd@upbase.asia">Liên hệ</a></div>
       <div class="footer-col"><h4>Services</h4><a href="#services">TikTok Ads</a><a href="#services">Shopee Ads</a><a href="#services">Meta Ads</a><a href="#services">Google Ads</a></div>
       <div class="footer-col"><h4>Resources</h4><a href="/blog">Blog</a><a href="/quiz">Quiz Hub</a><a href="/dashboard">Team Hub</a><a href="/admin">CMS Admin</a></div>
     </div>
@@ -362,7 +606,9 @@
   <div class="modal-box">
     <button class="modal-close" id="modal-close">✕</button>
     <div class="modal-logo">
-      <div class="modal-mark"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <div class="modal-mark">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
       <div class="modal-title">MediaOmni</div>
       <div class="modal-sub">Đăng nhập để truy cập Team Hub</div>
     </div>
