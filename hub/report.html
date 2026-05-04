@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Report Tool — Media Omni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/report.css">
+</head>
+<body>
+<div id="sp"></div>
+<nav id="main-nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
+    <div class="nav-links">
+      <a href="/dashboard" class="nav-link">← Dashboard</a>
+      <span id="nav-user" style="font-size:.84rem;color:rgba(255,255,255,.6)"></span>
+    </div>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+  </div>
+  <div class="nav-mob" id="nav-mob">
+    <a href="/dashboard" class="nav-mob-link">← Dashboard</a>
+  </div>
+</nav>
+<div class="mob-overlay" id="mob-overlay"></div>
+
+<div class="report-wrap">
+  <div class="report-hdr">
+    <h1>Weekly Report Tool</h1>
+    <p>Nhập data Actual → AI generate nhận xét → Copy mail gửi Lark. Framework DARA · TikTok Shop + Shopee.</p>
+  </div>
+
+  <div class="step-tabs">
+    <div class="step-tab active" onclick="goStep(1)">
+      <span class="step-num">BƯỚC 1</span>
+      <span class="step-name">Store & Tuần</span>
+    </div>
+    <div class="step-tab disabled" onclick="STATE.step>1&&goStep(2)">
+      <span class="step-num">BƯỚC 2</span>
+      <span class="step-name">Nhập Data</span>
+    </div>
+    <div class="step-tab disabled" onclick="STATE.step>2&&goStep(3)">
+      <span class="step-num">BƯỚC 3</span>
+      <span class="step-name">Preview & Copy</span>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step-page" id="step-page-1">
+    <div class="r-card">
+      <h2>Chọn Store & Platform</h2>
+      <p>Mỗi lần báo cáo cho 1 store. Chọn platform đang chạy.</p>
+      <div class="r-grid">
+        <div>
+          <label class="r-label">Tên Store *</label>
+          <input class="r-input" id="inp-store" type="text" placeholder="VD: Vitabiotics Official, L'Occitane VN..." autocomplete="off">
+        </div>
+        <div>
+          <label class="r-label">Platform</label>
+          <div class="plat-toggle">
+            <div class="plat-btn active-both" data-plat="both" onclick="setPlatform('both')">🛍️🎵 Cả hai</div>
+            <div class="plat-btn" data-plat="shopee" onclick="setPlatform('shopee')">🛍️ Shopee</div>
+            <div class="plat-btn" data-plat="tiktok" onclick="setPlatform('tiktok')">🎵 TikTok</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="r-card">
+      <h2>Tuần báo cáo</h2>
+      <p>Mặc định: T6 tuần này đến T5 tuần sau. Tự động cắt nếu qua tháng.</p>
+      <div class="week-display">
+        <div>
+          <div class="wd-label" id="week-label-display">—</div>
+          <div class="wd-range" id="week-range-display">—</div>
+        </div>
+        <span class="wd-days" id="week-days-display">—</span>
+      </div>
+      <div class="r-grid">
+        <div>
+          <label class="r-label">Override ngày bắt đầu (nếu cần)</label>
+          <input class="r-input" id="inp-week-start" type="date" onchange="overrideWeek()">
+        </div>
+        <div>
+          <label class="r-label">Override ngày kết thúc (nếu cần)</label>
+          <input class="r-input" id="inp-week-end" type="date" onchange="overrideWeek()">
+        </div>
+      </div>
+    </div>
+
+    <button class="gen-btn" onclick="nextStep1()" style="margin-top:8px">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Tiếp theo — Nhập Data →
+    </button>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-page" id="step-page-2" style="display:none">
+    <div id="step2-plan-alert"></div>
+    <div id="step2-content"></div>
+    <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+      <button class="gen-btn" style="flex:1;max-width:200px;background:var(--paper);color:var(--muted);border:1.5px solid var(--border);box-shadow:none" onclick="goStep(1)">← Quay lại</button>
+      <button class="gen-btn" id="gen-btn" style="flex:3" onclick="generateReport()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Generate Report & Preview →
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step-page" id="step-page-3" style="display:none">
+    <div class="mail-preview-wrap">
+      <div class="mp-toolbar">
+        <span class="mp-label">📧 Mail Preview — Click vào nội dung để sửa trực tiếp</span>
+        <div class="mp-actions">
+          <button class="mp-btn" onclick="goStep(2)">← Sửa data</button>
+          <button class="mp-btn primary" id="copy-btn" onclick="copyMail()">Copy → Lark</button>
+        </div>
+      </div>
+      <div class="mail-subject-bar">
+        <span class="ms-label">Subject</span>
+        <span class="ms-value" id="mail-subject" contenteditable="true"></span>
+      </div>
+      <div class="mail-body" id="mail-body" contenteditable="true" spellcheck="false"></div>
+      <div class="save-bar">
+        <span class="sb-info">Đã sửa xong? Lưu vào Sheets để không mất data.</span>
+        <div class="sb-actions">
+          <button class="mp-btn" id="save-btn" onclick="saveReport()">Lưu vào Sheets</button>
+          <button class="mp-btn primary" onclick="copyMail()">Copy → Lark</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN MODAL -->
+<div class="um-modal-overlay" id="plan-modal">
+  <div class="um-modal" style="max-width:900px;width:95%;max-height:85vh;overflow-y:auto">
+    <div class="um-modal-hdr">
+      <h3>📋 Set Plan tháng</h3>
+      <button class="um-modal-close" onclick="closePlanModal()">✕</button>
+    </div>
+    <div id="plan-modal-content"></div>
+    <div class="fp-actions" style="margin-top:24px">
+      <button class="fp-cancel" onclick="closePlanModal()">Huỷ</button>
+      <button class="fp-submit" id="plan-save-btn" onclick="savePlan()">Lưu Plan →</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
+<script src="/js/shared.js"></script>
+<script src="/js/report.js"></script>
+<script>
+function overrideWeek(){
+  const s=document.getElementById('inp-week-start').value;
+  const e=document.getElementById('inp-week-end').value;
+  if(!s||!e)return;
+  const start=new Date(s),end=new Date(e);
+  const days=Math.round((end-start)/(1000*60*60*24))+1;
+  const month=start.getMonth()+1,year=start.getFullYear();
+  const quarter=Math.ceil(month/3);
+  const wn=STATE.weekInfo?.weekNum||1;
+  STATE.weekInfo={start:fmtDate(start),end:fmtDate(end),startRaw:start,endRaw:end,days,isFull:days===7,weekNum:wn,month,year,quarter,label:`W${wn} Tháng ${month} Quý ${quarter}.${year}`};
+  document.getElementById('week-label-display').textContent=STATE.weekInfo.label;
+  document.getElementById('week-range-display').textContent=`${STATE.weekInfo.start} – ${STATE.weekInfo.end}`;
+  const dEl=document.getElementById('week-days-display');
+  dEl.textContent=days===7?'7 ngày':`${days} ngày (tuần lẻ)`;
+  dEl.className=`wd-days ${days===7?'full':'short'}`;
+}
+document.addEventListener('DOMContentLoaded',()=>{setTimeout(initStep1,100);});
+</script>
+</body>
+</html>
