@@ -16,6 +16,7 @@ const DASH_CFG = {
       { icon:'📅', title:'Daily Tasks',     desc:'Xem task hàng ngày được assign.',   badge:'dcb-available', label:'Mở',       url:'/hub/tasks' },
       { icon:'📊', title:'Kết quả của tôi',desc:'Xem lịch sử điểm các bài đã làm.', badge:'dcb-available', label:'Xem',      fn:'showMyScores' },
       { icon:'✏️', title:'Blog',            desc:'Viết bài và chia sẻ kiến thức.',    badge:'dcb-available', label:'Viết bài', url:'/admin' },
+      { icon:'📬', title:'Weekly Report',  desc:'Nhập data → AI nhận xét → Copy mail.', badge:'dcb-available', label:'Mở', url:'/hub/report' },
       { icon:'📚', title:'SOP & Resources',desc:'Tài liệu, template nội bộ.',        badge:'dcb-soon',      label:'Phase 4' },
     ]
   },
