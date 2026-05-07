@@ -1116,9 +1116,9 @@ async function generateAI() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openAiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini',
+        model: 'gpt-4.1',
         response_format: { type: 'json_object' },
-        max_tokens: 1500,
+        max_tokens: 4096,
         messages: [
           { role: 'system', content: sysPrompt },
           { role: 'user',   content: userMsg }
