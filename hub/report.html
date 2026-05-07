@@ -438,9 +438,22 @@
       <div class="ai-f">
         <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Highlight</div><div class="ai-body" id="ai_highlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
         <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Lowlight</div><div class="ai-body" id="ai_lowlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
-        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Thực trạng</div><div class="ai-body" id="ai_thuc_trang" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
-        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Vấn đề</div><div class="ai-body" id="ai_van_de" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
-        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14"/></svg> Giải pháp & Plan tuần tới</div><div class="ai-body" id="ai_giai_phap" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+      </div>
+      <div id="ai-shopee-fields">
+        <div class="sub-h" style="color:#EE4D2D;margin-top:14px">📦 Shopee — Thực tế / Vấn đề / Giải pháp</div>
+        <div class="ai-f">
+          <div><div class="ai-lbl">Thực trạng</div><div class="ai-body" id="ai_shopee_thuc_trang" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+          <div><div class="ai-lbl">Vấn đề</div><div class="ai-body" id="ai_shopee_van_de" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+          <div><div class="ai-lbl">Giải pháp & Plan tuần tới</div><div class="ai-body" id="ai_shopee_giai_phap" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        </div>
+      </div>
+      <div id="ai-tiktok-fields">
+        <div class="sub-h" style="margin-top:14px">🎵 TikTok — Thực tế / Vấn đề / Giải pháp</div>
+        <div class="ai-f">
+          <div><div class="ai-lbl">Thực trạng</div><div class="ai-body" id="ai_tiktok_thuc_trang" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+          <div><div class="ai-lbl">Vấn đề</div><div class="ai-body" id="ai_tiktok_van_de" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+          <div><div class="ai-lbl">Giải pháp & Plan tuần tới</div><div class="ai-body" id="ai_tiktok_giai_phap" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        </div>
       </div>
     </div>
 
@@ -574,19 +587,23 @@ const API = 'https://script.google.com/macros/s/AKfycbwmLt2SFY5iMg22qrUmvxmgI5Nj
 
 const defaultSysPrompt = `Bạn là Senior Performance Marketing Manager chuyên Ecommerce Marketplace (Shopee & TikTok Shop) tại Việt Nam, có 5+ năm kinh nghiệm phân tích data Ads và tối ưu ngân sách.
 
-Nhiệm vụ: Phân tích data tuần của brand và trả về JSON với đúng 5 key sau (không thêm text nào khác ngoài JSON):
+Nhiệm vụ: Phân tích data tuần của brand và trả về JSON với các key sau (không thêm text nào khác ngoài JSON):
 
 {
-  "highlight": "2-3 bullet points thành tựu nổi bật, mỗi bullet bắt đầu bằng • , nêu metric cụ thể (ROAS, GMV, CTR...) và so sánh với plan hoặc tuần trước",
-  "lowlight": "2-3 bullet points vấn đề cần chú ý, mỗi bullet bắt đầu bằng • , chỉ rõ mức độ lệch plan hoặc sụt giảm",
-  "thuc_trang": "2-3 câu mô tả thực trạng hiệu suất tổng thể tuần này, có số liệu cụ thể (ROAS, GMV, chi phí, % vs plan)",
-  "van_de": "2-3 bullet points phân tích root cause của các điểm yếu, mỗi bullet bắt đầu bằng • , đi từ nguyên nhân đến tác động",
-  "giai_phap": "3 bullet points hành động cụ thể và có thể thực hiện ngay tuần tới, mỗi bullet bắt đầu bằng • , nêu rõ what + expected impact"
+  "highlight": "2-3 bullet points thành tựu nổi bật (tổng hợp cả 2 sàn nếu có), mỗi bullet bắt đầu bằng • , nêu metric cụ thể và so sánh với plan hoặc tuần trước",
+  "lowlight": "2-3 bullet points vấn đề cần chú ý (tổng hợp), mỗi bullet bắt đầu bằng • , chỉ rõ mức độ lệch plan hoặc sụt giảm",
+  "shopee_thuc_trang": "2-3 câu mô tả thực trạng Shopee tuần này, có số liệu cụ thể (ROAS, GMV, chi phí, % vs plan). Để trống '' nếu không có data Shopee",
+  "shopee_van_de": "2-3 bullet points vấn đề Shopee, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data Shopee",
+  "shopee_giai_phap": "2-3 bullet points giải pháp cho Shopee tuần tới, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data Shopee",
+  "tiktok_thuc_trang": "2-3 câu mô tả thực trạng TikTok tuần này, có số liệu cụ thể (ROI, GMV, chi phí, % vs plan). Để trống '' nếu không có data TikTok",
+  "tiktok_van_de": "2-3 bullet points vấn đề TikTok, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data TikTok",
+  "tiktok_giai_phap": "2-3 bullet points giải pháp cho TikTok tuần tới, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data TikTok"
 }
 
 Yêu cầu:
 - Tiếng Việt, mix English term chuyên ngành (ROAS, CTR, CR, CPC, GMV, PGM, LGM, AOV, CPP)
 - Phân tích chuyên sâu, không chung chung
+- Số liệu dùng định dạng 100,000 (không dùng đơn vị ₫ hay x sau số)
 - Mỗi bullet point nằm trên một dòng riêng (dùng \\n giữa các bullet)
 - Không thêm markdown, không thêm text ngoài JSON`;
 
@@ -598,7 +615,7 @@ const STATE = {
   plan: null, history: [],
   shopee: { cpc: {}, nd: {}, live: {}, tot: {} },
   tiktok: { pgm: {}, lgm: {}, con: {}, brd: {}, tot: {} },
-  ai: { highlight:'', lowlight:'', thuc_trang:'', van_de:'', giai_phap:'' },
+  ai: { highlight:'', lowlight:'', shopee_thuc_trang:'', shopee_van_de:'', shopee_giai_phap:'', tiktok_thuc_trang:'', tiktok_van_de:'', tiktok_giai_phap:'' },
   chartInst: null
 };
 
@@ -640,11 +657,11 @@ function fmtD(d) {
 function fmt(n, unit='') {
   if (n === null || n === undefined || isNaN(n) || n === '') return '—';
   const v = parseFloat(n);
-  if (!isFinite(v) || v === 0) return unit === 'x' ? '0x' : unit === '%' ? '0%' : '0';
-  if (unit === '₫') return v.toLocaleString('vi-VN') + '₫';
-  if (unit === 'x') return v.toFixed(2) + 'x';
+  if (!isFinite(v) || v === 0) return unit === '%' ? '0%' : '0';
+  if (unit === '₫') return Math.round(v).toLocaleString('en-US');
+  if (unit === 'x') return v.toFixed(2);
   if (unit === '%') return v.toFixed(2) + '%';
-  return v.toLocaleString('vi-VN');
+  return Math.round(v).toLocaleString('en-US');
 }
 function fmtBig(n) {
   if (n === null || n === undefined || isNaN(n) || n === '' || n === '—') return '—';
@@ -753,6 +770,10 @@ function onPlatChange() {
   STATE.platforms.tiktok = document.getElementById('chk-tiktok').checked;
   document.getElementById('lbl-shopee').className = 'plat-chk' + (STATE.platforms.shopee ? ' on' : '');
   document.getElementById('lbl-tiktok').className = 'plat-chk' + (STATE.platforms.tiktok ? ' on' : '');
+  const sf = document.getElementById('ai-shopee-fields');
+  const tf = document.getElementById('ai-tiktok-fields');
+  if (sf) sf.style.display = STATE.platforms.shopee ? 'block' : 'none';
+  if (tf) tf.style.display = STATE.platforms.tiktok ? 'block' : 'none';
 }
 
 async function fetchBrands() {
@@ -856,15 +877,21 @@ function initStep2() {
         el.value = n ? n.toLocaleString('vi-VN') : '';
       }
     });
-    const ai_ids = ['ai_highlight','ai_lowlight','ai_thuc_trang','ai_van_de','ai_giai_phap'];
-    [['highlight',0],['lowlight',1]].forEach(([f,i]) => {
-      const el = document.getElementById(ai_ids[i]);
-      if (el && thisWeek[f]) el.innerText = thisWeek[f];
+    ['highlight','lowlight'].forEach(k => {
+      const el = document.getElementById('ai_' + k);
+      if (el && thisWeek[k]) el.innerText = thisWeek[k];
     });
-    ['thuc_trang','van_de','giai_phap'].forEach((k,i) => {
+    ['shopee_thuc_trang','shopee_van_de','shopee_giai_phap','tiktok_thuc_trang','tiktok_van_de','tiktok_giai_phap'].forEach(k => {
       const el = document.getElementById('ai_' + k);
       if (el && thisWeek['nhan_xet_' + k]) el.innerText = thisWeek['nhan_xet_' + k];
     });
+    // backward compat: load old shared fields if new per-platform empty
+    if (thisWeek['nhan_xet_thuc_trang']) {
+      ['shopee','tiktok'].forEach(p => {
+        const el = document.getElementById('ai_' + p + '_thuc_trang');
+        if (el && !el.innerText.trim()) el.innerText = thisWeek['nhan_xet_thuc_trang'];
+      });
+    }
   }
 
   updatePlanDisplay();
@@ -1103,7 +1130,7 @@ async function generateAI() {
     }
     const j = await resp.json();
     const ai = JSON.parse(j.choices[0].message.content);
-    ['highlight','lowlight','thuc_trang','van_de','giai_phap'].forEach(k => {
+    ['highlight','lowlight','shopee_thuc_trang','shopee_van_de','shopee_giai_phap','tiktok_thuc_trang','tiktok_van_de','tiktok_giai_phap'].forEach(k => {
       const el = document.getElementById('ai_' + k);
       if (el) el.innerText = ai[k] || '';
       STATE.ai[k] = ai[k] || '';
@@ -1228,7 +1255,7 @@ function saveApiKey() {
 /* ── PREVIEW ── */
 function buildAndGoStep3() {
   // Collect AI text from editable fields
-  ['highlight','lowlight','thuc_trang','van_de','giai_phap'].forEach(k => {
+  ['highlight','lowlight','shopee_thuc_trang','shopee_van_de','shopee_giai_phap','tiktok_thuc_trang','tiktok_van_de','tiktok_giai_phap'].forEach(k => {
     const el = document.getElementById('ai_' + k);
     STATE.ai[k] = el ? el.innerText.trim() : '';
   });
@@ -1374,9 +1401,9 @@ function buildPreview() {
 
   const fmtX    = v=>v!==null&&v!==undefined?parseFloat(v).toFixed(2):'—';
   const fmtPct  = v=>v!==null&&v!==undefined?parseFloat(v).toFixed(2)+'%':'—';
-  const fmtN    = v=>v!==null&&v!==undefined?parseFloat(v).toLocaleString('vi-VN'):'—';
-  const fmtMoney= v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toLocaleString('vi-VN'):'—';
-  const fmtCPC  = v=>v!==null&&v!==undefined&&!isNaN(v)?Math.round(parseFloat(v)).toLocaleString('vi-VN'):'—';
+  const fmtN    = v=>v!==null&&v!==undefined?Math.round(parseFloat(v)).toLocaleString('en-US'):'—';
+  const fmtMoney= v=>v!==null&&v!==undefined&&!isNaN(v)?Math.round(parseFloat(v)).toLocaleString('en-US'):'—';
+  const fmtCPC  = v=>v!==null&&v!==undefined&&!isNaN(v)?Math.round(parseFloat(v)).toLocaleString('en-US'):'—';
 
   const sPlanGmvM  = pM('s_cpc_doanh_so')+pM('s_nd_gmv')+pM('s_live_gmv');
   const tPlanGmvM  = pM('t_pgm_doanh_so')+pM('t_lgm_doanhthu');
@@ -1386,6 +1413,9 @@ function buildPreview() {
   const mtdTotGmv  = STATE.weeks.filter(wk=>wk.w<=STATE.weekNum).reduce((a,wk)=>{ const v=wk.w===STATE.weekNum?(s.gmv+t.gmv):(getHistGmv(wk.w)||0); return a+v; },0);
 
   let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:15px;color:#000;line-height:1.7;max-width:900px">`;
+  body += `<p style="margin:0 0 4px">Dear: <strong>Growth Phụ trách dự án</strong><br>và Leader Team Media Omni, PIC Marketing B2C</p>`;
+  body += `<p style="margin:0 0 10px">Tôi xin phép gửi Report của <strong>${weekInfo?.label}</strong> dự án <strong>${brand}</strong></p>`;
+  body += `<hr style="border:1px solid #ccc;margin:8px 0">`;
   body += `<p style="margin:0 0 4px"><strong style="font-size:15px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
   body += `<hr style="border:1px solid #ccc;margin:8px 0">`;
 
@@ -1507,25 +1537,26 @@ function buildPreview() {
   const nl = v => (v||'').replace(/\n/g,'<br>');
   const thS = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:15px;text-align:center;${v}"`;
   const tdS = (v='') => `style="padding:6px 10px;border:1px solid #ccc;font-family:'Times New Roman',serif;font-size:15px;vertical-align:top;${v}"`;
-  const platformRows = [platforms.shopee&&'Shopee', platforms.tiktok&&'TikTok'].filter(Boolean);
+  const platformRows = [platforms.shopee&&'shopee', platforms.tiktok&&'tiktok'].filter(Boolean);
   const rc = platformRows.length;
   body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
   body += `<table style="${tblStyle}"><thead><tr>
     <th ${thS('min-width:90px')}>Brand</th>
     <th ${thS('min-width:80px')}>Sàn</th>
     <th ${thS('min-width:80px')}>Hạng mục</th>
-    <th ${thS('min-width:160px')}>Thực tế</th>
-    <th ${thS('min-width:160px')}>Vấn đề</th>
+    <th ${thS('min-width:180px')}>Thực tế</th>
+    <th ${thS('min-width:180px')}>Vấn đề</th>
     <th ${thS('min-width:180px')}>Giải pháp/Kế hoạch tới</th>
   </tr></thead><tbody>`;
-  platformRows.forEach((san, i) => {
+  platformRows.forEach((p, i) => {
+    const sanLabel = p === 'shopee' ? 'Shopee' : 'TikTok';
     body += `<tr>`;
     if (i===0) body += `<td rowspan="${rc}" ${tdS('text-align:center;font-weight:700;vertical-align:middle')}>${brand}</td>`;
-    body += `<td ${tdS('text-align:center')}>${san}</td>`;
+    body += `<td ${tdS('text-align:center;font-weight:600')}>${sanLabel}</td>`;
     body += `<td ${tdS('text-align:center')}>Ads</td>`;
-    if (i===0) body += `<td rowspan="${rc}" ${tdS()}>${nl(ai.thuc_trang)}</td>`;
-    if (i===0) body += `<td rowspan="${rc}" ${tdS()}>${nl(ai.van_de)}</td>`;
-    if (i===0) body += `<td rowspan="${rc}" ${tdS()}>${nl(ai.giai_phap)}</td>`;
+    body += `<td ${tdS()}>${nl(ai[p+'_thuc_trang'])}</td>`;
+    body += `<td ${tdS()}>${nl(ai[p+'_van_de'])}</td>`;
+    body += `<td ${tdS()}>${nl(ai[p+'_giai_phap'])}</td>`;
     body += `</tr>`;
   });
   body += `</tbody></table>`;
@@ -1587,9 +1618,12 @@ async function saveReport() {
     week_num: STATE.weekNum,
     week_start: fmtD(weekInfo.start), week_end: fmtD(weekInfo.end),
     highlight: ai.highlight, lowlight: ai.lowlight,
-    nhan_xet_thuc_trang: ai.thuc_trang,
-    nhan_xet_van_de: ai.van_de,
-    nhan_xet_giai_phap: ai.giai_phap,
+    nhan_xet_shopee_thuc_trang: ai.shopee_thuc_trang,
+    nhan_xet_shopee_van_de: ai.shopee_van_de,
+    nhan_xet_shopee_giai_phap: ai.shopee_giai_phap,
+    nhan_xet_tiktok_thuc_trang: ai.tiktok_thuc_trang,
+    nhan_xet_tiktok_van_de: ai.tiktok_van_de,
+    nhan_xet_tiktok_giai_phap: ai.tiktok_giai_phap,
   };
 
   // Collect all input fields
