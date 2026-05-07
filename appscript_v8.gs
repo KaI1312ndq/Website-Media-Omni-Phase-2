@@ -92,9 +92,22 @@ function doPost(e) {
     const action = body.action;
     if (action === 'saveWeekly') return saveWeekly(body);
     if (action === 'savePlan')   return savePlan(body);
+    if (action === 'addBrand')   return addBrand(body);
     if (action === 'callClaude') return callClaudeProxy(body);
     return jsonOut({ ok: false, error: 'Unknown action: ' + action });
   } catch(err) { return jsonOut({ ok: false, error: err.message }); }
+}
+
+/* ── addBrand ── */
+function addBrand(body) {
+  const sh = getSheet('BrandList', BRAND_COLS);
+  const rows = sheetToJson(sh);
+  const name = (body.brand_name || '').trim();
+  if (!name) return jsonOut({ ok: false, error: 'brand_name trống' });
+  if (rows.some(r => r.brand_name === name)) return jsonOut({ ok: false, error: 'Brand đã tồn tại' });
+  const newId = rows.length ? Math.max(...rows.map(r => parseInt(r.id)||0)) + 1 : 1;
+  sh.appendRow([newId, name, body.assigned_members || 'all']);
+  return jsonOut({ ok: true });
 }
 
 /* ── getBrands ── */

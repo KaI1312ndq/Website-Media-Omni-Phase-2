@@ -140,6 +140,9 @@
 .pg-section{grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;padding:10px 0 4px;border-bottom:1px solid var(--border2)}
 .pg-sub{grid-column:1/-1;font-size:.7rem;font-weight:600;color:var(--muted);padding:8px 0 2px;margin-top:4px}
 @media(max-width:600px){.pg{grid-template-columns:1fr repeat(3,80px)}}
+
+/* ── NAV ALWAYS VISIBLE ── */
+#main-nav { background: rgba(5,15,44,.94) !important; backdrop-filter: blur(22px); border-bottom: 1px solid rgba(255,255,255,.1) !important; }
 </style>
 </head>
 <body>
@@ -149,7 +152,8 @@
     <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
     <div class="nav-links">
       <a href="/dashboard" class="nav-link">← Dashboard</a>
-      <button class="nav-link" onclick="showKeyModal()" style="background:none;border:none;cursor:pointer;font-size:.84rem;color:rgba(255,255,255,.75)">🔑 API Key</button>
+      <button class="nav-link" onclick="showPromptModal()" style="background:none;border:none;cursor:pointer;font-size:.84rem;color:rgba(255,255,255,.75);display:inline-flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> AI Prompt</button>
+      <button class="nav-link" onclick="showKeyModal()" style="background:none;border:none;cursor:pointer;font-size:.84rem;color:rgba(255,255,255,.75);display:inline-flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg> API Key</button>
       <span id="nav-user" style="font-size:.84rem;color:rgba(255,255,255,.6)"></span>
     </div>
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
@@ -162,7 +166,7 @@
 
 <div class="rw">
   <div class="rw-hdr">
-    <h1>📊 Weekly Report Tool</h1>
+    <h1 style="display:flex;align-items:center;gap:10px"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Weekly Report Tool</h1>
     <p>Nhập data Actual → AI generate nhận xét → Copy mail gửi Lark. Framework DARA · TikTok Shop + Shopee.</p>
   </div>
 
@@ -186,18 +190,23 @@
       <div class="rg" style="margin-bottom:16px">
         <div>
           <label class="rl">Brand *</label>
-          <select class="rs" id="inp-brand">
-            <option value="">⏳ Đang tải...</option>
-          </select>
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <select class="rs" id="inp-brand" style="flex:1">
+              <option value="">Đang tải...</option>
+            </select>
+            <button class="btn-s" onclick="showAddBrandModal()" title="Thêm brand mới" style="white-space:nowrap;padding:10px 12px;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Thêm</button>
+          </div>
         </div>
         <div>
           <label class="rl">Platform</label>
           <div class="plat-row">
             <label class="plat-chk on" id="lbl-shopee">
-              <input type="checkbox" id="chk-shopee" checked onchange="onPlatChange()"> 🛍️ Shopee
+              <input type="checkbox" id="chk-shopee" checked onchange="onPlatChange()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> Shopee
             </label>
             <label class="plat-chk on" id="lbl-tiktok">
-              <input type="checkbox" id="chk-tiktok" checked onchange="onPlatChange()"> 🎵 TikTok Shop
+              <input type="checkbox" id="chk-tiktok" checked onchange="onPlatChange()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.27 8.27 0 004.84 1.55V6.79a4.85 4.85 0 01-1.07-.1z"/></svg> TikTok Shop
             </label>
           </div>
         </div>
@@ -235,9 +244,18 @@
   <div id="sp2" style="display:none">
     <div id="plan-warn-block"></div>
 
+    <!-- ACTUAL XLSX -->
+    <div class="btn-row" style="margin-bottom:16px">
+      <button class="btn-s" onclick="downloadActualTemplate()" style="display:inline-flex;align-items:center;gap:6px" title="Tải mẫu Excel để điền data actual"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Tải mẫu Excel Actual</button>
+      <label class="btn-s" style="cursor:pointer;margin:0;display:inline-flex;align-items:center;gap:6px" title="Upload Excel đã điền số actual">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Excel Actual
+        <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleActualUpload(this.files[0]);this.value=''">
+      </label>
+    </div>
+
     <!-- SHOPEE -->
     <div id="shopee-sec" class="plat-sec">
-      <div class="plat-sec-hdr shopee">🛍️ Shopee Ads</div>
+      <div class="plat-sec-hdr shopee"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> Shopee Ads</div>
 
       <div class="rc">
         <div class="sub-h">CPC — Quảng cáo tìm kiếm</div>
@@ -294,7 +312,7 @@
       </div>
 
       <div class="total-box">
-        <div class="sub-h" style="margin-top:0">🏆 Shopee Tổng (auto-sum)</div>
+        <div class="sub-h" style="margin-top:0;display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg> Shopee Tổng (auto-sum)</div>
         <div style="overflow-x:auto">
         <table class="mt">
           <thead><tr><th>Metric</th><th>Actual W</th><th>Plan Tháng</th><th>% Plan T</th></tr></thead>
@@ -312,7 +330,7 @@
 
     <!-- TIKTOK -->
     <div id="tiktok-sec" class="plat-sec">
-      <div class="plat-sec-hdr tiktok">🎵 TikTok Shop Ads</div>
+      <div class="plat-sec-hdr tiktok"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.27 8.27 0 004.84 1.55V6.79a4.85 4.85 0 01-1.07-.1z"/></svg> TikTok Shop Ads</div>
 
       <div class="rc">
         <div class="sub-h">PGM — Product GMV Ads</div>
@@ -379,7 +397,7 @@
       </div>
 
       <div class="total-box" style="background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.12)">
-        <div class="sub-h" style="margin-top:0">🏆 TikTok Tổng (auto-sum)</div>
+        <div class="sub-h" style="margin-top:0;display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg> TikTok Tổng (auto-sum)</div>
         <div style="overflow-x:auto">
         <table class="mt">
           <thead><tr><th>Metric</th><th>Actual W</th><th>Plan Tháng</th><th>% Plan T</th></tr></thead>
@@ -395,16 +413,16 @@
 
     <!-- AI -->
     <div class="rc">
-      <h2>🤖 AI Nhận xét</h2>
-      <p>Bấm Generate để Claude phân tích data và điền 5 phần. Có thể edit trực tiếp trước khi preview.</p>
-      <button class="btn-ai" id="ai-btn" onclick="generateAI()">✨ Generate AI nhận xét</button>
-      <div id="ai-loading" style="display:none" class="ai-spin"><div class="spin"></div> Đang phân tích với Claude AI...</div>
+      <h2 style="display:flex;align-items:center;gap:8px"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg> AI Nhận xét</h2>
+      <p>Bấm Generate để AI phân tích data và điền 5 phần. Có thể edit trực tiếp trước khi preview.</p>
+      <button class="btn-ai" id="ai-btn" onclick="generateAI()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Generate AI nhận xét</button>
+      <div id="ai-loading" style="display:none" class="ai-spin"><div class="spin"></div> Đang phân tích với AI...</div>
       <div class="ai-f">
-        <div><div class="ai-lbl">✅ Highlight</div><div class="ai-body" id="ai_highlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
-        <div><div class="ai-lbl">⚠️ Lowlight</div><div class="ai-body" id="ai_lowlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
-        <div><div class="ai-lbl">📊 Thực trạng</div><div class="ai-body" id="ai_thuc_trang" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
-        <div><div class="ai-lbl">🔍 Vấn đề</div><div class="ai-body" id="ai_van_de" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
-        <div><div class="ai-lbl">💡 Giải pháp & Plan tuần tới</div><div class="ai-body" id="ai_giai_phap" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Highlight</div><div class="ai-body" id="ai_highlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Lowlight</div><div class="ai-body" id="ai_lowlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Thực trạng</div><div class="ai-body" id="ai_thuc_trang" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Vấn đề</div><div class="ai-body" id="ai_van_de" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl" style="display:flex;align-items:center;gap:5px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14"/></svg> Giải pháp & Plan tuần tới</div><div class="ai-body" id="ai_giai_phap" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
       </div>
     </div>
 
@@ -418,10 +436,10 @@
   <div id="sp3" style="display:none">
     <div class="pv-wrap">
       <div class="pv-bar">
-        <span class="pv-bar-lbl">📧 Preview — Click vào nội dung để sửa trực tiếp</span>
+        <span class="pv-bar-lbl" style="display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Preview — Click vào nội dung để sửa trực tiếp</span>
         <div class="pv-acts">
           <button class="btn-s" onclick="goStep(2)">← Sửa data</button>
-          <button class="btn-copy" id="copy-btn" onclick="copyMail()">📋 Copy → Lark</button>
+          <button class="btn-copy" id="copy-btn" onclick="copyMail()" style="display:inline-flex;align-items:center;gap:7px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Copy → Lark</button>
         </div>
       </div>
       <div class="pv-subj">
@@ -437,8 +455,8 @@
       <div class="save-bar">
         <span class="save-info">Lưu để không mất data khi đóng tab.</span>
         <div style="display:flex;gap:8px">
-          <button class="btn-s" id="save-btn" onclick="saveReport()">💾 Lưu vào Sheets</button>
-          <button class="btn-copy" onclick="copyMail()">📋 Copy → Lark</button>
+          <button class="btn-s" id="save-btn" onclick="saveReport()" style="display:inline-flex;align-items:center;gap:7px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Lưu vào Sheets</button>
+          <button class="btn-copy" onclick="copyMail()" style="display:inline-flex;align-items:center;gap:7px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Copy → Lark</button>
         </div>
       </div>
     </div>
@@ -449,15 +467,15 @@
 <div class="mo" id="plan-modal">
   <div class="mo-box">
     <div class="mo-hdr">
-      <h3>📋 Set Plan tháng</h3>
+      <h3 style="display:flex;align-items:center;gap:8px"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Set Plan tháng</h3>
       <button class="mo-close" onclick="closePlanModal()">✕</button>
     </div>
     <div class="mo-body" id="plan-modal-body"></div>
     <div class="mo-foot" style="justify-content:space-between">
       <div style="display:flex;gap:8px">
-        <button class="btn-s" onclick="downloadPlanTemplate()" title="Tải file Excel template để điền plan">📥 Tải template</button>
-        <label class="btn-s" style="cursor:pointer;margin:0" title="Upload file Excel đã điền plan">
-          📤 Upload xlsx
+        <button class="btn-s" onclick="downloadPlanTemplate()" title="Tải file Excel template để điền plan" style="display:inline-flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Tải template</button>
+        <label class="btn-s" style="cursor:pointer;margin:0;display:inline-flex;align-items:center;gap:6px" title="Upload file Excel đã điền plan">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload xlsx
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handlePlanUpload(this.files[0]);this.value=''">
         </label>
       </div>
@@ -473,7 +491,7 @@
 <div class="mo" id="key-modal">
   <div class="mo-box" style="max-width:480px">
     <div class="mo-hdr">
-      <h3>🔑 API Key Settings</h3>
+      <h3 style="display:flex;align-items:center;gap:8px"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg> API Key Settings</h3>
       <button class="mo-close" onclick="closeKeyModal()">✕</button>
     </div>
     <div class="mo-body">
@@ -485,6 +503,47 @@
     <div class="mo-foot">
       <button class="btn-s" onclick="closeKeyModal()">Đóng</button>
       <button class="btn-p" onclick="saveApiKey()">Lưu Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD BRAND MODAL -->
+<div class="mo" id="add-brand-modal">
+  <div class="mo-box" style="max-width:440px">
+    <div class="mo-hdr">
+      <h3 style="display:flex;align-items:center;gap:8px"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Thêm Brand mới</h3>
+      <button class="mo-close" onclick="closeAddBrandModal()">✕</button>
+    </div>
+    <div class="mo-body">
+      <label class="rl">Tên Brand *</label>
+      <input class="ri" type="text" id="inp-new-brand" placeholder="VD: Meracine, Yumvita..." style="margin-bottom:12px">
+      <label class="rl">Phân công cho (username, cách nhau dấu phẩy — để trống = all)</label>
+      <input class="ri" type="text" id="inp-new-brand-members" placeholder="VD: linhntkh,duychk hoặc để trống cho all">
+      <p style="font-size:.75rem;color:var(--faint);margin-top:6px">Nhập username từ danh sách team. "all" = mọi người đều thấy brand này.</p>
+    </div>
+    <div class="mo-foot">
+      <button class="btn-s" onclick="closeAddBrandModal()">Huỷ</button>
+      <button class="btn-p" onclick="addBrand()">Thêm Brand</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI PROMPT MODAL -->
+<div class="mo" id="prompt-modal">
+  <div class="mo-box" style="max-width:680px">
+    <div class="mo-hdr">
+      <h3 style="display:flex;align-items:center;gap:8px"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Chỉnh sửa AI Prompt</h3>
+      <button class="mo-close" onclick="closePromptModal()">✕</button>
+    </div>
+    <div class="mo-body">
+      <p style="font-size:.84rem;color:var(--muted);margin-bottom:12px">System prompt gửi cho GPT-4o-mini. Lưu trong localStorage. Để trống để dùng prompt mặc định.</p>
+      <label class="rl">System Prompt</label>
+      <textarea id="inp-ai-prompt" style="width:100%;min-height:260px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.84rem;line-height:1.6;font-family:var(--f-mono);background:var(--bg);color:var(--ink);box-sizing:border-box;resize:vertical" placeholder="Để trống để dùng prompt mặc định..."></textarea>
+      <button style="margin-top:8px;font-size:.78rem;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;text-decoration:underline" onclick="resetPrompt()">Reset về prompt mặc định</button>
+    </div>
+    <div class="mo-foot">
+      <button class="btn-s" onclick="closePromptModal()">Đóng</button>
+      <button class="btn-p" onclick="savePrompt()">Lưu Prompt</button>
     </div>
   </div>
 </div>
@@ -727,7 +786,7 @@ function initStep2() {
   const wb = document.getElementById('plan-warn-block');
   if (!STATE.plan) {
     wb.innerHTML = `<div class="plan-warn">
-      <div>⚠️</div>
+      <div><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
       <div><strong>Chưa có Plan tháng ${STATE.month}/${STATE.year}</strong>
       <span>Bấm Set Plan để nhập kế hoạch tháng, hoặc bỏ qua để chỉ nhập Actual.</span></div>
       <button class="btn-set-plan" onclick="showPlanModal()">Set Plan</button>
@@ -921,7 +980,7 @@ async function generateAI() {
   const prevSGmv = prevW_last ? (parseFloat(prevW_last.s_cpc_doanh_so||0)+parseFloat(prevW_last.s_nd_gmv||0)+parseFloat(prevW_last.s_live_gmv||0)) : 0;
   const prevTGmv = prevW_last ? (parseFloat(prevW_last.t_pgm_doanh_so||0)+parseFloat(prevW_last.t_lgm_doanhthu||0)) : 0;
 
-  const sysPrompt = `Bạn là Senior Performance Marketing Manager chuyên Ecommerce Marketplace (Shopee & TikTok Shop) tại Việt Nam, có 5+ năm kinh nghiệm phân tích data Ads và tối ưu ngân sách.
+  const defaultSysPrompt = `Bạn là Senior Performance Marketing Manager chuyên Ecommerce Marketplace (Shopee & TikTok Shop) tại Việt Nam, có 5+ năm kinh nghiệm phân tích data Ads và tối ưu ngân sách.
 
 Nhiệm vụ: Phân tích data tuần của brand và trả về JSON với đúng 5 key sau (không thêm text nào khác ngoài JSON):
 
@@ -939,6 +998,7 @@ Yêu cầu:
 - Mỗi bullet point nằm trên một dòng riêng (dùng \\n giữa các bullet)
 - Không thêm markdown, không thêm text ngoài JSON`;
 
+  const sysPrompt = localStorage.getItem('mo_ai_prompt') || defaultSysPrompt;
   const planSafe = plan || {};
   const pv = (key,w) => planSafe[key]?.[w] || 0;
   const cpcDs=gv('s_cpc_doanh_so'),cpcCp=gv('s_cpc_chi_phi'),cpcXem=gv('s_cpc_luot_xem'),cpcClick=gv('s_cpc_luot_click'),cpcDh=gv('s_cpc_don_hang');
@@ -1173,43 +1233,65 @@ function buildChart() {
   const canvas = document.getElementById('report-chart');
   if (STATE.chartInst) { STATE.chartInst.destroy(); STATE.chartInst = null; }
 
-  const labels = STATE.weeks.map(w => `W${w.w}\n${fmtDR(w.start,w.end)}`);
-  const planData = STATE.weeks.map(w => getPlanGmvW(w.w) || null);
-  const actualData = STATE.weeks.map(w => {
-    if (w.w === STATE.weekNum) {
-      return (STATE.shopee.tot.gmv||0) + (STATE.tiktok.tot.gmv||0);
-    }
+  const labels = STATE.weeks.map(w => `W${w.w}  ${fmtDR(w.start,w.end)}`);
+
+  const gmvData = STATE.weeks.map(w => {
+    if (w.w === STATE.weekNum) return (STATE.shopee.tot.gmv||0)+(STATE.tiktok.tot.gmv||0);
     return getHistGmv(w.w);
   });
+  const cpData = STATE.weeks.map(w => {
+    if (w.w === STATE.weekNum) return (STATE.shopee.tot.cp||0)+(STATE.tiktok.tot.cp||0);
+    return getHistCp(w.w);
+  });
   const cpDtData = STATE.weeks.map(w => {
-    let gmv, cp;
-    if (w.w === STATE.weekNum) {
-      gmv = (STATE.shopee.tot.gmv||0)+(STATE.tiktok.tot.gmv||0);
-      cp  = (STATE.shopee.tot.cp||0)+(STATE.tiktok.tot.cp||0);
-    } else {
-      gmv = getHistGmv(w.w);
-      cp  = getHistCp(w.w);
-    }
+    const gmv = gmvData[STATE.weeks.indexOf(w)];
+    const cp  = cpData[STATE.weeks.indexOf(w)];
     if (!gmv || !cp) return null;
     return parseFloat(((cp/gmv)*100).toFixed(1));
   });
+
+  const fmtV = v => v >= 1e9 ? (v/1e9).toFixed(1)+'B₫' : v >= 1e6 ? (v/1e6).toFixed(0)+'M₫' : v.toLocaleString('vi-VN')+'₫';
 
   STATE.chartInst = new Chart(canvas, {
     data: {
       labels,
       datasets: [
-        { type:'bar', label:'Kế hoạch GMV', data: planData, backgroundColor:'rgba(26,46,92,.7)', borderRadius:4, order:2 },
-        { type:'bar', label:'Thực hiện GMV', data: actualData, backgroundColor:'rgba(220,38,38,.75)', borderRadius:4, order:2 },
-        { type:'line', label:'%CP/DT', data: cpDtData, borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,.1)',
-          borderWidth:2, pointRadius:4, pointBackgroundColor:'#F59E0B', yAxisID:'y2', tension:.3, order:1 }
+        {
+          type:'bar', label:'Chi phí Ads', data: cpData,
+          backgroundColor:'rgba(239,68,68,.82)', borderColor:'rgba(220,38,38,1)',
+          borderWidth:1.5, borderRadius:5, order:2, yAxisID:'y'
+        },
+        {
+          type:'bar', label:'GMV Thực hiện', data: gmvData,
+          backgroundColor:'rgba(37,99,235,.78)', borderColor:'rgba(29,78,216,1)',
+          borderWidth:1.5, borderRadius:5, order:2, yAxisID:'y'
+        },
+        {
+          type:'line', label:'%CP/DT', data: cpDtData,
+          borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,.15)',
+          borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#F59E0B',
+          pointBorderColor:'#fff', pointBorderWidth:2,
+          yAxisID:'y2', tension:.35, order:1, fill:false
+        }
       ]
     },
     options: {
       responsive:true, interaction:{ mode:'index', intersect:false },
-      plugins:{ legend:{ position:'top' }, title:{ display:true, text:`GMV Ads — ${STATE.brand} — T${STATE.month}/${STATE.year}` } },
+      plugins:{
+        legend:{ position:'top', labels:{ font:{ size:12 }, usePointStyle:true } },
+        title:{ display:true, text:`Chi phí & GMV Ads — ${STATE.brand} — T${STATE.month}/${STATE.year}`, font:{ size:13, weight:'700' }, color:'#1a2e5c' },
+        tooltip:{
+          callbacks:{
+            label: ctx => {
+              if (ctx.dataset.yAxisID === 'y2') return ` %CP/DT: ${ctx.parsed.y}%`;
+              return ` ${ctx.dataset.label}: ${fmtV(ctx.parsed.y)}`;
+            }
+          }
+        }
+      },
       scales:{
-        y:{ position:'left', ticks:{ callback: v => v >= 1e9 ? (v/1e9).toFixed(1)+'B' : v >= 1e6 ? (v/1e6).toFixed(0)+'M' : v } },
-        y2:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ callback: v => v+'%' } }
+        y:{ position:'left', ticks:{ callback: v => fmtV(v), font:{ size:11 } }, grid:{ color:'rgba(0,0,0,.06)' } },
+        y2:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ callback: v => v+'%', font:{ size:11 } }, suggestedMax:100 }
       }
     }
   });
@@ -1597,7 +1679,7 @@ async function savePlan() {
     planObj[k] = {};
     periods.forEach(p => {
       const el = document.getElementById(`pm_${k}_${p}`);
-      planObj[k][p] = parseFloat(el?.value) || 0;
+      planObj[k][p] = parseFloat((el?.value||'').replace(/[.,]/g,'')) || 0;
     });
   });
 
@@ -1608,11 +1690,145 @@ async function savePlan() {
     }).then(r=>r.json());
     if (!j.ok) throw new Error(j.error);
     STATE.plan = planObj;
-    showToast('✅ Đã lưu Plan!');
+    showToast('Đã lưu Plan!');
     closePlanModal();
     initStep2();
-  } catch(e) { showToast('❌ Lỗi lưu Plan: ' + e.message, 'error'); }
+  } catch(e) { showToast('Lỗi lưu Plan: ' + e.message, 'error'); }
   finally { btn.disabled = false; btn.textContent = 'Lưu Plan →'; }
+}
+
+/* ── ADD BRAND ── */
+function showAddBrandModal() {
+  document.getElementById('inp-new-brand').value = '';
+  document.getElementById('inp-new-brand-members').value = '';
+  document.getElementById('add-brand-modal').classList.add('open');
+  setTimeout(() => document.getElementById('inp-new-brand').focus(), 160);
+}
+function closeAddBrandModal() {
+  document.getElementById('add-brand-modal').classList.remove('open');
+}
+async function addBrand() {
+  const name = document.getElementById('inp-new-brand').value.trim();
+  if (!name) { showToast('Nhập tên brand', 'error'); return; }
+  const members = document.getElementById('inp-new-brand-members').value.trim() || 'all';
+  try {
+    const j = await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({ action:'addBrand', brand_name:name, assigned_members:members })
+    }).then(r=>r.json());
+    if (!j.ok) throw new Error(j.error);
+    closeAddBrandModal();
+    showToast('Đã thêm brand ' + name + '!');
+    fetchBrands();
+  } catch(e) { showToast('Lỗi: ' + e.message, 'error'); }
+}
+
+/* ── ACTUAL XLSX ── */
+const ACTUAL_XLSX_ROWS = [
+  { section:'SHOPEE' },
+  { sub:'CPC' },
+  { key:'s_cpc_doanh_so',   label:'Doanh số' },
+  { key:'s_cpc_chi_phi',    label:'Chi phí' },
+  { key:'s_cpc_luot_xem',   label:'Lượt xem' },
+  { key:'s_cpc_luot_click', label:'Lượt click' },
+  { key:'s_cpc_don_hang',   label:'Đơn hàng' },
+  { sub:'Tăng nhận diện thương hiệu' },
+  { key:'s_nd_gmv',         label:'GMV' },
+  { key:'s_nd_chi_phi',     label:'Chi phí' },
+  { key:'s_nd_luot_xem',    label:'Lượt xem' },
+  { key:'s_nd_luot_click',  label:'Lượt click' },
+  { sub:'Live' },
+  { key:'s_live_gmv',       label:'GMV' },
+  { key:'s_live_chi_phi',   label:'Chi phí' },
+  { key:'s_live_luot_xem',  label:'Lượt xem' },
+  { section:'TIKTOK SHOP' },
+  { sub:'Ads PGM' },
+  { key:'t_pgm_doanh_so',   label:'Doanh số' },
+  { key:'t_pgm_chi_phi',    label:'Chi phí' },
+  { key:'t_pgm_luot_xem',   label:'Lượt xem' },
+  { key:'t_pgm_luot_click', label:'Lượt click' },
+  { key:'t_pgm_don_hang',   label:'Đơn hàng' },
+  { sub:'Ads LGM' },
+  { key:'t_lgm_doanhthu',   label:'Doanh thu' },
+  { key:'t_lgm_chi_phi',    label:'Chi phí' },
+  { sub:'Consideration' },
+  { key:'t_con_nguoi',      label:'Consider (Số người nhận biết TH)' },
+  { key:'t_con_chi_phi',    label:'Chi phí' },
+  { sub:'Branding' },
+  { key:'t_brd_view',       label:'Lượt xem' },
+  { key:'t_brd_follow',     label:'Follow' },
+  { key:'t_brd_chi_phi',    label:'Chi phí' },
+];
+
+function downloadActualTemplate() {
+  if (typeof XLSX === 'undefined') { showToast('SheetJS chưa load xong, thử lại', 'error'); return; }
+  const { brand, month, year, weekInfo } = STATE;
+  const wb = XLSX.utils.book_new();
+  const rows = [
+    [`Actual: ${brand} — Tháng ${month}/${year} — ${weekInfo?.label || ''}`, '', ''],
+    ['Metric', 'Actual', '_key_'],
+  ];
+  ACTUAL_XLSX_ROWS.forEach(r => {
+    if (r.section) { rows.push([`=== ${r.section} ===`, '', '']); return; }
+    if (r.sub)     { rows.push([`  ${r.sub}`, '', '']); return; }
+    const el = document.getElementById(r.key);
+    const cur = el ? (el.value.replace(/[^\d]/g,'') || '0') : '0';
+    rows.push([r.label, parseInt(cur)||0, r.key]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch:38 }, { wch:18 }, { wch:0 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Actual');
+  XLSX.writeFile(wb, `Actual_${brand}_T${month}_W${STATE.weekNum}_${year}.xlsx`);
+  showToast('Đã tải mẫu Actual!');
+}
+
+function handleActualUpload(file) {
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { showToast('SheetJS chưa load', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+      let filled = 0;
+      data.forEach(row => {
+        const key = (row[2] || '').toString().trim();
+        if (!key || key === '_key_' || key.startsWith('===')) return;
+        const el = document.getElementById(key);
+        if (!el) return;
+        const v = parseFloat((row[1] || '').toString().replace(/[^\d.]/g,'')) || 0;
+        el.value = v ? v.toLocaleString('vi-VN') : '';
+        filled++;
+      });
+      calcShopee(); calcTikTok();
+      showToast(`Đã import ${filled} chỉ số từ Excel!`);
+    } catch(err) { showToast('Lỗi đọc file: ' + err.message, 'error'); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* ── PROMPT MODAL ── */
+const DEFAULT_AI_PROMPT_KEY = 'mo_ai_prompt';
+function showPromptModal() {
+  const ta = document.getElementById('inp-ai-prompt');
+  ta.value = localStorage.getItem(DEFAULT_AI_PROMPT_KEY) || '';
+  document.getElementById('prompt-modal').classList.add('open');
+}
+function closePromptModal() {
+  document.getElementById('prompt-modal').classList.remove('open');
+}
+function savePrompt() {
+  const val = document.getElementById('inp-ai-prompt').value.trim();
+  if (val) localStorage.setItem(DEFAULT_AI_PROMPT_KEY, val);
+  else localStorage.removeItem(DEFAULT_AI_PROMPT_KEY);
+  closePromptModal();
+  showToast('Đã lưu AI Prompt!');
+}
+function resetPrompt() {
+  localStorage.removeItem(DEFAULT_AI_PROMPT_KEY);
+  document.getElementById('inp-ai-prompt').value = '';
+  showToast('Đã reset về prompt mặc định');
 }
 </script>
 </body>
