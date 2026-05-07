@@ -47,22 +47,34 @@
 .plat-chk.on{border-color:var(--blue);background:rgba(37,99,235,.07)}
 
 /* ── WEEK DISPLAY ── */
-.wd{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.wd{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;transition:border-color .3s,box-shadow .3s}
 .wd-lbl{font-weight:700;color:var(--ink);font-size:.95rem}
 .wd-rng{font-size:.82rem;color:var(--muted);margin-top:2px}
 .wd-badge{font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px}
 .wd-badge.full{background:rgba(5,150,105,.12);color:#059669}
 .wd-badge.short{background:rgba(245,158,11,.12);color:#D97706}
+@keyframes weekPulse{0%{border-color:var(--border);box-shadow:none}30%{border-color:#2563eb;box-shadow:0 0 0 4px rgba(37,99,235,.18)}70%{border-color:#2563eb;box-shadow:0 0 0 4px rgba(37,99,235,.18)}100%{border-color:var(--border);box-shadow:none}}
+.wd.pulse{animation:weekPulse 1.4s ease}
 
 /* ── BUTTONS ── */
-.btn-p{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .2s;font-family:var(--f-body)}
+.btn-p{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .12s;font-family:var(--f-body)}
 .btn-p:hover{opacity:.88}
+.btn-p:active{transform:scale(.96)}
 .btn-p:disabled{opacity:.45;cursor:not-allowed}
-.btn-s{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;background:var(--paper);color:var(--muted);border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:var(--f-body)}
-.btn-ai{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;font-size:.92rem;font-weight:700;cursor:pointer;transition:opacity .2s;font-family:var(--f-body);margin-top:4px}
-.btn-ai:disabled{opacity:.45;cursor:not-allowed}
-.btn-copy{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:var(--f-body)}
+.btn-s{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;background:var(--paper);color:var(--muted);border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:var(--f-body);transition:background .15s,transform .12s}
+.btn-s:hover{background:var(--border2)}
+.btn-s:active{transform:scale(.96)}
+.btn-ai{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;font-size:.92rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .12s;font-family:var(--f-body);margin-top:4px}
+.btn-ai:hover{opacity:.9}
+.btn-ai:active{transform:scale(.97)}
+.btn-ai:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-copy{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:var(--f-body);transition:opacity .2s,transform .12s}
+.btn-copy:hover{opacity:.88}
+.btn-copy:active{transform:scale(.96)}
 .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+/* ── SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 
 /* ── PLAN WARNING ── */
 .plan-warn{display:flex;align-items:center;gap:14px;padding:13px 16px;background:rgba(245,158,11,.07);border:1.5px solid rgba(245,158,11,.3);border-radius:10px;margin-bottom:18px}
@@ -704,6 +716,8 @@ function populateWeeks() {
     `<option value="${w.w}" ${w.w===cur?'selected':''}>${'W' + w.w}: ${fmtDR(w.start, w.end)}</option>`
   ).join('');
   updateWeekDisplay();
+  const wd = document.getElementById('wd-box');
+  if (wd) { wd.classList.remove('pulse'); void wd.offsetWidth; wd.classList.add('pulse'); }
 }
 
 function onMonthChange() {
@@ -762,7 +776,16 @@ async function fetchBrands() {
 function goStep(n) {
   STATE.step = n;
   ['sp1','sp2','sp3'].forEach((id, i) => {
-    document.getElementById(id).style.display = i + 1 === n ? 'block' : 'none';
+    const el = document.getElementById(id);
+    if (i + 1 === n) {
+      el.style.display = 'block';
+      el.style.opacity = '0';
+      requestAnimationFrame(() => { el.style.transition = 'opacity .25s'; el.style.opacity = '1'; });
+    } else {
+      el.style.display = 'none';
+      el.style.opacity = '';
+      el.style.transition = '';
+    }
   });
   ['stab-1','stab-2','stab-3'].forEach((id, i) => {
     const t = document.getElementById(id);
@@ -978,6 +1001,7 @@ async function generateAI() {
   const btn = document.getElementById('ai-btn');
   const loading = document.getElementById('ai-loading');
   btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Đang phân tích...';
   loading.style.display = 'flex';
 
   const { brand, weekInfo, plan, history, platforms } = STATE;
@@ -1082,6 +1106,7 @@ async function generateAI() {
     showToast('❌ Lỗi AI: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Generate AI nhận xét';
     loading.style.display = 'none';
   }
 }
@@ -1304,10 +1329,10 @@ function buildPreview() {
   buildChart();
 
   const s = STATE.shopee.tot, t = STATE.tiktok.tot;
-  const ts  = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:13px"`;
-  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:13px"`;
-  const th  = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:13px;${v}"`;
-  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:13px;margin:4px 0 16px`;
+  const ts  = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:15px"`;
+  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:15px"`;
+  const th  = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:15px;text-align:center;${v}"`;
+  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:15px;margin:4px 0 16px`;
   const hdr = `<tr><th ${th('text-align:left;min-width:130px')}>Metric</th><th ${th()}>Plan Tháng</th><th ${th()}>Luỹ tiến</th><th ${th()}>%TH</th>${STATE.weeks.map(w=>`<th ${th()}>Plan W${w.w}</th><th ${th()}>TH W${w.w}</th><th ${th()}>%W${w.w}</th>`).join('')}</tr>`;
 
   // ── data access helpers ──
@@ -1322,7 +1347,7 @@ function buildPreview() {
 
   // ── wRow: value row (currency default) ──
   function wRow(label, planMth, mtdAct, getAct, getPlan, fmtFn) {
-    fmtFn = fmtFn || (v => (v!==null&&v!==undefined&&!isNaN(v)) ? fmtBig(v) : '—');
+    fmtFn = fmtFn || (v => (v!==null&&v!==undefined&&!isNaN(v)) ? parseFloat(v).toLocaleString('vi-VN') : '—');
     const pctMtd = getPct(mtdAct, planMth);
     const clrMtd = pctMtd ? `color:${pctClr(pctMtd)};font-weight:bold` : '';
     const wCells = STATE.weeks.map(w => {
@@ -1344,9 +1369,11 @@ function buildPreview() {
     }).join('');
     return `<tr style="background:#fafafa"><td ${tsL()} style="${tsL().slice(7,-1)};color:#555;font-style:italic">${label}</td><td ${ts()}>${planMth!==null ? fmtFn(planMth) : '—'}</td><td ${ts()}>${mtdAct!==null ? fmtFn(mtdAct) : '—'}</td><td ${ts()}>—</td>${wCells}</tr>`;
   }
-  const fmtX   = v => v!==null&&v!==undefined ? parseFloat(v).toFixed(2)+'x' : '—';
-  const fmtPct = v => v!==null&&v!==undefined ? parseFloat(v).toFixed(2)+'%' : '—';
-  const fmtN   = v => v!==null&&v!==undefined ? parseFloat(v).toLocaleString('vi-VN') : '—';
+  const fmtX    = v => v!==null&&v!==undefined ? parseFloat(v).toFixed(2) : '—';
+  const fmtPct  = v => v!==null&&v!==undefined ? parseFloat(v).toFixed(2)+'%' : '—';
+  const fmtN    = v => v!==null&&v!==undefined ? parseFloat(v).toLocaleString('vi-VN') : '—';
+  const fmtMoney= v => v!==null&&v!==undefined&&!isNaN(v) ? parseFloat(v).toLocaleString('vi-VN') : '—';
+  const fmtCPC  = v => v!==null&&v!==undefined&&!isNaN(v) ? Math.round(parseFloat(v)).toLocaleString('vi-VN') : '—';
 
   // plan month totals
   const sPlanGmvM = pM('s_cpc_doanh_so')+pM('s_nd_gmv')+pM('s_live_gmv');
@@ -1410,34 +1437,34 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // Ads CPC
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`;
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh số Ads', pM('s_cpc_doanh_so')||null, getMTD(w=>hRow('s_cpc_doanh_so',w)||0), w=>hRow('s_cpc_doanh_so',w), w=>pW('s_cpc_doanh_so',w)||null);
     body += wRow('Chi phí Dịch vụ hiển thị', pM('s_cpc_chi_phi')||null, getMTD(w=>hRow('s_cpc_chi_phi',w)||0), w=>hRow('s_cpc_chi_phi',w), w=>pW('s_cpc_chi_phi',w)||null);
     body += dRow('ROAS', ratioPM('s_cpc_doanh_so','s_cpc_chi_phi'), ratioMTD('s_cpc_doanh_so','s_cpc_chi_phi'), w=>ratioW('s_cpc_doanh_so','s_cpc_chi_phi',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_chi_phi',w), fmtX);
-    body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_cpc_chi_phi','s_cpc_luot_click'), ratioMTD('s_cpc_chi_phi','s_cpc_luot_click'), w=>ratioW('s_cpc_chi_phi','s_cpc_luot_click',w), w=>ratioPW('s_cpc_chi_phi','s_cpc_luot_click',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_cpc_chi_phi','s_cpc_luot_click'), ratioMTD('s_cpc_chi_phi','s_cpc_luot_click'), w=>ratioW('s_cpc_chi_phi','s_cpc_luot_click',w), w=>ratioPW('s_cpc_chi_phi','s_cpc_luot_click',w), fmtCPC);
     body += dRow('CTR', ratioPM('s_cpc_luot_click','s_cpc_luot_xem') ? ratioPM('s_cpc_luot_click','s_cpc_luot_xem')*100 : null, ratioMTD('s_cpc_luot_click','s_cpc_luot_xem') ? ratioMTD('s_cpc_luot_click','s_cpc_luot_xem')*100 : null, w=>{ const v=ratioW('s_cpc_luot_click','s_cpc_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_cpc_luot_click','s_cpc_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
     body += dRow('CR = Đơn hàng / Lượt click', ratioPM('s_cpc_don_hang','s_cpc_luot_click') ? ratioPM('s_cpc_don_hang','s_cpc_luot_click')*100 : null, ratioMTD('s_cpc_don_hang','s_cpc_luot_click') ? ratioMTD('s_cpc_don_hang','s_cpc_luot_click')*100 : null, w=>{ const v=ratioW('s_cpc_don_hang','s_cpc_luot_click',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_cpc_don_hang','s_cpc_luot_click',w); return v!==null?v*100:null; }, fmtPct);
     body += wRow('Số lượt xem', pM('s_cpc_luot_xem')||null, getMTD(w=>hRow('s_cpc_luot_xem',w)||0), w=>hRow('s_cpc_luot_xem',w), w=>pW('s_cpc_luot_xem',w)||null, fmtN);
     body += wRow('Số lượt click', pM('s_cpc_luot_click')||null, getMTD(w=>hRow('s_cpc_luot_click',w)||0), w=>hRow('s_cpc_luot_click',w), w=>pW('s_cpc_luot_click',w)||null, fmtN);
     body += wRow('Số đơn hàng', pM('s_cpc_don_hang')||null, getMTD(w=>hRow('s_cpc_don_hang',w)||0), w=>hRow('s_cpc_don_hang',w), w=>pW('s_cpc_don_hang',w)||null, fmtN);
-    body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('s_cpc_doanh_so','s_cpc_don_hang'), ratioMTD('s_cpc_doanh_so','s_cpc_don_hang'), w=>ratioW('s_cpc_doanh_so','s_cpc_don_hang',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_don_hang',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('s_cpc_doanh_so','s_cpc_don_hang'), ratioMTD('s_cpc_doanh_so','s_cpc_don_hang'), w=>ratioW('s_cpc_doanh_so','s_cpc_don_hang',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_don_hang',w), fmtMoney);
     body += `</tbody></table>`;
 
     // Ads ND
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu Ads (GMV)', pM('s_nd_gmv')||null, getMTD(w=>hRow('s_nd_gmv',w)||0), w=>hRow('s_nd_gmv',w), w=>pW('s_nd_gmv',w)||null);
     body += wRow('Chi phí ads', pM('s_nd_chi_phi')||null, getMTD(w=>hRow('s_nd_chi_phi',w)||0), w=>hRow('s_nd_chi_phi',w), w=>pW('s_nd_chi_phi',w)||null);
     body += dRow('ROAS ads', ratioPM('s_nd_gmv','s_nd_chi_phi'), ratioMTD('s_nd_gmv','s_nd_chi_phi'), w=>ratioW('s_nd_gmv','s_nd_chi_phi',w), w=>ratioPW('s_nd_gmv','s_nd_chi_phi',w), fmtX);
-    body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_nd_chi_phi','s_nd_luot_click'), ratioMTD('s_nd_chi_phi','s_nd_luot_click'), w=>ratioW('s_nd_chi_phi','s_nd_luot_click',w), w=>ratioPW('s_nd_chi_phi','s_nd_luot_click',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_nd_chi_phi','s_nd_luot_click'), ratioMTD('s_nd_chi_phi','s_nd_luot_click'), w=>ratioW('s_nd_chi_phi','s_nd_luot_click',w), w=>ratioPW('s_nd_chi_phi','s_nd_luot_click',w), fmtCPC);
     body += dRow('CTR', ratioPM('s_nd_luot_click','s_nd_luot_xem') ? ratioPM('s_nd_luot_click','s_nd_luot_xem')*100 : null, ratioMTD('s_nd_luot_click','s_nd_luot_xem') ? ratioMTD('s_nd_luot_click','s_nd_luot_xem')*100 : null, w=>{ const v=ratioW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
     body += wRow('Số lượt xem', pM('s_nd_luot_xem')||null, getMTD(w=>hRow('s_nd_luot_xem',w)||0), w=>hRow('s_nd_luot_xem',w), w=>pW('s_nd_luot_xem',w)||null, fmtN);
     body += wRow('Số lượt click', pM('s_nd_luot_click')||null, getMTD(w=>hRow('s_nd_luot_click',w)||0), w=>hRow('s_nd_luot_click',w), w=>pW('s_nd_luot_click',w)||null, fmtN);
     body += `</tbody></table>`;
 
     // Ads Live
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu Ads (GMV)', pM('s_live_gmv')||null, getMTD(w=>hRow('s_live_gmv',w)||0), w=>hRow('s_live_gmv',w), w=>pW('s_live_gmv',w)||null);
     body += wRow('Chi phí ads', pM('s_live_chi_phi')||null, getMTD(w=>hRow('s_live_chi_phi',w)||0), w=>hRow('s_live_chi_phi',w), w=>pW('s_live_chi_phi',w)||null);
@@ -1456,22 +1483,22 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // PGM
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`;
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh số', pM('t_pgm_doanh_so')||null, getMTD(w=>hRow('t_pgm_doanh_so',w)||0), w=>hRow('t_pgm_doanh_so',w), w=>pW('t_pgm_doanh_so',w)||null);
     body += wRow('Chi phí', pM('t_pgm_chi_phi')||null, getMTD(w=>hRow('t_pgm_chi_phi',w)||0), w=>hRow('t_pgm_chi_phi',w), w=>pW('t_pgm_chi_phi',w)||null);
     body += dRow('ROAS', ratioPM('t_pgm_doanh_so','t_pgm_chi_phi'), ratioMTD('t_pgm_doanh_so','t_pgm_chi_phi'), w=>ratioW('t_pgm_doanh_so','t_pgm_chi_phi',w), w=>ratioPW('t_pgm_doanh_so','t_pgm_chi_phi',w), fmtX);
-    body += dRow('CPC = Chi phí / Lượt click', ratioPM('t_pgm_chi_phi','t_pgm_luot_click'), ratioMTD('t_pgm_chi_phi','t_pgm_luot_click'), w=>ratioW('t_pgm_chi_phi','t_pgm_luot_click',w), w=>ratioPW('t_pgm_chi_phi','t_pgm_luot_click',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('CPC = Chi phí / Lượt click', ratioPM('t_pgm_chi_phi','t_pgm_luot_click'), ratioMTD('t_pgm_chi_phi','t_pgm_luot_click'), w=>ratioW('t_pgm_chi_phi','t_pgm_luot_click',w), w=>ratioPW('t_pgm_chi_phi','t_pgm_luot_click',w), fmtCPC);
     body += dRow('CTR', ratioPM('t_pgm_luot_click','t_pgm_luot_xem') ? ratioPM('t_pgm_luot_click','t_pgm_luot_xem')*100 : null, ratioMTD('t_pgm_luot_click','t_pgm_luot_xem') ? ratioMTD('t_pgm_luot_click','t_pgm_luot_xem')*100 : null, w=>{ const v=ratioW('t_pgm_luot_click','t_pgm_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('t_pgm_luot_click','t_pgm_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
     body += dRow('CR = Đơn hàng / Lượt click', ratioPM('t_pgm_don_hang','t_pgm_luot_click') ? ratioPM('t_pgm_don_hang','t_pgm_luot_click')*100 : null, ratioMTD('t_pgm_don_hang','t_pgm_luot_click') ? ratioMTD('t_pgm_don_hang','t_pgm_luot_click')*100 : null, w=>{ const v=ratioW('t_pgm_don_hang','t_pgm_luot_click',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('t_pgm_don_hang','t_pgm_luot_click',w); return v!==null?v*100:null; }, fmtPct);
     body += wRow('Lượt xem', pM('t_pgm_luot_xem')||null, getMTD(w=>hRow('t_pgm_luot_xem',w)||0), w=>hRow('t_pgm_luot_xem',w), w=>pW('t_pgm_luot_xem',w)||null, fmtN);
     body += wRow('Lượt click', pM('t_pgm_luot_click')||null, getMTD(w=>hRow('t_pgm_luot_click',w)||0), w=>hRow('t_pgm_luot_click',w), w=>pW('t_pgm_luot_click',w)||null, fmtN);
     body += wRow('Đơn hàng', pM('t_pgm_don_hang')||null, getMTD(w=>hRow('t_pgm_don_hang',w)||0), w=>hRow('t_pgm_don_hang',w), w=>pW('t_pgm_don_hang',w)||null, fmtN);
-    body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('t_pgm_doanh_so','t_pgm_don_hang'), ratioMTD('t_pgm_doanh_so','t_pgm_don_hang'), w=>ratioW('t_pgm_doanh_so','t_pgm_don_hang',w), w=>ratioPW('t_pgm_doanh_so','t_pgm_don_hang',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('t_pgm_doanh_so','t_pgm_don_hang'), ratioMTD('t_pgm_doanh_so','t_pgm_don_hang'), w=>ratioW('t_pgm_doanh_so','t_pgm_don_hang',w), w=>ratioPW('t_pgm_doanh_so','t_pgm_don_hang',w), fmtMoney);
     body += `</tbody></table>`;
 
     // LGM
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_LGM</p>`;
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_LGM</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu', pM('t_lgm_doanhthu')||null, getMTD(w=>hRow('t_lgm_doanhthu',w)||0), w=>hRow('t_lgm_doanhthu',w), w=>pW('t_lgm_doanhthu',w)||null);
     body += wRow('Chi phí', pM('t_lgm_chi_phi')||null, getMTD(w=>hRow('t_lgm_chi_phi',w)||0), w=>hRow('t_lgm_chi_phi',w), w=>pW('t_lgm_chi_phi',w)||null);
@@ -1479,21 +1506,21 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // Consideration
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Consider (Số người nhận biết TH)', pM('t_con_nguoi')||null, getMTD(w=>hRow('t_con_nguoi',w)||0), w=>hRow('t_con_nguoi',w), w=>pW('t_con_nguoi',w)||null, fmtN);
     body += wRow('Chi phí', pM('t_con_chi_phi')||null, getMTD(w=>hRow('t_con_chi_phi',w)||0), w=>hRow('t_con_chi_phi',w), w=>pW('t_con_chi_phi',w)||null);
-    body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), fmtMoney);
     body += `</tbody></table>`;
 
     // Branding
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Lượt xem', pM('t_brd_view')||null, getMTD(w=>hRow('t_brd_view',w)||0), w=>hRow('t_brd_view',w), w=>pW('t_brd_view',w)||null, fmtN);
     body += wRow('Follow', pM('t_brd_follow')||null, getMTD(w=>hRow('t_brd_follow',w)||0), w=>hRow('t_brd_follow',w), w=>pW('t_brd_follow',w)||null, fmtN);
     body += wRow('Chi phí', pM('t_brd_chi_phi')||null, getMTD(w=>hRow('t_brd_chi_phi',w)||0), w=>hRow('t_brd_chi_phi',w), w=>pW('t_brd_chi_phi',w)||null);
-    body += dRow('CPV (Chi phí / Lượt xem)', ratioPM('t_brd_chi_phi','t_brd_view'), ratioMTD('t_brd_chi_phi','t_brd_view'), w=>ratioW('t_brd_chi_phi','t_brd_view',w), w=>ratioPW('t_brd_chi_phi','t_brd_view',w), v=>v!==null?fmtBig(v):'—');
-    body += dRow('CPF (Chi phí / Follow)', ratioPM('t_brd_chi_phi','t_brd_follow'), ratioMTD('t_brd_chi_phi','t_brd_follow'), w=>ratioW('t_brd_chi_phi','t_brd_follow',w), w=>ratioPW('t_brd_chi_phi','t_brd_follow',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('CPV (Chi phí / Lượt xem)', ratioPM('t_brd_chi_phi','t_brd_view'), ratioMTD('t_brd_chi_phi','t_brd_view'), w=>ratioW('t_brd_chi_phi','t_brd_view',w), w=>ratioPW('t_brd_chi_phi','t_brd_view',w), fmtMoney);
+    body += dRow('CPF (Chi phí / Follow)', ratioPM('t_brd_chi_phi','t_brd_follow'), ratioMTD('t_brd_chi_phi','t_brd_follow'), w=>ratioW('t_brd_chi_phi','t_brd_follow',w), w=>ratioPW('t_brd_chi_phi','t_brd_follow',w), fmtMoney);
     body += `</tbody></table>`;
   }
 
@@ -1514,7 +1541,7 @@ function buildPreview() {
   body += `<p><strong>🔍 Vấn đề:</strong><br>${(ai.van_de||'').replace(/\n/g,'<br>')}</p>`;
   body += `<p><strong>💡 Giải pháp & Plan tuần tới:</strong><br>${(ai.giai_phap||'').replace(/\n/g,'<br>')}</p>`;
   body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
-  body += `<p style="color:#555;font-size:13px">Reported by: ${user?.name} | ${fmtD(new Date())}</p>`;
+  body += `<p style="color:#555;font-size:15px">Reported by: ${user?.name} | ${fmtD(new Date())}</p>`;
   body += `</div>`;
 
   document.getElementById('mail-body').innerHTML = body;
