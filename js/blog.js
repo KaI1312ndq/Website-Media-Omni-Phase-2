@@ -196,6 +196,4 @@ function mdToHtml(md){
     +'</p>';
 }
 
-const slugify=s=>s.toLowerCase().replace(/[^\w\s-]/g,'').replace(/\s+/g,'-').slice(0,60);
-
 document.addEventListener('DOMContentLoaded',loadPosts);
