@@ -107,10 +107,46 @@ function openPost(p){
   document.getElementById('post-body').innerHTML=mdToHtml(p.content||'');
   window.scrollTo({top:0,behavior:'smooth'});
   const slug = p.slug || slugify(p.title);
+  const postUrl = 'https://mediaomni.site/blog?id=' + slug;
   history.pushState(null,'','/blog?id='+slug);
-  // Update page title + meta for this post (helps Google)
+
+  // Update page title + meta
   document.title = p.title + ' — Media Omni';
-  document.querySelector('meta[name="description"]')?.setAttribute('content', p.excerpt || p.title);
+  const desc = p.excerpt || p.title;
+  document.querySelector('meta[name="description"]')?.setAttribute('content', desc);
+
+  // Update OG + Twitter tags for this post
+  const setMeta = (sel, val) => document.querySelector(sel)?.setAttribute('content', val);
+  setMeta('meta[property="og:title"]',       p.title + ' — Media Omni');
+  setMeta('meta[property="og:description"]', desc);
+  setMeta('meta[property="og:url"]',         postUrl);
+  setMeta('meta[property="og:type"]',        'article');
+  setMeta('meta[name="twitter:title"]',      p.title + ' — Media Omni');
+  setMeta('meta[name="twitter:description"]',desc);
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', postUrl);
+
+  // Inject Article JSON-LD
+  document.getElementById('post-schema')?.remove();
+  const ld = document.createElement('script');
+  ld.type = 'application/ld+json';
+  ld.id   = 'post-schema';
+  ld.textContent = JSON.stringify({
+    '@context':       'https://schema.org',
+    '@type':          'BlogPosting',
+    'headline':       p.title,
+    'description':    desc,
+    'url':            postUrl,
+    'datePublished':  p.date || '',
+    'author': { '@type': 'Person', 'name': p.author || 'Media Omni' },
+    'publisher': {
+      '@type': 'Organization',
+      'name':  'Media Omni',
+      'url':   'https://mediaomni.site',
+      'logo':  'https://mediaomni.site/favicon.svg'
+    },
+    'inLanguage': 'vi-VN'
+  });
+  document.head.appendChild(ld);
 }
 
 function backToList(){
@@ -118,6 +154,17 @@ function backToList(){
   document.getElementById('list-page').style.display='block';
   history.pushState(null,'','/blog');
   document.title = 'Blog & Insights — Media Omni | Performance Marketing';
+  const setMeta = (sel,val) => document.querySelector(sel)?.setAttribute('content',val);
+  const listDesc = 'Kiến thức thực chiến về performance marketing: case study, framework và playbook từ Media Omni.';
+  setMeta('meta[name="description"]',        listDesc);
+  setMeta('meta[property="og:title"]',       'Blog & Insights — Media Omni');
+  setMeta('meta[property="og:description"]', listDesc);
+  setMeta('meta[property="og:url"]',         'https://mediaomni.site/blog');
+  setMeta('meta[property="og:type"]',        'website');
+  setMeta('meta[name="twitter:title"]',      'Blog & Insights — Media Omni');
+  setMeta('meta[name="twitter:description"]',listDesc);
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href','https://mediaomni.site/blog');
+  document.getElementById('post-schema')?.remove();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
