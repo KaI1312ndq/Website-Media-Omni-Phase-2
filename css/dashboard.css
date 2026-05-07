@@ -30,7 +30,7 @@
 .dash-card:hover { transform:translateY(-4px); box-shadow:0 12px 36px rgba(37,99,235,.1); border-color:rgba(37,99,235,.25); }
 .dash-card.disabled { cursor:default; opacity:.6; }
 .dash-card.disabled:hover { transform:none; box-shadow:none; border-color:var(--border); }
-.dc-icon { font-size:1.75rem; margin-bottom:16px; }
+.dc-icon { width:44px; height:44px; margin-bottom:16px; display:flex; align-items:center; justify-content:center; }
 .dc-title { font-family:var(--f-display); font-size:1rem; font-weight:700; margin-bottom:6px; letter-spacing:-.02em; }
 .dc-desc { font-size:.82rem; color:var(--muted); line-height:1.65; margin-bottom:14px; }
 .dc-badge { display:inline-block; font-family:var(--f-mono); font-size:.62rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:.25rem .65rem; border-radius:var(--r-pill); }
