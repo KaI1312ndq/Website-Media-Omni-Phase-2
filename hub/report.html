@@ -147,6 +147,7 @@
     <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
     <div class="nav-links">
       <a href="/dashboard" class="nav-link">← Dashboard</a>
+      <button class="nav-link" onclick="showKeyModal()" style="background:none;border:none;cursor:pointer;font-size:.84rem;color:rgba(255,255,255,.75)">🔑 API Key</button>
       <span id="nav-user" style="font-size:.84rem;color:rgba(255,255,255,.6)"></span>
     </div>
     <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
@@ -457,6 +458,26 @@
   </div>
 </div>
 
+<!-- API KEY MODAL -->
+<div class="mo" id="key-modal">
+  <div class="mo-box" style="max-width:480px">
+    <div class="mo-hdr">
+      <h3>🔑 API Key Settings</h3>
+      <button class="mo-close" onclick="closeKeyModal()">✕</button>
+    </div>
+    <div class="mo-body">
+      <p style="font-size:.84rem;color:var(--muted);margin-bottom:16px">Key lưu trong localStorage của trình duyệt, không gửi đi đâu ngoài OpenAI.</p>
+      <label class="rl">OpenAI API Key</label>
+      <input class="ri" type="password" id="inp-openai-key" placeholder="sk-..." style="margin-bottom:8px;font-family:var(--f-mono)">
+      <p style="font-size:.75rem;color:var(--faint)">Dùng GPT-4o-mini. Lấy key tại platform.openai.com</p>
+    </div>
+    <div class="mo-foot">
+      <button class="btn-s" onclick="closeKeyModal()">Đóng</button>
+      <button class="btn-p" onclick="saveApiKey()">Lưu Key</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
 <script src="/js/shared.js"></script>
 <script>
@@ -616,14 +637,25 @@ function onPlatChange() {
 
 async function fetchBrands() {
   const sel = document.getElementById('inp-brand');
+  sel.innerHTML = '<option value="">⏳ Đang tải...</option>';
   try {
-    const j = await fetch(`${API}?action=getBrands&username=${STATE.user.username}`).then(r => r.json());
+    const resp = await fetch(`${API}?action=getBrands&username=${encodeURIComponent(STATE.user.username)}`);
+    const j = await resp.json();
+    if (!j.ok) throw new Error(j.error || 'API không nhận action getBrands — cần deploy lại Apps Script phiên bản mới');
     const brands = j.data || [];
-    sel.innerHTML = brands.length
-      ? brands.map(b => `<option value="${b}">${b}</option>`).join('')
-      : '<option value="">Chưa có brand</option>';
-    STATE.brand = brands[0] || '';
-  } catch { sel.innerHTML = '<option value="">Lỗi tải brands</option>'; }
+    if (!brands.length) {
+      sel.innerHTML = '<option value="">Chưa có brand trong BrandList</option>';
+      showToast('BrandList trống — thêm brand vào Google Sheets', 'error');
+    } else {
+      sel.innerHTML = brands.map(b => `<option value="${b}">${b}</option>`).join('');
+      STATE.brand = brands[0];
+      showToast(`✅ Đã tải ${brands.length} brands`);
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">❌ Lỗi tải brands</option>';
+    showToast('❌ ' + e.message, 'error');
+    console.error('fetchBrands error:', e);
+  }
 }
 
 /* ── STEP NAVIGATION ── */
@@ -893,28 +925,63 @@ Tiếng Việt, mix English term (ROAS, CTR, CR, PGM, LGM, GMV). Không padding.
     if (platforms.tiktok) userMsg += `  TikTok GMV: ${fmtBig(t.gmv)} vs ${fmtBig(prevTGmv)} (${getPct(t.gmv,prevTGmv)||'—'}%)\n`;
   }
 
-  try {
-    const j = await fetch(API, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'callClaude', system: sysPrompt, user: userMsg })
-    }).then(r => r.json());
+  const openAiKey = localStorage.getItem('mo_openai_key') || '';
+  if (!openAiKey) {
+    btn.disabled = false; loading.style.display = 'none';
+    showToast('Cần nhập OpenAI API Key — bấm 🔑 API Key trên nav', 'error');
+    showKeyModal(); return;
+  }
 
-    if (!j.ok) throw new Error(j.error || 'AI error');
-    let text = j.data.trim();
-    if (text.startsWith('```')) text = text.replace(/^```json?\n?/,'').replace(/```$/,'').trim();
-    const ai = JSON.parse(text);
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openAiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        max_tokens: 1000,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user',   content: userMsg }
+        ]
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error?.message || `OpenAI ${resp.status}`);
+    }
+    const j = await resp.json();
+    const ai = JSON.parse(j.choices[0].message.content);
     ['highlight','lowlight','thuc_trang','van_de','giai_phap'].forEach(k => {
       const el = document.getElementById('ai_' + k);
       if (el) el.textContent = ai[k] || '';
       STATE.ai[k] = ai[k] || '';
     });
-    showToast('✅ AI đã generate xong!');
+    showToast('✅ AI generate xong!');
   } catch(e) {
     showToast('❌ Lỗi AI: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
     loading.style.display = 'none';
   }
+}
+
+/* ── KEY MODAL ── */
+function showKeyModal() {
+  const modal = document.getElementById('key-modal');
+  const inp = document.getElementById('inp-openai-key');
+  if (inp) inp.value = localStorage.getItem('mo_openai_key') || '';
+  modal.classList.add('open');
+}
+function closeKeyModal() {
+  document.getElementById('key-modal').classList.remove('open');
+}
+function saveApiKey() {
+  const key = document.getElementById('inp-openai-key').value.trim();
+  if (!key) { showToast('Key không được để trống', 'error'); return; }
+  localStorage.setItem('mo_openai_key', key);
+  closeKeyModal();
+  showToast('✅ Đã lưu OpenAI Key!');
 }
 
 /* ── PREVIEW ── */
