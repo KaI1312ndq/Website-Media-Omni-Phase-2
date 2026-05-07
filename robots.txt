@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /users
+Disallow: /hub/
+
+Sitemap: https://mediaomni.site/sitemap.xml
