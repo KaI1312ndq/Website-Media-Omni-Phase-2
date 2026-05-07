@@ -20,12 +20,13 @@ const WEEKLY_COLS = [
 ];
 
 const PLAN_METRIC_KEYS = [
-  's_cpc_doanh_so','s_cpc_chi_phi',
-  's_nd_gmv','s_nd_chi_phi',
-  's_live_gmv','s_live_chi_phi',
-  't_pgm_doanh_so','t_pgm_chi_phi',
+  's_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
+  's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
+  's_live_gmv','s_live_chi_phi','s_live_luot_xem',
+  't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
   't_lgm_doanhthu','t_lgm_chi_phi',
-  't_con_chi_phi','t_brd_chi_phi'
+  't_con_nguoi','t_con_chi_phi',
+  't_brd_view','t_brd_follow','t_brd_chi_phi'
 ];
 const PLAN_WS = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
 const PLAN_COLS = ['id','username','brand_name','month','year',

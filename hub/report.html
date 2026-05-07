@@ -137,6 +137,7 @@
 .pg-inp:focus{outline:none;border-color:var(--blue)}
 .pg-row{display:contents}
 .pg-section{grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;padding:10px 0 4px;border-bottom:1px solid var(--border2)}
+.pg-sub{grid-column:1/-1;font-size:.7rem;font-weight:600;color:var(--muted);padding:8px 0 2px;margin-top:4px}
 @media(max-width:600px){.pg{grid-template-columns:1fr repeat(3,80px)}}
 </style>
 </head>
@@ -1281,21 +1282,40 @@ function showPlanModal() {
   const PLAN_ROWS = [];
   if (platforms.shopee) {
     PLAN_ROWS.push({ label:'── SHOPEE ──', section:true });
-    PLAN_ROWS.push({ label:'CPC Doanh số', key:'s_cpc_doanh_so' });
-    PLAN_ROWS.push({ label:'CPC Chi phí',  key:'s_cpc_chi_phi' });
-    PLAN_ROWS.push({ label:'ND GMV',       key:'s_nd_gmv' });
-    PLAN_ROWS.push({ label:'ND Chi phí',   key:'s_nd_chi_phi' });
-    PLAN_ROWS.push({ label:'Live GMV',     key:'s_live_gmv' });
-    PLAN_ROWS.push({ label:'Live Chi phí', key:'s_live_chi_phi' });
+    PLAN_ROWS.push({ label:'📢 CPC', sub:true });
+    PLAN_ROWS.push({ label:'Doanh số',   key:'s_cpc_doanh_so' });
+    PLAN_ROWS.push({ label:'Chi phí',    key:'s_cpc_chi_phi' });
+    PLAN_ROWS.push({ label:'Lượt xem',   key:'s_cpc_luot_xem' });
+    PLAN_ROWS.push({ label:'Lượt click', key:'s_cpc_luot_click' });
+    PLAN_ROWS.push({ label:'Đơn hàng',   key:'s_cpc_don_hang' });
+    PLAN_ROWS.push({ label:'🎨 Nội dung (ND)', sub:true });
+    PLAN_ROWS.push({ label:'GMV',        key:'s_nd_gmv' });
+    PLAN_ROWS.push({ label:'Chi phí',    key:'s_nd_chi_phi' });
+    PLAN_ROWS.push({ label:'Lượt xem',   key:'s_nd_luot_xem' });
+    PLAN_ROWS.push({ label:'Lượt click', key:'s_nd_luot_click' });
+    PLAN_ROWS.push({ label:'🔴 Live', sub:true });
+    PLAN_ROWS.push({ label:'GMV',        key:'s_live_gmv' });
+    PLAN_ROWS.push({ label:'Chi phí',    key:'s_live_chi_phi' });
+    PLAN_ROWS.push({ label:'Lượt xem',   key:'s_live_luot_xem' });
   }
   if (platforms.tiktok) {
     PLAN_ROWS.push({ label:'── TIKTOK SHOP ──', section:true });
-    PLAN_ROWS.push({ label:'PGM Doanh số',  key:'t_pgm_doanh_so' });
-    PLAN_ROWS.push({ label:'PGM Chi phí',   key:'t_pgm_chi_phi' });
-    PLAN_ROWS.push({ label:'LGM Doanh thu', key:'t_lgm_doanhthu' });
-    PLAN_ROWS.push({ label:'LGM Chi phí',   key:'t_lgm_chi_phi' });
-    PLAN_ROWS.push({ label:'Con Chi phí',   key:'t_con_chi_phi' });
-    PLAN_ROWS.push({ label:'Brd Chi phí',   key:'t_brd_chi_phi' });
+    PLAN_ROWS.push({ label:'📦 PGM', sub:true });
+    PLAN_ROWS.push({ label:'Doanh số',   key:'t_pgm_doanh_so' });
+    PLAN_ROWS.push({ label:'Chi phí',    key:'t_pgm_chi_phi' });
+    PLAN_ROWS.push({ label:'Lượt xem',   key:'t_pgm_luot_xem' });
+    PLAN_ROWS.push({ label:'Lượt click', key:'t_pgm_luot_click' });
+    PLAN_ROWS.push({ label:'Đơn hàng',   key:'t_pgm_don_hang' });
+    PLAN_ROWS.push({ label:'🎯 LGM', sub:true });
+    PLAN_ROWS.push({ label:'Doanh thu',  key:'t_lgm_doanhthu' });
+    PLAN_ROWS.push({ label:'Chi phí',    key:'t_lgm_chi_phi' });
+    PLAN_ROWS.push({ label:'👥 Con người', sub:true });
+    PLAN_ROWS.push({ label:'Người tiếp cận', key:'t_con_nguoi' });
+    PLAN_ROWS.push({ label:'Chi phí',    key:'t_con_chi_phi' });
+    PLAN_ROWS.push({ label:'🏷️ Branding', sub:true });
+    PLAN_ROWS.push({ label:'Lượt xem',   key:'t_brd_view' });
+    PLAN_ROWS.push({ label:'Follow',     key:'t_brd_follow' });
+    PLAN_ROWS.push({ label:'Chi phí',    key:'t_brd_chi_phi' });
   }
 
   const periods = [
@@ -1307,10 +1327,8 @@ function showPlanModal() {
   let html = `<p style="font-size:.83rem;color:var(--muted);margin-bottom:16px">Plan cho <strong>${brand}</strong> — Tháng ${month}/${year}</p>`;
   html += `<div class="pg"><div class="pg-head">Metric</div>${periods.map(p=>`<div class="pg-head">${p.label}</div>`).join('')}`;
   PLAN_ROWS.forEach(row => {
-    if (row.section) {
-      html += `<div class="pg-section">${row.label}</div>`;
-      return;
-    }
+    if (row.section) { html += `<div class="pg-section">${row.label}</div>`; return; }
+    if (row.sub)     { html += `<div class="pg-sub">${row.label}</div>`; return; }
     html += `<div class="pg-lbl">${row.label}</div>`;
     periods.forEach(p => {
       const val = plan[row.key]?.[p.id] || '';
@@ -1331,8 +1349,8 @@ async function savePlan() {
   const { brand, month, year, user, platforms } = STATE;
 
   const PLAN_KEYS = [];
-  if (platforms.shopee) ['s_cpc_doanh_so','s_cpc_chi_phi','s_nd_gmv','s_nd_chi_phi','s_live_gmv','s_live_chi_phi'].forEach(k => PLAN_KEYS.push(k));
-  if (platforms.tiktok) ['t_pgm_doanh_so','t_pgm_chi_phi','t_lgm_doanhthu','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi'].forEach(k => PLAN_KEYS.push(k));
+  if (platforms.shopee) ['s_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang','s_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click','s_live_gmv','s_live_chi_phi','s_live_luot_xem'].forEach(k => PLAN_KEYS.push(k));
+  if (platforms.tiktok) ['t_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang','t_lgm_doanhthu','t_lgm_chi_phi','t_con_nguoi','t_con_chi_phi','t_brd_view','t_brd_follow','t_brd_chi_phi'].forEach(k => PLAN_KEYS.push(k));
 
   const periods = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
   const planObj = {};
