@@ -14,7 +14,11 @@ async function loadPosts(){
   const api = GS_BLOG_URL || localStorage.getItem('mo_blog_api') || '';
   if(api){
     try{
-      const r=await fetch(api+'?action=list');const j=await r.json();
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),6000);
+      const r=await fetch(api+'?action=list',{signal:ctrl.signal});
+      clearTimeout(tid);
+      const j=await r.json();
       allPosts=(j.posts||[]).filter(p=>p.status==='published');
     }catch{ allPosts=FALLBACK_POSTS; }
   }else{ allPosts=FALLBACK_POSTS; }
