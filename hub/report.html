@@ -478,6 +478,7 @@
         <span class="pv-subj-val" id="mail-subject" contenteditable="true"></span>
       </div>
       <div class="pv-body">
+        <div id="mail-intro" contenteditable="true" spellcheck="false"></div>
         <div class="chart-wrap">
           <canvas id="report-chart" height="80"></canvas>
         </div>
@@ -1115,9 +1116,9 @@ async function generateAI() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openAiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini',
         response_format: { type: 'json_object' },
-        max_tokens: 1000,
+        max_tokens: 1500,
         messages: [
           { role: 'system', content: sysPrompt },
           { role: 'user',   content: userMsg }
@@ -1363,7 +1364,7 @@ function buildPreview() {
 
   const s = STATE.shopee.tot, t = STATE.tiktok.tot;
   const ts  = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:15px"`;
-  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:15px"`;
+  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:center;font-family:'Times New Roman',serif;font-size:15px"`;
   const th  = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:15px;text-align:center;${v}"`;
   const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:15px;margin:4px 0 16px`;
   const hdr = `<tr><th ${th('text-align:left;min-width:130px')}>Metric</th><th ${th()}>Tháng (Plan)</th><th ${th()}>Luỹ tiến</th><th ${th()}>% thực hiện</th>${STATE.weeks.map(w=>`<th ${th()}>W${w.w}</th><th ${th()}>Thực hiện</th><th ${th()}>% thực hiện</th>`).join('')}</tr>`;
@@ -1412,10 +1413,16 @@ function buildPreview() {
   const getMTDGmv_T= ()=>getMTD(w=>{ const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.t_pgm_doanh_so||0)+parseFloat(r.t_lgm_doanhthu||0)):(w===STATE.weekNum?t.gmv:0); });
   const mtdTotGmv  = STATE.weeks.filter(wk=>wk.w<=STATE.weekNum).reduce((a,wk)=>{ const v=wk.w===STATE.weekNum?(s.gmv+t.gmv):(getHistGmv(wk.w)||0); return a+v; },0);
 
+  // ── Dear intro (above chart) ──
+  const introEl = document.getElementById('mail-intro');
+  if (introEl) {
+    introEl.innerHTML = `<div style="font-family:'Times New Roman',Times,serif;font-size:15px;color:#000;line-height:1.7">` +
+      `<p style="margin:0 0 4px">Dear: <strong>Growth Phụ trách dự án</strong><br>và Leader Team Media Omni, PIC Marketing B2C</p>` +
+      `<p style="margin:0 0 6px">Tôi xin phép gửi Report của <strong>${weekInfo?.label}</strong> dự án <strong>${brand}</strong></p>` +
+      `</div>`;
+  }
+
   let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:15px;color:#000;line-height:1.7;max-width:900px">`;
-  body += `<p style="margin:0 0 4px">Dear: <strong>Growth Phụ trách dự án</strong><br>và Leader Team Media Omni, PIC Marketing B2C</p>`;
-  body += `<p style="margin:0 0 10px">Tôi xin phép gửi Report của <strong>${weekInfo?.label}</strong> dự án <strong>${brand}</strong></p>`;
-  body += `<hr style="border:1px solid #ccc;margin:8px 0">`;
   body += `<p style="margin:0 0 4px"><strong style="font-size:15px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
   body += `<hr style="border:1px solid #ccc;margin:8px 0">`;
 
@@ -1582,7 +1589,9 @@ async function copyMail() {
     chartImgTag = `<img src="${dataUrl}" style="max-width:100%;margin:12px 0;" alt="GMV Chart">`;
   } catch(e) {}
 
-  const fullHtml = `<b>Subject: ${subject}</b><br><br>${chartImgTag}${bodyEl.innerHTML}`;
+  const introEl = document.getElementById('mail-intro');
+  const introHtml = introEl ? introEl.innerHTML : '';
+  const fullHtml = `<b>Subject: ${subject}</b><br><br>${introHtml}${chartImgTag}${bodyEl.innerHTML}`;
 
   try {
     await navigator.clipboard.write([
