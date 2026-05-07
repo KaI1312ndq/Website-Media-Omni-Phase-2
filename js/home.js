@@ -84,7 +84,7 @@ function initBlogPreview() {
   if (!grid) return;
   grid.innerHTML = BLOG_POSTS.map((p, i) => {
     if (p.featured) return `
-      <a href="/blog.html#${p.slug}" class="blog-featured rv">
+      <a href="/blog?id=${p.slug}" class="blog-featured rv">
         <div class="blog-feat-img" style="background:${p.bg}">
           <div style="text-align:center">
             ${p.svgIcon}
@@ -99,7 +99,7 @@ function initBlogPreview() {
         </div>
       </a>`;
     return `
-      <a href="/blog.html#${p.slug}" class="blog-card-sm rv d${i}">
+      <a href="/blog?id=${p.slug}" class="blog-card-sm rv d${i}">
         <div class="blog-sm-img" style="background:${p.bg}">
           <div style="text-align:center">
             ${p.svgIcon}
