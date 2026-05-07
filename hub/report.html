@@ -6,6 +6,7 @@
 <title>Weekly Report Tool — Media Omni</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%232563EB'/><stop offset='100%25' stop-color='%2306B6D4'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><text x='50%25' y='56%25' dominant-baseline='central' text-anchor='middle' font-size='14' font-weight='900' fill='white' font-family='Arial'>R</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/shared.css">
@@ -452,9 +453,18 @@
       <button class="mo-close" onclick="closePlanModal()">✕</button>
     </div>
     <div class="mo-body" id="plan-modal-body"></div>
-    <div class="mo-foot">
-      <button class="btn-s" onclick="closePlanModal()">Huỷ</button>
-      <button class="btn-p" id="plan-save-btn" onclick="savePlan()">Lưu Plan →</button>
+    <div class="mo-foot" style="justify-content:space-between">
+      <div style="display:flex;gap:8px">
+        <button class="btn-s" onclick="downloadPlanTemplate()" title="Tải file Excel template để điền plan">📥 Tải template</button>
+        <label class="btn-s" style="cursor:pointer;margin:0" title="Upload file Excel đã điền plan">
+          📤 Upload xlsx
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handlePlanUpload(this.files[0]);this.value=''">
+        </label>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-s" onclick="closePlanModal()">Huỷ</button>
+        <button class="btn-p" id="plan-save-btn" onclick="savePlan()">Lưu Plan →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1016,6 +1026,95 @@ Yêu cầu:
   }
 }
 
+/* ── PLAN XLSX ── */
+const PLAN_XLSX_ROWS = [
+  { section:'SHOPEE' },
+  { sub:'CPC' },
+  { key:'s_cpc_doanh_so',   label:'Doanh số' },
+  { key:'s_cpc_chi_phi',    label:'Chi phí' },
+  { key:'s_cpc_luot_xem',   label:'Lượt xem' },
+  { key:'s_cpc_luot_click', label:'Lượt click' },
+  { key:'s_cpc_don_hang',   label:'Đơn hàng' },
+  { sub:'Tăng nhận diện thương hiệu' },
+  { key:'s_nd_gmv',         label:'GMV' },
+  { key:'s_nd_chi_phi',     label:'Chi phí' },
+  { key:'s_nd_luot_xem',    label:'Lượt xem' },
+  { key:'s_nd_luot_click',  label:'Lượt click' },
+  { sub:'Live' },
+  { key:'s_live_gmv',       label:'GMV' },
+  { key:'s_live_chi_phi',   label:'Chi phí' },
+  { key:'s_live_luot_xem',  label:'Lượt xem' },
+  { section:'TIKTOK SHOP' },
+  { sub:'Ads PGM' },
+  { key:'t_pgm_doanh_so',   label:'Doanh số' },
+  { key:'t_pgm_chi_phi',    label:'Chi phí' },
+  { key:'t_pgm_luot_xem',   label:'Lượt xem' },
+  { key:'t_pgm_luot_click', label:'Lượt click' },
+  { key:'t_pgm_don_hang',   label:'Đơn hàng' },
+  { sub:'Ads LGM' },
+  { key:'t_lgm_doanhthu',   label:'Doanh thu' },
+  { key:'t_lgm_chi_phi',    label:'Chi phí' },
+  { sub:'Consideration' },
+  { key:'t_con_nguoi',      label:'Consider (Số người nhận biết TH)' },
+  { key:'t_con_chi_phi',    label:'Chi phí' },
+  { sub:'Branding' },
+  { key:'t_brd_view',       label:'Lượt xem' },
+  { key:'t_brd_follow',     label:'Follow' },
+  { key:'t_brd_chi_phi',    label:'Chi phí' },
+];
+const PLAN_PERIODS = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
+const PLAN_PERIOD_LABELS = ['Cả tháng','W1','W2','W3','W4','W5'];
+
+function downloadPlanTemplate() {
+  if (typeof XLSX === 'undefined') { showToast('SheetJS chưa load xong, thử lại', 'error'); return; }
+  const { brand, month, year, plan } = STATE;
+  const wb = XLSX.utils.book_new();
+  const rows = [
+    [`Plan: ${brand} — Tháng ${month}/${year}`, '', '', '', '', '', '', ''],
+    ['Metric', ...PLAN_PERIOD_LABELS, '_key_'],
+  ];
+  PLAN_XLSX_ROWS.forEach(r => {
+    if (r.section) { rows.push([`=== ${r.section} ===`, '', '', '', '', '', '', '']); return; }
+    if (r.sub)     { rows.push([`  ${r.sub}`, '', '', '', '', '', '', '']); return; }
+    const vals = PLAN_PERIODS.map(p => plan?.[r.key]?.[p] || 0);
+    rows.push([r.label, ...vals, r.key]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Style: hide col H (_key_), set col widths
+  ws['!cols'] = [{ wch:35 }, { wch:14 }, { wch:12 }, { wch:12 }, { wch:12 }, { wch:12 }, { wch:12 }, { wch:0 }];
+  ws['!rows'] = [{ hpt:18 }, { hpt:18 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Plan');
+  XLSX.writeFile(wb, `Plan_${brand}_T${month}_${year}.xlsx`);
+  showToast('✅ Đã tải template!');
+}
+
+function handlePlanUpload(file) {
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { showToast('SheetJS chưa load', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      let filled = 0;
+      data.forEach(row => {
+        const key = (row[7] || '').toString().trim();
+        if (!key || key === '_key_' || key.startsWith('===')) return;
+        PLAN_PERIODS.forEach((p, i) => {
+          const el = document.getElementById(`pm_${key}_${p}`);
+          if (!el) return;
+          const v = parseFloat((row[i + 1] || '').toString().replace(/[^\d.]/g, '')) || 0;
+          el.value = v ? v.toLocaleString('vi-VN') : '';
+          filled++;
+        });
+      });
+      showToast(`✅ Đã import ${filled} ô từ file Excel!`);
+    } catch(err) { showToast('❌ Lỗi đọc file: ' + err.message, 'error'); }
+  };
+  reader.readAsBinaryString(file);
+}
+
 /* ── KEY MODAL ── */
 function showKeyModal() {
   const modal = document.getElementById('key-modal');
@@ -1123,10 +1222,10 @@ function buildPreview() {
   buildChart();
 
   const s = STATE.shopee.tot, t = STATE.tiktok.tot;
-  const ts  = () => `style="padding:5px 8px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:11px"`;
-  const tsL = () => `style="padding:5px 8px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:11px"`;
-  const th  = (v='') => `style="padding:5px 8px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:11px;${v}"`;
-  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:11px;margin:4px 0 14px`;
+  const ts  = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:13px"`;
+  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:13px"`;
+  const th  = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:13px;${v}"`;
+  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:13px;margin:4px 0 16px`;
   const hdr = `<tr><th ${th('text-align:left;min-width:130px')}>Metric</th><th ${th()}>Plan Tháng</th><th ${th()}>Luỹ tiến</th><th ${th()}>%TH</th>${STATE.weeks.map(w=>`<th ${th()}>Plan W${w.w}</th><th ${th()}>TH W${w.w}</th><th ${th()}>%W${w.w}</th>`).join('')}</tr>`;
 
   // ── data access helpers ──
@@ -1176,17 +1275,29 @@ function buildPreview() {
   const getMTDGmv_T = () => getMTD(w=>{ const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.t_pgm_doanh_so||0)+parseFloat(r.t_lgm_doanhthu||0)):(w===STATE.weekNum?t.gmv:0); });
   const mtdTotGmv = STATE.weeks.filter(wk=>wk.w<=STATE.weekNum).reduce((a,wk)=>{ const v=wk.w===STATE.weekNum?(s.gmv+t.gmv):(getHistGmv(wk.w)||0); return a+v; },0);
 
-  let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:12px;color:#000;line-height:1.6;max-width:900px">`;
-  body += `<p style="margin:0 0 4px"><strong style="font-size:13px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
+  let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:14px;color:#000;line-height:1.7;max-width:900px">`;
+  body += `<p style="margin:0 0 4px"><strong style="font-size:15px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
   body += `<hr style="border:1px solid #ccc;margin:8px 0">`;
 
   // ─── TỔNG 2 SÀN ───
   if (platforms.shopee && platforms.tiktok) {
     body += `<p style="margin:6px 0 2px"><strong>━━━ TỔNG 2 SÀN ━━━</strong></p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    const totPlanCpM = (pM('s_cpc_chi_phi')+pM('s_nd_chi_phi')+pM('s_live_chi_phi')+pM('t_pgm_chi_phi')+pM('t_lgm_chi_phi')+pM('t_con_chi_phi')+pM('t_brd_chi_phi'))||0;
+    const mtdTotCp = getMTD(w=>{
+      const r=history.find(h=>parseInt(h.week_num)===w);
+      if(r) return ['s_cpc_chi_phi','s_nd_chi_phi','s_live_chi_phi','t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi'].reduce((a,f)=>a+parseFloat(r[f]||0),0);
+      return w===STATE.weekNum ? (s.cp||0)+(t.cp||0) : 0;
+    });
     body += wRow('GMV Ads tổng', totPlanGmvM||null, mtdTotGmv,
       w=>{ if(w===STATE.weekNum) return (s.gmv||0)+(t.gmv||0); return getHistGmv(w); },
       w=>getPlanGmvW(w)||null);
+    body += wRow('Chi phí tổng', totPlanCpM||null, mtdTotCp,
+      w=>{ if(w===STATE.weekNum) return (s.cp||0)+(t.cp||0); const r=history.find(h=>parseInt(h.week_num)===w); return r?['s_cpc_chi_phi','s_nd_chi_phi','s_live_chi_phi','t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi'].reduce((a,f)=>a+parseFloat(r[f]||0),0):null; },
+      w=>{ const d=(pM('s_cpc_chi_phi')+pM('s_nd_chi_phi')+pM('s_live_chi_phi')+pM('t_pgm_chi_phi')+pM('t_lgm_chi_phi')+pM('t_con_chi_phi')+pM('t_brd_chi_phi')); return d?d:null; });
+    body += dRow('ROAS tổng', totPlanCpM?totPlanGmvM/totPlanCpM:null, (mtdTotCp?mtdTotGmv/mtdTotCp:null),
+      w=>{ const g=w===STATE.weekNum?(s.gmv+t.gmv):(getHistGmv(w)||0); const c=w===STATE.weekNum?(s.cp+t.cp):(getHistCp(w)||0); return c?g/c:null; },
+      w=>{ const g=getPlanGmvW(w); const c=(pW('s_cpc_chi_phi',w)+pW('s_nd_chi_phi',w)+pW('s_live_chi_phi',w)+pW('t_pgm_chi_phi',w)+pW('t_lgm_chi_phi',w)+pW('t_con_chi_phi',w)+pW('t_brd_chi_phi',w)); return c?g/c:null; }, fmtX);
     body += `</tbody></table>`;
   }
 
@@ -1217,7 +1328,7 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // Ads CPC
-    body += `<p style="font-size:11px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh số Ads', pM('s_cpc_doanh_so')||null, getMTD(w=>hRow('s_cpc_doanh_so',w)||0), w=>hRow('s_cpc_doanh_so',w), w=>pW('s_cpc_doanh_so',w)||null);
     body += wRow('Chi phí Dịch vụ hiển thị', pM('s_cpc_chi_phi')||null, getMTD(w=>hRow('s_cpc_chi_phi',w)||0), w=>hRow('s_cpc_chi_phi',w), w=>pW('s_cpc_chi_phi',w)||null);
@@ -1232,7 +1343,7 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // Ads ND
-    body += `<p style="font-size:11px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu Ads (GMV)', pM('s_nd_gmv')||null, getMTD(w=>hRow('s_nd_gmv',w)||0), w=>hRow('s_nd_gmv',w), w=>pW('s_nd_gmv',w)||null);
     body += wRow('Chi phí ads', pM('s_nd_chi_phi')||null, getMTD(w=>hRow('s_nd_chi_phi',w)||0), w=>hRow('s_nd_chi_phi',w), w=>pW('s_nd_chi_phi',w)||null);
@@ -1244,7 +1355,7 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // Ads Live
-    body += `<p style="font-size:11px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu Ads (GMV)', pM('s_live_gmv')||null, getMTD(w=>hRow('s_live_gmv',w)||0), w=>hRow('s_live_gmv',w), w=>pW('s_live_gmv',w)||null);
     body += wRow('Chi phí ads', pM('s_live_chi_phi')||null, getMTD(w=>hRow('s_live_chi_phi',w)||0), w=>hRow('s_live_chi_phi',w), w=>pW('s_live_chi_phi',w)||null);
@@ -1263,7 +1374,7 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // PGM
-    body += `<p style="font-size:11px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">PGM (Performance)</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh số', pM('t_pgm_doanh_so')||null, getMTD(w=>hRow('t_pgm_doanh_so',w)||0), w=>hRow('t_pgm_doanh_so',w), w=>pW('t_pgm_doanh_so',w)||null);
     body += wRow('Chi phí', pM('t_pgm_chi_phi')||null, getMTD(w=>hRow('t_pgm_chi_phi',w)||0), w=>hRow('t_pgm_chi_phi',w), w=>pW('t_pgm_chi_phi',w)||null);
@@ -1278,23 +1389,23 @@ function buildPreview() {
     body += `</tbody></table>`;
 
     // LGM
-    body += `<p style="font-size:11px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">LGM (Live GMV)</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_LGM</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu', pM('t_lgm_doanhthu')||null, getMTD(w=>hRow('t_lgm_doanhthu',w)||0), w=>hRow('t_lgm_doanhthu',w), w=>pW('t_lgm_doanhthu',w)||null);
     body += wRow('Chi phí', pM('t_lgm_chi_phi')||null, getMTD(w=>hRow('t_lgm_chi_phi',w)||0), w=>hRow('t_lgm_chi_phi',w), w=>pW('t_lgm_chi_phi',w)||null);
     body += dRow('ROI', ratioPM('t_lgm_doanhthu','t_lgm_chi_phi'), ratioMTD('t_lgm_doanhthu','t_lgm_chi_phi'), w=>ratioW('t_lgm_doanhthu','t_lgm_chi_phi',w), w=>ratioPW('t_lgm_doanhthu','t_lgm_chi_phi',w), fmtX);
     body += `</tbody></table>`;
 
-    // Con người
-    body += `<p style="font-size:11px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Con người (Influence/KOL)</p>`;
+    // Consideration
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
-    body += wRow('Người tiếp cận', pM('t_con_nguoi')||null, getMTD(w=>hRow('t_con_nguoi',w)||0), w=>hRow('t_con_nguoi',w), w=>pW('t_con_nguoi',w)||null, fmtN);
+    body += wRow('Consider (Số người nhận biết TH)', pM('t_con_nguoi')||null, getMTD(w=>hRow('t_con_nguoi',w)||0), w=>hRow('t_con_nguoi',w), w=>pW('t_con_nguoi',w)||null, fmtN);
     body += wRow('Chi phí', pM('t_con_chi_phi')||null, getMTD(w=>hRow('t_con_chi_phi',w)||0), w=>hRow('t_con_chi_phi',w), w=>pW('t_con_chi_phi',w)||null);
-    body += dRow('CPP (Chi phí / Người)', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), v=>v!==null?fmtBig(v):'—');
+    body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), v=>v!==null?fmtBig(v):'—');
     body += `</tbody></table>`;
 
     // Branding
-    body += `<p style="font-size:11px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Lượt xem', pM('t_brd_view')||null, getMTD(w=>hRow('t_brd_view',w)||0), w=>hRow('t_brd_view',w), w=>pW('t_brd_view',w)||null, fmtN);
     body += wRow('Follow', pM('t_brd_follow')||null, getMTD(w=>hRow('t_brd_follow',w)||0), w=>hRow('t_brd_follow',w), w=>pW('t_brd_follow',w)||null, fmtN);
@@ -1307,11 +1418,11 @@ function buildPreview() {
   // ─── HIGHLIGHT / LOWLIGHT ───
   body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
   body += `<table style="${tblStyle}"><thead><tr>
-    <th style="padding:6px 12px;border:1px solid #999;background:#1a5c2e;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:12px">✅ Highlight</th>
-    <th style="padding:6px 12px;border:1px solid #999;background:#5c1a1a;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:12px">⚠️ Lowlight</th>
+    <th style="padding:6px 12px;border:1px solid #999;background:#1a5c2e;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:14px">✅ Highlight</th>
+    <th style="padding:6px 12px;border:1px solid #999;background:#5c1a1a;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:14px">⚠️ Lowlight</th>
   </tr></thead><tbody><tr>
-    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:12px">${(ai.highlight||'').replace(/\n/g,'<br>')}</td>
-    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:12px">${(ai.lowlight||'').replace(/\n/g,'<br>')}</td>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:14px">${(ai.highlight||'').replace(/\n/g,'<br>')}</td>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:14px">${(ai.lowlight||'').replace(/\n/g,'<br>')}</td>
   </tr></tbody></table>`;
 
   // ─── NHẬN XÉT ───
@@ -1321,7 +1432,7 @@ function buildPreview() {
   body += `<p><strong>🔍 Vấn đề:</strong><br>${(ai.van_de||'').replace(/\n/g,'<br>')}</p>`;
   body += `<p><strong>💡 Giải pháp & Plan tuần tới:</strong><br>${(ai.giai_phap||'').replace(/\n/g,'<br>')}</p>`;
   body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
-  body += `<p style="color:#555;font-size:11px">Reported by: ${user?.name} | ${fmtD(new Date())}</p>`;
+  body += `<p style="color:#555;font-size:13px">Reported by: ${user?.name} | ${fmtD(new Date())}</p>`;
   body += `</div>`;
 
   document.getElementById('mail-body').innerHTML = body;
@@ -1410,37 +1521,37 @@ function showPlanModal() {
   const PLAN_ROWS = [];
   if (platforms.shopee) {
     PLAN_ROWS.push({ label:'── SHOPEE ──', section:true });
-    PLAN_ROWS.push({ label:'📢 CPC', sub:true });
+    PLAN_ROWS.push({ label:'CPC', sub:true });
     PLAN_ROWS.push({ label:'Doanh số',   key:'s_cpc_doanh_so' });
     PLAN_ROWS.push({ label:'Chi phí',    key:'s_cpc_chi_phi' });
     PLAN_ROWS.push({ label:'Lượt xem',   key:'s_cpc_luot_xem' });
     PLAN_ROWS.push({ label:'Lượt click', key:'s_cpc_luot_click' });
     PLAN_ROWS.push({ label:'Đơn hàng',   key:'s_cpc_don_hang' });
-    PLAN_ROWS.push({ label:'🎨 Nội dung (ND)', sub:true });
+    PLAN_ROWS.push({ label:'Tăng nhận diện thương hiệu', sub:true });
     PLAN_ROWS.push({ label:'GMV',        key:'s_nd_gmv' });
     PLAN_ROWS.push({ label:'Chi phí',    key:'s_nd_chi_phi' });
     PLAN_ROWS.push({ label:'Lượt xem',   key:'s_nd_luot_xem' });
     PLAN_ROWS.push({ label:'Lượt click', key:'s_nd_luot_click' });
-    PLAN_ROWS.push({ label:'🔴 Live', sub:true });
+    PLAN_ROWS.push({ label:'Live', sub:true });
     PLAN_ROWS.push({ label:'GMV',        key:'s_live_gmv' });
     PLAN_ROWS.push({ label:'Chi phí',    key:'s_live_chi_phi' });
     PLAN_ROWS.push({ label:'Lượt xem',   key:'s_live_luot_xem' });
   }
   if (platforms.tiktok) {
     PLAN_ROWS.push({ label:'── TIKTOK SHOP ──', section:true });
-    PLAN_ROWS.push({ label:'📦 PGM', sub:true });
+    PLAN_ROWS.push({ label:'Ads PGM', sub:true });
     PLAN_ROWS.push({ label:'Doanh số',   key:'t_pgm_doanh_so' });
     PLAN_ROWS.push({ label:'Chi phí',    key:'t_pgm_chi_phi' });
     PLAN_ROWS.push({ label:'Lượt xem',   key:'t_pgm_luot_xem' });
     PLAN_ROWS.push({ label:'Lượt click', key:'t_pgm_luot_click' });
     PLAN_ROWS.push({ label:'Đơn hàng',   key:'t_pgm_don_hang' });
-    PLAN_ROWS.push({ label:'🎯 LGM', sub:true });
+    PLAN_ROWS.push({ label:'Ads LGM', sub:true });
     PLAN_ROWS.push({ label:'Doanh thu',  key:'t_lgm_doanhthu' });
     PLAN_ROWS.push({ label:'Chi phí',    key:'t_lgm_chi_phi' });
-    PLAN_ROWS.push({ label:'👥 Con người', sub:true });
-    PLAN_ROWS.push({ label:'Người tiếp cận', key:'t_con_nguoi' });
+    PLAN_ROWS.push({ label:'Consideration', sub:true });
+    PLAN_ROWS.push({ label:'Consider (Số người nhận biết TH)', key:'t_con_nguoi' });
     PLAN_ROWS.push({ label:'Chi phí',    key:'t_con_chi_phi' });
-    PLAN_ROWS.push({ label:'🏷️ Branding', sub:true });
+    PLAN_ROWS.push({ label:'Branding', sub:true });
     PLAN_ROWS.push({ label:'Lượt xem',   key:'t_brd_view' });
     PLAN_ROWS.push({ label:'Follow',     key:'t_brd_follow' });
     PLAN_ROWS.push({ label:'Chi phí',    key:'t_brd_chi_phi' });
