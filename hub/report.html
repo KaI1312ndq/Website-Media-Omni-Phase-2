@@ -1812,7 +1812,8 @@ function handleActualUpload(file) {
 const DEFAULT_AI_PROMPT_KEY = 'mo_ai_prompt';
 function showPromptModal() {
   const ta = document.getElementById('inp-ai-prompt');
-  ta.value = localStorage.getItem(DEFAULT_AI_PROMPT_KEY) || '';
+  // Luôn hiển thị prompt đang thực sự dùng (custom hoặc default)
+  ta.value = localStorage.getItem(DEFAULT_AI_PROMPT_KEY) || defaultSysPrompt;
   document.getElementById('prompt-modal').classList.add('open');
 }
 function closePromptModal() {
@@ -1820,14 +1821,18 @@ function closePromptModal() {
 }
 function savePrompt() {
   const val = document.getElementById('inp-ai-prompt').value.trim();
-  if (val) localStorage.setItem(DEFAULT_AI_PROMPT_KEY, val);
-  else localStorage.removeItem(DEFAULT_AI_PROMPT_KEY);
+  if (val && val !== defaultSysPrompt) {
+    localStorage.setItem(DEFAULT_AI_PROMPT_KEY, val);
+    showToast('Đã lưu AI Prompt tùy chỉnh!');
+  } else {
+    localStorage.removeItem(DEFAULT_AI_PROMPT_KEY);
+    showToast('Dùng prompt mặc định');
+  }
   closePromptModal();
-  showToast('Đã lưu AI Prompt!');
 }
 function resetPrompt() {
   localStorage.removeItem(DEFAULT_AI_PROMPT_KEY);
-  document.getElementById('inp-ai-prompt').value = '';
+  document.getElementById('inp-ai-prompt').value = defaultSysPrompt;
   showToast('Đã reset về prompt mặc định');
 }
 </script>
