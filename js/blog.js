@@ -9,6 +9,7 @@ const FALLBACK_POSTS=[
 ];
 
 let allPosts=[], activeTag='ALL', searchQ='';
+const postMap={};
 
 async function loadPosts(){
   // Show fallback immediately — no blank loading state
@@ -63,6 +64,8 @@ function renderGrid(posts){
   const grid=document.getElementById('blog-grid');
   if(!posts.length){grid.innerHTML='<div class="blog-empty">Không tìm thấy bài viết phù hợp.</div>';return;}
   grid.innerHTML=posts.map((p,i)=>{
+    const key=String(p.id);
+    postMap[key]=p;
     const isFirst=i===0;
     const thumbHtml=p.thumb?.startsWith('http')
       ?`<img src="${p.thumb}" style="width:100%;height:100%;object-fit:cover">`
@@ -71,7 +74,7 @@ function renderGrid(posts){
     const words=(p.content||'').split(/\s+/).length;
     const mins=Math.max(1,Math.round(words/200));
     return `
-      <div class="blog-card${isFirst?' blog-featured-card':''} rv d${i+1}" onclick="openPost(${JSON.stringify(JSON.stringify(p)).slice(1,-1)})">
+      <div class="blog-card${isFirst?' blog-featured-card':''} rv d${i+1}" data-post-id="${key}">
         <div class="bc-thumb" style="background:${p.bg||'linear-gradient(135deg,#050F2C,#1D4ED8)'}">${thumbHtml}</div>
         <div class="bc-body">
           <div class="bc-meta">
@@ -88,6 +91,11 @@ function renderGrid(posts){
       </div>`;
   }).join('');
 
+  // Attach click via event delegation — no JSON in HTML attributes
+  grid.querySelectorAll('[data-post-id]').forEach(el=>{
+    el.addEventListener('click',()=>openPost(postMap[el.dataset.postId]));
+  });
+
   // Re-observe reveals
   const obs=new IntersectionObserver(entries=>{
     entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');obs.unobserve(e.target);}});
@@ -96,7 +104,9 @@ function renderGrid(posts){
 }
 
 function openPost(p){
-  if(typeof p==='string') try{ p=JSON.parse(p); }catch{ return; }
+  if(!p) return;
+  if(typeof p==='string') p=postMap[p]||allPosts.find(x=>String(x.id)===p);
+  if(!p) return;
   document.getElementById('list-page').style.display='none';
   document.getElementById('post-page').style.display='block';
   document.getElementById('post-tag-row').innerHTML=(p.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('');
