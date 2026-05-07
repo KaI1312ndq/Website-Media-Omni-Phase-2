@@ -1,0 +1,17 @@
+{
+  "name": "Media Omni",
+  "short_name": "MediaOmni",
+  "description": "Performance Marketing Team | UpBase Vietnam",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#2563EB",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
