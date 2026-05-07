@@ -6,6 +6,7 @@
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/quiz", "destination": "/quiz.html" },
     { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/blog/:id", "destination": "/blog.html" },
     { "source": "/admin", "destination": "/admin.html" }
   ],
   "redirects": [

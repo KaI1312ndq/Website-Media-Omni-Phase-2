@@ -19,9 +19,12 @@ async function loadPosts(){
     }catch{ allPosts=FALLBACK_POSTS; }
   }else{ allPosts=FALLBACK_POSTS; }
   buildTagFilters();renderGrid(allPosts);
-  // Deep link by hash
-  const hash=location.hash.replace('#','');
-  if(hash){ const p=allPosts.find(x=>x.id===hash||slugify(x.title)===hash); if(p)openPost(p); }
+  // Deep link by ?id= query param (or legacy #hash)
+  const params = new URLSearchParams(location.search);
+  const qid = params.get('id');
+  const hash = location.hash.replace('#','');
+  const key = qid || hash;
+  if(key){ const p=allPosts.find(x=>x.id===key||slugify(x.title)===key||(x.slug&&x.slug===key)); if(p)openPost(p); }
 }
 
 function buildTagFilters(){
@@ -99,13 +102,18 @@ function openPost(p){
   thumbEl.textContent=p.thumb?.startsWith('http')?'':p.thumb||'📝';
   document.getElementById('post-body').innerHTML=mdToHtml(p.content||'');
   window.scrollTo({top:0,behavior:'smooth'});
-  history.pushState(null,'','#'+(p.id||slugify(p.title)));
+  const slug = p.slug || slugify(p.title);
+  history.pushState(null,'','/blog?id='+slug);
+  // Update page title + meta for this post (helps Google)
+  document.title = p.title + ' — Media Omni';
+  document.querySelector('meta[name="description"]')?.setAttribute('content', p.excerpt || p.title);
 }
 
 function backToList(){
   document.getElementById('post-page').style.display='none';
   document.getElementById('list-page').style.display='block';
-  history.pushState(null,'',location.pathname);
+  history.pushState(null,'','/blog');
+  document.title = 'Blog & Insights — Media Omni | Performance Marketing';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
