@@ -38,7 +38,7 @@ const TEAM_LIST = [
 const GS_SHEET_ID = '1dJfqBW-mlkYjtAQi3fbLrmx4_zSmVLEDWGiMiZt-iEw';
 const GS_QUIZ_URL = 'https://script.google.com/macros/s/AKfycbzfhieuPGmlExR0-Dv6DRT2cqG1gEdJsc1VzRy6-Jdc4wjkEiPXlPh5zKNCO2O6BCwz/exec';
 const GS_TASK_URL = 'https://script.google.com/macros/s/AKfycbyTnGAY8cp5aqKpEtTWvBuTG4WMGFBEtmZakvmGSg0xtp625mzcrUcnuTUFjQTCh2tc/exec';
-const GS_BLOG_URL = localStorage.getItem('mo_blog_api') || '';
+const GS_BLOG_URL = localStorage.getItem('mo_blog_api') || 'https://script.google.com/macros/s/AKfycbwATcajpuheeyLbfjrY2OHJxTVROZjAK71B9ICwdegXyJmmeMz9QZoPmzzymY5kWWPk/exec';
 
 /* ── UTILS ── */
 const $ = id => document.getElementById(id);
