@@ -4,10 +4,141 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Weekly Report Tool — Media Omni</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%232563EB'/><stop offset='100%25' stop-color='%2306B6D4'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><text x='50%25' y='56%25' dominant-baseline='central' text-anchor='middle' font-size='14' font-weight='900' fill='white' font-family='Arial'>R</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/shared.css">
-<link rel="stylesheet" href="/css/report.css">
+<style>
+/* ── LAYOUT ── */
+.rw{max-width:960px;margin:0 auto;padding:88px 20px 80px}
+.rw-hdr{margin-bottom:28px}
+.rw-hdr h1{font-family:var(--f-display);font-size:1.75rem;font-weight:800;color:var(--ink);margin-bottom:4px}
+.rw-hdr p{color:var(--muted);font-size:.88rem}
+
+/* ── STEPS ── */
+.step-tabs{display:flex;gap:6px;margin-bottom:24px;overflow-x:auto}
+.step-tab{flex:1;min-width:80px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);cursor:pointer;text-align:center;transition:all .2s;background:var(--paper)}
+.step-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.step-tab.done{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.4);color:#059669}
+.step-tab.disabled{opacity:.45;cursor:default}
+.step-num{display:block;font-size:.65rem;font-weight:700;letter-spacing:.1em;opacity:.75}
+.step-name{display:block;font-size:.8rem;font-weight:600;margin-top:2px}
+@media(max-width:480px){.step-name{display:none}}
+
+/* ── CARD ── */
+.rc{background:var(--paper);border:1.5px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px}
+.rc h2{font-family:var(--f-display);font-size:1.05rem;font-weight:700;color:var(--ink);margin-bottom:6px}
+.rc>p{font-size:.84rem;color:var(--muted);margin-bottom:16px}
+
+/* ── FORM ── */
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.rl{display:block;font-size:.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.ri,.rs{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--f-body);background:var(--bg);color:var(--ink);transition:border-color .2s;box-sizing:border-box}
+.ri:focus,.rs:focus{outline:none;border-color:var(--blue)}
+@media(max-width:600px){.rg,.rg3{grid-template-columns:1fr}}
+
+/* ── PLATFORM CHECKS ── */
+.plat-row{display:flex;gap:10px;flex-wrap:wrap}
+.plat-chk{display:flex;align-items:center;gap:8px;padding:10px 16px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:600;transition:all .2s;user-select:none}
+.plat-chk input{accent-color:var(--blue);width:16px;height:16px;cursor:pointer}
+.plat-chk.on{border-color:var(--blue);background:rgba(37,99,235,.07)}
+
+/* ── WEEK DISPLAY ── */
+.wd{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.wd-lbl{font-weight:700;color:var(--ink);font-size:.95rem}
+.wd-rng{font-size:.82rem;color:var(--muted);margin-top:2px}
+.wd-badge{font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px}
+.wd-badge.full{background:rgba(5,150,105,.12);color:#059669}
+.wd-badge.short{background:rgba(245,158,11,.12);color:#D97706}
+
+/* ── BUTTONS ── */
+.btn-p{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .2s;font-family:var(--f-body)}
+.btn-p:hover{opacity:.88}
+.btn-p:disabled{opacity:.45;cursor:not-allowed}
+.btn-s{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;background:var(--paper);color:var(--muted);border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:var(--f-body)}
+.btn-ai{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:10px;font-size:.92rem;font-weight:700;cursor:pointer;transition:opacity .2s;font-family:var(--f-body);margin-top:4px}
+.btn-ai:disabled{opacity:.45;cursor:not-allowed}
+.btn-copy{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:var(--f-body)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+/* ── PLAN WARNING ── */
+.plan-warn{display:flex;align-items:center;gap:14px;padding:13px 16px;background:rgba(245,158,11,.07);border:1.5px solid rgba(245,158,11,.3);border-radius:10px;margin-bottom:18px}
+.plan-warn strong{display:block;font-size:.88rem;color:var(--ink)}
+.plan-warn span{font-size:.82rem;color:var(--muted)}
+.btn-set-plan{padding:8px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--f-body)}
+
+/* ── PLATFORM SECTION ── */
+.plat-sec{margin-bottom:20px}
+.plat-sec-hdr{display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:10px;margin-bottom:14px;font-weight:700;font-size:.95rem;color:var(--ink)}
+.plat-sec-hdr.shopee{background:linear-gradient(135deg,rgba(238,77,45,.07),rgba(238,77,45,.02));border:1.5px solid rgba(238,77,45,.2)}
+.plat-sec-hdr.tiktok{background:linear-gradient(135deg,rgba(0,0,0,.05),rgba(0,0,0,.01));border:1.5px solid rgba(0,0,0,.12)}
+
+/* ── SUB HEADER ── */
+.sub-h{font-size:.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;border-bottom:1.5px solid var(--border2);padding-bottom:8px;margin:14px 0 10px}
+
+/* ── METRIC TABLE ── */
+.mt{width:100%;border-collapse:collapse;font-size:.83rem}
+.mt th{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:5px 8px;border-bottom:2px solid var(--border);text-align:right}
+.mt th:first-child{text-align:left}
+.mt td{padding:5px 8px;border-bottom:1px solid var(--border2);vertical-align:middle}
+.mt td:not(:first-child){text-align:right}
+.mt .mn{font-weight:600;color:var(--ink)}
+.mt .calc{font-family:var(--f-mono);color:var(--blue);font-size:.82rem}
+.mt .plan-v{color:var(--muted);font-family:var(--f-mono);font-size:.8rem}
+.mt .pct{font-family:var(--f-mono);font-weight:700;font-size:.8rem}
+.mt .pct.g{color:#059669}.mt .pct.y{color:#D97706}.mt .pct.r{color:#DC2626}
+.mt .total-row td{background:rgba(37,99,235,.04);font-weight:700}
+.m-inp{width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:.83rem;text-align:right;background:var(--bg);font-family:var(--f-mono);box-sizing:border-box;color:var(--ink)}
+.m-inp:focus{outline:none;border-color:var(--blue)}
+
+/* ── TOTAL BOX ── */
+.total-box{background:rgba(37,99,235,.04);border:1.5px solid rgba(37,99,235,.18);border-radius:12px;padding:18px;margin-bottom:18px}
+
+/* ── AI FIELDS ── */
+.ai-f{display:grid;gap:12px;margin-top:14px}
+.ai-lbl{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.ai-body{min-height:58px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.87rem;line-height:1.6;font-family:var(--f-body);background:var(--bg);outline:none;color:var(--ink)}
+.ai-body:empty::before{content:attr(data-ph);color:var(--faint)}
+.ai-body:focus{border-color:var(--blue)}
+.ai-spin{display:flex;align-items:center;gap:10px;padding:14px;color:var(--muted);font-size:.87rem}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PREVIEW ── */
+.pv-wrap{background:var(--paper);border:1.5px solid var(--border);border-radius:14px;overflow:hidden}
+.pv-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1.5px solid var(--border);background:var(--bg);flex-wrap:wrap;gap:8px}
+.pv-bar-lbl{font-size:.83rem;font-weight:600;color:var(--muted)}
+.pv-acts{display:flex;gap:8px}
+.pv-subj{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1.5px solid var(--border2);background:rgba(37,99,235,.04)}
+.pv-subj-lbl{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.pv-subj-val{font-size:.9rem;font-weight:600;color:var(--ink);outline:none;flex:1;font-family:var(--f-body)}
+.pv-body{padding:22px;min-height:300px}
+.chart-wrap{margin:14px 0;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px}
+.save-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1.5px solid var(--border2);background:var(--bg);flex-wrap:wrap;gap:8px}
+.save-info{font-size:.8rem;color:var(--muted)}
+
+/* ── MODAL ── */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.open{opacity:1;pointer-events:all}
+.mo-box{background:var(--paper);border-radius:16px;width:95%;max-width:820px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.mo-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1.5px solid var(--border);position:sticky;top:0;background:var(--paper);z-index:1}
+.mo-hdr h3{font-family:var(--f-display);font-size:1.05rem;font-weight:700}
+.mo-close{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);padding:4px 8px;line-height:1}
+.mo-body{padding:18px 22px}
+.mo-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1.5px solid var(--border);position:sticky;bottom:0;background:var(--paper)}
+
+/* ── PLAN GRID ── */
+.pg{display:grid;grid-template-columns:minmax(160px,1fr) repeat(6,90px);gap:5px;align-items:center;font-size:.8rem}
+.pg-head{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:center;padding:4px 4px}
+.pg-lbl{font-weight:600;color:var(--ink);padding:4px 0}
+.pg-inp{width:100%;padding:5px 6px;border:1.5px solid var(--border);border-radius:5px;font-size:.8rem;text-align:right;font-family:var(--f-mono);background:var(--bg);box-sizing:border-box;color:var(--ink)}
+.pg-inp:focus{outline:none;border-color:var(--blue)}
+.pg-row{display:contents}
+.pg-section{grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;padding:10px 0 4px;border-bottom:1px solid var(--border2)}
+@media(max-width:600px){.pg{grid-template-columns:1fr repeat(3,80px)}}
+</style>
 </head>
 <body>
 <div id="sp"></div>
@@ -26,109 +157,285 @@
 </nav>
 <div class="mob-overlay" id="mob-overlay"></div>
 
-<div class="report-wrap">
-  <div class="report-hdr">
-    <h1>Weekly Report Tool</h1>
+<div class="rw">
+  <div class="rw-hdr">
+    <h1>📊 Weekly Report Tool</h1>
     <p>Nhập data Actual → AI generate nhận xét → Copy mail gửi Lark. Framework DARA · TikTok Shop + Shopee.</p>
   </div>
 
   <div class="step-tabs">
-    <div class="step-tab active" onclick="goStep(1)">
-      <span class="step-num">BƯỚC 1</span>
-      <span class="step-name">Store & Tuần</span>
+    <div class="step-tab active" id="stab-1" onclick="STATE.step>0&&goStep(1)">
+      <span class="step-num">BƯỚC 1</span><span class="step-name">Context</span>
     </div>
-    <div class="step-tab disabled" onclick="STATE.step>1&&goStep(2)">
-      <span class="step-num">BƯỚC 2</span>
-      <span class="step-name">Nhập Data</span>
+    <div class="step-tab disabled" id="stab-2" onclick="STATE.step>=2&&goStep(2)">
+      <span class="step-num">BƯỚC 2</span><span class="step-name">Nhập Data</span>
     </div>
-    <div class="step-tab disabled" onclick="STATE.step>2&&goStep(3)">
-      <span class="step-num">BƯỚC 3</span>
-      <span class="step-name">Preview & Copy</span>
+    <div class="step-tab disabled" id="stab-3" onclick="STATE.step>=3&&goStep(3)">
+      <span class="step-num">BƯỚC 3</span><span class="step-name">Preview & Copy</span>
     </div>
   </div>
 
-  <!-- STEP 1 -->
-  <div class="step-page" id="step-page-1">
-    <div class="r-card">
-      <h2>Chọn Store & Platform</h2>
-      <p>Mỗi lần báo cáo cho 1 store. Chọn platform đang chạy.</p>
-      <div class="r-grid">
+  <!-- ═══ STEP 1 ═══ -->
+  <div id="sp1">
+    <div class="rc">
+      <h2>Chọn Brand & Platform</h2>
+      <p>Mỗi lần báo cáo cho 1 brand. Chọn các platform đang chạy.</p>
+      <div class="rg" style="margin-bottom:16px">
         <div>
-          <label class="r-label">Tên Store *</label>
-          <input class="r-input" id="inp-store" type="text" placeholder="VD: Vitabiotics Official, L'Occitane VN..." autocomplete="off">
+          <label class="rl">Brand *</label>
+          <select class="rs" id="inp-brand">
+            <option value="">⏳ Đang tải...</option>
+          </select>
         </div>
         <div>
-          <label class="r-label">Platform</label>
-          <div class="plat-toggle">
-            <div class="plat-btn active-both" data-plat="both" onclick="setPlatform('both')">🛍️🎵 Cả hai</div>
-            <div class="plat-btn" data-plat="shopee" onclick="setPlatform('shopee')">🛍️ Shopee</div>
-            <div class="plat-btn" data-plat="tiktok" onclick="setPlatform('tiktok')">🎵 TikTok</div>
+          <label class="rl">Platform</label>
+          <div class="plat-row">
+            <label class="plat-chk on" id="lbl-shopee">
+              <input type="checkbox" id="chk-shopee" checked onchange="onPlatChange()"> 🛍️ Shopee
+            </label>
+            <label class="plat-chk on" id="lbl-tiktok">
+              <input type="checkbox" id="chk-tiktok" checked onchange="onPlatChange()"> 🎵 TikTok Shop
+            </label>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="r-card">
+    <div class="rc">
       <h2>Tuần báo cáo</h2>
-      <p>Mặc định: T6 tuần này đến T5 tuần sau. Tự động cắt nếu qua tháng.</p>
-      <div class="week-display">
+      <p>Tuần tính theo lịch UpBase: bắt đầu từ ngày đầu tháng, kết thúc Thứ 5.</p>
+      <div class="rg" style="margin-bottom:14px">
         <div>
-          <div class="wd-label" id="week-label-display">—</div>
-          <div class="wd-range" id="week-range-display">—</div>
+          <label class="rl">Tháng</label>
+          <select class="rs" id="inp-month" onchange="onMonthChange()"></select>
         </div>
-        <span class="wd-days" id="week-days-display">—</span>
+        <div>
+          <label class="rl">Tuần</label>
+          <select class="rs" id="inp-week" onchange="onWeekChange()"></select>
+        </div>
       </div>
-      <div class="r-grid">
+      <div class="wd" id="wd-box">
         <div>
-          <label class="r-label">Override ngày bắt đầu (nếu cần)</label>
-          <input class="r-input" id="inp-week-start" type="date" onchange="overrideWeek()">
+          <div class="wd-lbl" id="wd-label">—</div>
+          <div class="wd-rng" id="wd-range">—</div>
         </div>
-        <div>
-          <label class="r-label">Override ngày kết thúc (nếu cần)</label>
-          <input class="r-input" id="inp-week-end" type="date" onchange="overrideWeek()">
-        </div>
+        <span class="wd-badge full" id="wd-badge">—</span>
       </div>
     </div>
 
-    <button class="gen-btn" onclick="nextStep1()" style="margin-top:8px">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    <button class="btn-p" onclick="nextStep1()" id="btn-next1" style="width:100%">
       Tiếp theo — Nhập Data →
     </button>
   </div>
 
-  <!-- STEP 2 -->
-  <div class="step-page" id="step-page-2" style="display:none">
-    <div id="step2-plan-alert"></div>
-    <div id="step2-content"></div>
-    <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
-      <button class="gen-btn" style="flex:1;max-width:200px;background:var(--paper);color:var(--muted);border:1.5px solid var(--border);box-shadow:none" onclick="goStep(1)">← Quay lại</button>
-      <button class="gen-btn" id="gen-btn" style="flex:3" onclick="generateReport()">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        Generate Report & Preview →
-      </button>
+  <!-- ═══ STEP 2 ═══ -->
+  <div id="sp2" style="display:none">
+    <div id="plan-warn-block"></div>
+
+    <!-- SHOPEE -->
+    <div id="shopee-sec" class="plat-sec">
+      <div class="plat-sec-hdr shopee">🛍️ Shopee Ads</div>
+
+      <div class="rc">
+        <div class="sub-h">CPC — Quảng cáo tìm kiếm</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual</th><th>Plan W</th><th>%Plan</th></tr></thead>
+          <tbody>
+            <tr><td class="mn">Doanh số</td><td><input class="m-inp" type="number" id="s_cpc_doanh_so" oninput="calcShopee()" placeholder="0"></td><td class="plan-v" id="p_s_cpc_doanh_so">—</td><td class="pct" id="pt_s_cpc_doanh_so">—</td></tr>
+            <tr><td class="mn">Chi phí</td><td><input class="m-inp" type="number" id="s_cpc_chi_phi" oninput="calcShopee()" placeholder="0"></td><td class="plan-v" id="p_s_cpc_chi_phi">—</td><td class="pct" id="pt_s_cpc_chi_phi">—</td></tr>
+            <tr><td class="mn">Lượt xem</td><td><input class="m-inp" type="number" id="s_cpc_luot_xem" oninput="calcShopee()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Lượt click</td><td><input class="m-inp" type="number" id="s_cpc_luot_click" oninput="calcShopee()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Đơn hàng</td><td><input class="m-inp" type="number" id="s_cpc_don_hang" oninput="calcShopee()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr class="total-row"><td>ROAS</td><td class="calc" id="s_cpc_roas">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CPC</td><td class="calc" id="s_cpc_cpc">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CTR</td><td class="calc" id="s_cpc_ctr">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CR</td><td class="calc" id="s_cpc_cr">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>AOV</td><td class="calc" id="s_cpc_aov">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="rc">
+        <div class="sub-h">Nhận Diện — Display Ads</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual</th><th>Plan W</th><th>%Plan</th></tr></thead>
+          <tbody>
+            <tr><td class="mn">GMV</td><td><input class="m-inp" type="number" id="s_nd_gmv" oninput="calcShopee()" placeholder="0"></td><td class="plan-v" id="p_s_nd_gmv">—</td><td class="pct" id="pt_s_nd_gmv">—</td></tr>
+            <tr><td class="mn">Chi phí</td><td><input class="m-inp" type="number" id="s_nd_chi_phi" oninput="calcShopee()" placeholder="0"></td><td class="plan-v" id="p_s_nd_chi_phi">—</td><td class="pct" id="pt_s_nd_chi_phi">—</td></tr>
+            <tr><td class="mn">Lượt xem</td><td><input class="m-inp" type="number" id="s_nd_luot_xem" oninput="calcShopee()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Lượt click</td><td><input class="m-inp" type="number" id="s_nd_luot_click" oninput="calcShopee()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr class="total-row"><td>ROAS</td><td class="calc" id="s_nd_roas">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CPC</td><td class="calc" id="s_nd_cpc">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CTR</td><td class="calc" id="s_nd_ctr">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="rc">
+        <div class="sub-h">Livestream Ads</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual</th><th>Plan W</th><th>%Plan</th></tr></thead>
+          <tbody>
+            <tr><td class="mn">GMV</td><td><input class="m-inp" type="number" id="s_live_gmv" oninput="calcShopee()" placeholder="0"></td><td class="plan-v" id="p_s_live_gmv">—</td><td class="pct" id="pt_s_live_gmv">—</td></tr>
+            <tr><td class="mn">Chi phí</td><td><input class="m-inp" type="number" id="s_live_chi_phi" oninput="calcShopee()" placeholder="0"></td><td class="plan-v" id="p_s_live_chi_phi">—</td><td class="pct" id="pt_s_live_chi_phi">—</td></tr>
+            <tr><td class="mn">Lượt xem</td><td><input class="m-inp" type="number" id="s_live_luot_xem" oninput="calcShopee()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr class="total-row"><td>ROAS</td><td class="calc" id="s_live_roas">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="total-box">
+        <div class="sub-h" style="margin-top:0">🏆 Shopee Tổng (auto-sum)</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual W</th><th>Plan Tháng</th><th>% Plan T</th></tr></thead>
+          <tbody>
+            <tr class="total-row"><td>GMV Ads</td><td class="calc" id="s_tot_gmv">—</td><td class="plan-v" id="p_s_tot_gmv">—</td><td class="pct" id="pt_s_tot_gmv">—</td></tr>
+            <tr class="total-row"><td>Chi phí</td><td class="calc" id="s_tot_cp">—</td><td class="plan-v" id="p_s_tot_cp">—</td><td class="pct" id="pt_s_tot_cp">—</td></tr>
+            <tr class="total-row"><td>ROAS</td><td class="calc" id="s_tot_roas">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>Lượt xem</td><td class="calc" id="s_tot_xem">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>Lượt click</td><td class="calc" id="s_tot_click">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIKTOK -->
+    <div id="tiktok-sec" class="plat-sec">
+      <div class="plat-sec-hdr tiktok">🎵 TikTok Shop Ads</div>
+
+      <div class="rc">
+        <div class="sub-h">PGM — Product GMV Ads</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual</th><th>Plan W</th><th>%Plan</th></tr></thead>
+          <tbody>
+            <tr><td class="mn">Doanh số</td><td><input class="m-inp" type="number" id="t_pgm_doanh_so" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v" id="p_t_pgm_doanh_so">—</td><td class="pct" id="pt_t_pgm_doanh_so">—</td></tr>
+            <tr><td class="mn">Chi phí</td><td><input class="m-inp" type="number" id="t_pgm_chi_phi" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v" id="p_t_pgm_chi_phi">—</td><td class="pct" id="pt_t_pgm_chi_phi">—</td></tr>
+            <tr><td class="mn">Lượt xem</td><td><input class="m-inp" type="number" id="t_pgm_luot_xem" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Lượt click</td><td><input class="m-inp" type="number" id="t_pgm_luot_click" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Đơn hàng</td><td><input class="m-inp" type="number" id="t_pgm_don_hang" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr class="total-row"><td>ROAS</td><td class="calc" id="t_pgm_roas">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CPC</td><td class="calc" id="t_pgm_cpc">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CTR</td><td class="calc" id="t_pgm_ctr">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>CR</td><td class="calc" id="t_pgm_cr">—</td><td></td><td></td></tr>
+            <tr class="total-row"><td>AOV</td><td class="calc" id="t_pgm_aov">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="rc">
+        <div class="sub-h">LGM — Livestream GMV</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual</th><th>Plan W</th><th>%Plan</th></tr></thead>
+          <tbody>
+            <tr><td class="mn">Doanh thu</td><td><input class="m-inp" type="number" id="t_lgm_doanhthu" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v" id="p_t_lgm_doanhthu">—</td><td class="pct" id="pt_t_lgm_doanhthu">—</td></tr>
+            <tr><td class="mn">Chi phí</td><td><input class="m-inp" type="number" id="t_lgm_chi_phi" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v" id="p_t_lgm_chi_phi">—</td><td class="pct" id="pt_t_lgm_chi_phi">—</td></tr>
+            <tr class="total-row"><td>ROI</td><td class="calc" id="t_lgm_roi">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="rc">
+        <div class="sub-h">Consideration</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual</th><th>Plan W</th><th>%Plan</th></tr></thead>
+          <tbody>
+            <tr><td class="mn">Người tiếp cận</td><td><input class="m-inp" type="number" id="t_con_nguoi" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Chi phí</td><td><input class="m-inp" type="number" id="t_con_chi_phi" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v" id="p_t_con_chi_phi">—</td><td class="pct" id="pt_t_con_chi_phi">—</td></tr>
+            <tr class="total-row"><td>CPA</td><td class="calc" id="t_con_cpa">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="rc">
+        <div class="sub-h">Branding — Follow & View</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual</th><th>Plan W</th><th>%Plan</th></tr></thead>
+          <tbody>
+            <tr><td class="mn">Lượt xem</td><td><input class="m-inp" type="number" id="t_brd_view" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Follow</td><td><input class="m-inp" type="number" id="t_brd_follow" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v">—</td><td></td></tr>
+            <tr><td class="mn">Chi phí</td><td><input class="m-inp" type="number" id="t_brd_chi_phi" oninput="calcTikTok()" placeholder="0"></td><td class="plan-v" id="p_t_brd_chi_phi">—</td><td class="pct" id="pt_t_brd_chi_phi">—</td></tr>
+            <tr class="total-row"><td>CPA (follow)</td><td class="calc" id="t_brd_cpa">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="total-box" style="background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.12)">
+        <div class="sub-h" style="margin-top:0">🏆 TikTok Tổng (auto-sum)</div>
+        <div style="overflow-x:auto">
+        <table class="mt">
+          <thead><tr><th>Metric</th><th>Actual W</th><th>Plan Tháng</th><th>% Plan T</th></tr></thead>
+          <tbody>
+            <tr class="total-row"><td>GMV</td><td class="calc" id="t_tot_gmv">—</td><td class="plan-v" id="p_t_tot_gmv">—</td><td class="pct" id="pt_t_tot_gmv">—</td></tr>
+            <tr class="total-row"><td>Chi phí</td><td class="calc" id="t_tot_cp">—</td><td class="plan-v" id="p_t_tot_cp">—</td><td class="pct" id="pt_t_tot_cp">—</td></tr>
+            <tr class="total-row"><td>ROI</td><td class="calc" id="t_tot_roi">—</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI -->
+    <div class="rc">
+      <h2>🤖 AI Nhận xét</h2>
+      <p>Bấm Generate để Claude phân tích data và điền 5 phần. Có thể edit trực tiếp trước khi preview.</p>
+      <button class="btn-ai" id="ai-btn" onclick="generateAI()">✨ Generate AI nhận xét</button>
+      <div id="ai-loading" style="display:none" class="ai-spin"><div class="spin"></div> Đang phân tích với Claude AI...</div>
+      <div class="ai-f">
+        <div><div class="ai-lbl">✅ Highlight</div><div class="ai-body" id="ai_highlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl">⚠️ Lowlight</div><div class="ai-body" id="ai_lowlight" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl">📊 Thực trạng</div><div class="ai-body" id="ai_thuc_trang" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl">🔍 Vấn đề</div><div class="ai-body" id="ai_van_de" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+        <div><div class="ai-lbl">💡 Giải pháp & Plan tuần tới</div><div class="ai-body" id="ai_giai_phap" contenteditable="true" data-ph="AI sẽ điền — hoặc nhập tay"></div></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-s" onclick="goStep(1)">← Quay lại</button>
+      <button class="btn-p" style="flex:3" onclick="buildAndGoStep3()">Xem Preview & Copy →</button>
     </div>
   </div>
 
-  <!-- STEP 3 -->
-  <div class="step-page" id="step-page-3" style="display:none">
-    <div class="mail-preview-wrap">
-      <div class="mp-toolbar">
-        <span class="mp-label">📧 Mail Preview — Click vào nội dung để sửa trực tiếp</span>
-        <div class="mp-actions">
-          <button class="mp-btn" onclick="goStep(2)">← Sửa data</button>
-          <button class="mp-btn primary" id="copy-btn" onclick="copyMail()">Copy → Lark</button>
+  <!-- ═══ STEP 3 ═══ -->
+  <div id="sp3" style="display:none">
+    <div class="pv-wrap">
+      <div class="pv-bar">
+        <span class="pv-bar-lbl">📧 Preview — Click vào nội dung để sửa trực tiếp</span>
+        <div class="pv-acts">
+          <button class="btn-s" onclick="goStep(2)">← Sửa data</button>
+          <button class="btn-copy" id="copy-btn" onclick="copyMail()">📋 Copy → Lark</button>
         </div>
       </div>
-      <div class="mail-subject-bar">
-        <span class="ms-label">Subject</span>
-        <span class="ms-value" id="mail-subject" contenteditable="true"></span>
+      <div class="pv-subj">
+        <span class="pv-subj-lbl">Subject</span>
+        <span class="pv-subj-val" id="mail-subject" contenteditable="true"></span>
       </div>
-      <div class="mail-body" id="mail-body" contenteditable="true" spellcheck="false"></div>
+      <div class="pv-body">
+        <div class="chart-wrap">
+          <canvas id="report-chart" height="80"></canvas>
+        </div>
+        <div id="mail-body" contenteditable="true" spellcheck="false"></div>
+      </div>
       <div class="save-bar">
-        <span class="sb-info">Đã sửa xong? Lưu vào Sheets để không mất data.</span>
-        <div class="sb-actions">
-          <button class="mp-btn" id="save-btn" onclick="saveReport()">Lưu vào Sheets</button>
-          <button class="mp-btn primary" onclick="copyMail()">Copy → Lark</button>
+        <span class="save-info">Lưu để không mất data khi đóng tab.</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn-s" id="save-btn" onclick="saveReport()">💾 Lưu vào Sheets</button>
+          <button class="btn-copy" onclick="copyMail()">📋 Copy → Lark</button>
         </div>
       </div>
     </div>
@@ -136,41 +443,853 @@
 </div>
 
 <!-- PLAN MODAL -->
-<div class="um-modal-overlay" id="plan-modal">
-  <div class="um-modal" style="max-width:900px;width:95%;max-height:85vh;overflow-y:auto">
-    <div class="um-modal-hdr">
+<div class="mo" id="plan-modal">
+  <div class="mo-box">
+    <div class="mo-hdr">
       <h3>📋 Set Plan tháng</h3>
-      <button class="um-modal-close" onclick="closePlanModal()">✕</button>
+      <button class="mo-close" onclick="closePlanModal()">✕</button>
     </div>
-    <div id="plan-modal-content"></div>
-    <div class="fp-actions" style="margin-top:24px">
-      <button class="fp-cancel" onclick="closePlanModal()">Huỷ</button>
-      <button class="fp-submit" id="plan-save-btn" onclick="savePlan()">Lưu Plan →</button>
+    <div class="mo-body" id="plan-modal-body"></div>
+    <div class="mo-foot">
+      <button class="btn-s" onclick="closePlanModal()">Huỷ</button>
+      <button class="btn-p" id="plan-save-btn" onclick="savePlan()">Lưu Plan →</button>
     </div>
   </div>
 </div>
 
 <div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
 <script src="/js/shared.js"></script>
-<script src="/js/report.js"></script>
 <script>
-function overrideWeek(){
-  const s=document.getElementById('inp-week-start').value;
-  const e=document.getElementById('inp-week-end').value;
-  if(!s||!e)return;
-  const start=new Date(s),end=new Date(e);
-  const days=Math.round((end-start)/(1000*60*60*24))+1;
-  const month=start.getMonth()+1,year=start.getFullYear();
-  const quarter=Math.ceil(month/3);
-  const wn=STATE.weekInfo?.weekNum||1;
-  STATE.weekInfo={start:fmtDate(start),end:fmtDate(end),startRaw:start,endRaw:end,days,isFull:days===7,weekNum:wn,month,year,quarter,label:`W${wn} Tháng ${month} Quý ${quarter}.${year}`};
-  document.getElementById('week-label-display').textContent=STATE.weekInfo.label;
-  document.getElementById('week-range-display').textContent=`${STATE.weekInfo.start} – ${STATE.weekInfo.end}`;
-  const dEl=document.getElementById('week-days-display');
-  dEl.textContent=days===7?'7 ngày':`${days} ngày (tuần lẻ)`;
-  dEl.className=`wd-days ${days===7?'full':'short'}`;
+/* ═══ REPORT TOOL V8 ═══ */
+const API = 'https://script.google.com/macros/s/AKfycbyRNS6gon5Nyn0Bt9vLpGmbdCJ13gTE8jgz_mhrRYunybgxDdwkcON_bP7SfIHtIL8J/exec';
+
+const STATE = {
+  user: null, step: 1,
+  brand: '', platforms: { shopee: true, tiktok: true },
+  month: new Date().getMonth() + 1, year: new Date().getFullYear(),
+  weekNum: 1, weeks: [], weekInfo: null,
+  plan: null, history: [],
+  shopee: { cpc: {}, nd: {}, live: {}, tot: {} },
+  tiktok: { pgm: {}, lgm: {}, con: {}, brd: {}, tot: {} },
+  ai: { highlight:'', lowlight:'', thuc_trang:'', van_de:'', giai_phap:'' },
+  chartInst: null
+};
+
+/* ── WEEK UTILS ── */
+function getWeeksOfMonth(year, month) {
+  const weeks = [];
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay  = new Date(year, month, 0);
+  let w1End = new Date(firstDay);
+  while (w1End.getDay() !== 4) w1End.setDate(w1End.getDate() + 1);
+  if (w1End > lastDay) w1End = new Date(lastDay);
+  weeks.push({ w: 1, start: new Date(firstDay), end: new Date(w1End) });
+  let cursor = new Date(w1End); cursor.setDate(cursor.getDate() + 1);
+  let wNum = 2;
+  while (cursor <= lastDay) {
+    let wEnd = new Date(cursor);
+    while (wEnd.getDay() !== 4 && wEnd < lastDay) wEnd.setDate(wEnd.getDate() + 1);
+    if (wEnd > lastDay) wEnd = new Date(lastDay);
+    weeks.push({ w: wNum, start: new Date(cursor), end: new Date(wEnd) });
+    cursor = new Date(wEnd); cursor.setDate(cursor.getDate() + 1); wNum++;
+  }
+  return weeks;
 }
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(initStep1,100);});
+function getCurrentWeekNum(year, month) {
+  const today = new Date();
+  for (const w of getWeeksOfMonth(year, month))
+    if (today >= w.start && today <= w.end) return w.w;
+  return getWeeksOfMonth(year, month).length;
+}
+function fmtDR(s, e) {
+  const f = d => `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+  return `${f(s)} – ${f(e)}`;
+}
+function fmtD(d) {
+  return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+}
+
+/* ── FORMAT ── */
+function fmt(n, unit='') {
+  if (n === null || n === undefined || isNaN(n) || n === '') return '—';
+  const v = parseFloat(n);
+  if (!isFinite(v) || v === 0) return unit === 'x' ? '0x' : unit === '%' ? '0%' : '0';
+  if (unit === '₫') return v.toLocaleString('vi-VN') + '₫';
+  if (unit === 'x') return v.toFixed(2) + 'x';
+  if (unit === '%') return v.toFixed(2) + '%';
+  return v.toLocaleString('vi-VN');
+}
+function fmtBig(n) {
+  if (!n || isNaN(n)) return '—';
+  const v = parseFloat(n);
+  if (v >= 1e9) return (v/1e9).toFixed(1) + 'B₫';
+  if (v >= 1e6) return (v/1e6).toFixed(1) + 'M₫';
+  return v.toLocaleString('vi-VN') + '₫';
+}
+function pctCls(pct) {
+  if (!pct) return '';
+  const p = parseFloat(pct);
+  return p >= 100 ? 'g' : p >= 80 ? 'y' : 'r';
+}
+function pctClr(pct) {
+  if (!pct) return '';
+  const p = parseFloat(pct);
+  return p >= 100 ? '#059669' : p >= 80 ? '#D97706' : '#DC2626';
+}
+function getPct(act, plan) {
+  if (!plan || !parseFloat(plan)) return null;
+  return ((parseFloat(act) / parseFloat(plan)) * 100).toFixed(1);
+}
+
+/* ── INPUT HELPERS ── */
+function gv(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+function sd(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
+function sc(id, pct) {
+  const e = document.getElementById(id);
+  if (!e) return;
+  if (pct === null) { e.textContent = '—'; e.className = 'pct'; return; }
+  e.textContent = pct + '%';
+  e.className = 'pct ' + pctCls(pct);
+}
+
+/* ── BOOT ── */
+document.addEventListener('DOMContentLoaded', () => {
+  const u = Auth.get() || (() => { try { return JSON.parse(localStorage.getItem('mo_persist')); } catch {} })();
+  if (!u) { location.href = '/dashboard'; return; }
+  Auth.set(u); localStorage.setItem('mo_persist', JSON.stringify(u));
+  STATE.user = u;
+  const nu = document.getElementById('nav-user');
+  if (nu) nu.textContent = u.name;
+  populateMonth();
+  populateWeeks();
+  fetchBrands();
+});
+
+function populateMonth() {
+  const sel = document.getElementById('inp-month');
+  const months = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
+                  'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  sel.innerHTML = months.map((m, i) =>
+    `<option value="${i+1}" ${i+1===STATE.month?'selected':''}>${m}</option>`).join('');
+}
+
+function populateWeeks() {
+  const { month, year } = STATE;
+  STATE.weeks = getWeeksOfMonth(year, month);
+  const cur = getCurrentWeekNum(year, month);
+  STATE.weekNum = cur;
+  const sel = document.getElementById('inp-week');
+  sel.innerHTML = STATE.weeks.map(w =>
+    `<option value="${w.w}" ${w.w===cur?'selected':''}>${'W' + w.w}: ${fmtDR(w.start, w.end)}</option>`
+  ).join('');
+  updateWeekDisplay();
+}
+
+function onMonthChange() {
+  STATE.month = parseInt(document.getElementById('inp-month').value);
+  populateWeeks();
+}
+function onWeekChange() {
+  STATE.weekNum = parseInt(document.getElementById('inp-week').value);
+  updateWeekDisplay();
+}
+function updateWeekDisplay() {
+  const w = STATE.weeks.find(x => x.w === STATE.weekNum);
+  if (!w) return;
+  const days = Math.round((w.end - w.start) / 86400000) + 1;
+  const q = Math.ceil(STATE.month / 3);
+  STATE.weekInfo = { w: w.w, start: w.start, end: w.end, days,
+    label: `W${w.w} Tháng ${STATE.month} Quý ${q}.${STATE.year}` };
+  document.getElementById('wd-label').textContent = STATE.weekInfo.label;
+  document.getElementById('wd-range').textContent = fmtDR(w.start, w.end);
+  const badge = document.getElementById('wd-badge');
+  if (days === 7) { badge.textContent = '7 ngày'; badge.className = 'wd-badge full'; }
+  else { badge.textContent = days + ' ngày (lẻ)'; badge.className = 'wd-badge short'; }
+}
+
+function onPlatChange() {
+  STATE.platforms.shopee = document.getElementById('chk-shopee').checked;
+  STATE.platforms.tiktok = document.getElementById('chk-tiktok').checked;
+  document.getElementById('lbl-shopee').className = 'plat-chk' + (STATE.platforms.shopee ? ' on' : '');
+  document.getElementById('lbl-tiktok').className = 'plat-chk' + (STATE.platforms.tiktok ? ' on' : '');
+}
+
+async function fetchBrands() {
+  const sel = document.getElementById('inp-brand');
+  try {
+    const j = await fetch(`${API}?action=getBrands&username=${STATE.user.username}`).then(r => r.json());
+    const brands = j.data || [];
+    sel.innerHTML = brands.length
+      ? brands.map(b => `<option value="${b}">${b}</option>`).join('')
+      : '<option value="">Chưa có brand</option>';
+    STATE.brand = brands[0] || '';
+  } catch { sel.innerHTML = '<option value="">Lỗi tải brands</option>'; }
+}
+
+/* ── STEP NAVIGATION ── */
+function goStep(n) {
+  STATE.step = n;
+  ['sp1','sp2','sp3'].forEach((id, i) => {
+    document.getElementById(id).style.display = i + 1 === n ? 'block' : 'none';
+  });
+  ['stab-1','stab-2','stab-3'].forEach((id, i) => {
+    const t = document.getElementById(id);
+    t.classList.remove('active','done','disabled');
+    if (i + 1 === n) t.classList.add('active');
+    else if (i + 1 < n) t.classList.add('done');
+    else t.classList.add('disabled');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function nextStep1() {
+  STATE.brand = document.getElementById('inp-brand').value.trim();
+  if (!STATE.brand) { showToast('Chọn brand trước', 'error'); return; }
+  if (!STATE.platforms.shopee && !STATE.platforms.tiktok) {
+    showToast('Chọn ít nhất 1 platform', 'error'); return;
+  }
+  const btn = document.getElementById('btn-next1');
+  btn.disabled = true; btn.textContent = 'Đang tải...';
+  try {
+    const [planJ, histJ] = await Promise.all([
+      fetch(`${API}?action=getPlan&brand_name=${encodeURIComponent(STATE.brand)}&month=${STATE.month}&year=${STATE.year}`).then(r => r.json()),
+      fetch(`${API}?action=getWeeklyHistory&brand_name=${encodeURIComponent(STATE.brand)}&month=${STATE.month}&year=${STATE.year}`).then(r => r.json())
+    ]);
+    STATE.plan = planJ.data || null;
+    STATE.history = histJ.data || [];
+    initStep2();
+    goStep(2);
+  } catch { showToast('Lỗi tải dữ liệu. Thử lại.', 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Tiếp theo — Nhập Data →'; }
+}
+
+function initStep2() {
+  // Show/hide sections
+  document.getElementById('shopee-sec').style.display = STATE.platforms.shopee ? 'block' : 'none';
+  document.getElementById('tiktok-sec').style.display = STATE.platforms.tiktok ? 'block' : 'none';
+
+  // Plan warning
+  const wb = document.getElementById('plan-warn-block');
+  if (!STATE.plan) {
+    wb.innerHTML = `<div class="plan-warn">
+      <div>⚠️</div>
+      <div><strong>Chưa có Plan tháng ${STATE.month}/${STATE.year}</strong>
+      <span>Bấm Set Plan để nhập kế hoạch tháng, hoặc bỏ qua để chỉ nhập Actual.</span></div>
+      <button class="btn-set-plan" onclick="showPlanModal()">Set Plan</button>
+    </div>`;
+  } else { wb.innerHTML = ''; }
+
+  // Pre-fill from history if this week exists
+  const thisWeek = STATE.history.find(h => parseInt(h.week_num) === STATE.weekNum);
+  if (thisWeek) {
+    const fields = ['s_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
+      's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
+      's_live_gmv','s_live_chi_phi','s_live_luot_xem',
+      't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
+      't_lgm_doanhthu','t_lgm_chi_phi','t_con_nguoi','t_con_chi_phi',
+      't_brd_view','t_brd_follow','t_brd_chi_phi'];
+    fields.forEach(f => {
+      const el = document.getElementById(f);
+      if (el && thisWeek[f]) el.value = thisWeek[f];
+    });
+    const ai_fields = ['highlight','lowlight','nhan_xet_thuc_trang','nhan_xet_van_de','nhan_xet_giai_phap'];
+    const ai_ids = ['ai_highlight','ai_lowlight','ai_thuc_trang','ai_van_de','ai_giai_phap'];
+    ai_fields.forEach((f, i) => {
+      const el = document.getElementById(ai_ids[i]);
+      if (el && thisWeek[f]) el.textContent = thisWeek[f];
+    });
+    // pre-fill nhận xét
+    ['thuc_trang','van_de','giai_phap'].forEach(k => {
+      const el = document.getElementById('ai_' + k);
+      if (el && thisWeek['nhan_xet_' + k]) el.textContent = thisWeek['nhan_xet_' + k];
+    });
+  }
+
+  updatePlanDisplay();
+  calcShopee();
+  calcTikTok();
+}
+
+function updatePlanDisplay() {
+  if (!STATE.plan) return;
+  const plan = STATE.plan;
+  const wKey = `plan_w${STATE.weekNum}`;
+
+  const setPlan = (fieldId, planKey, period) => {
+    const val = plan[planKey]?.[period] || 0;
+    const el = document.getElementById('p_' + fieldId);
+    if (el) el.textContent = val ? fmt(val, '₫') : '—';
+    return val;
+  };
+
+  // Shopee CPC plan
+  setPlan('s_cpc_doanh_so', 's_cpc_doanh_so', wKey);
+  setPlan('s_cpc_chi_phi',  's_cpc_chi_phi',  wKey);
+  setPlan('s_nd_gmv',       's_nd_gmv',       wKey);
+  setPlan('s_nd_chi_phi',   's_nd_chi_phi',   wKey);
+  setPlan('s_live_gmv',     's_live_gmv',     wKey);
+  setPlan('s_live_chi_phi', 's_live_chi_phi', wKey);
+  setPlan('t_pgm_doanh_so', 't_pgm_doanh_so', wKey);
+  setPlan('t_pgm_chi_phi',  't_pgm_chi_phi',  wKey);
+  setPlan('t_lgm_doanhthu', 't_lgm_doanhthu', wKey);
+  setPlan('t_lgm_chi_phi',  't_lgm_chi_phi',  wKey);
+  setPlan('t_con_chi_phi',  't_con_chi_phi',  wKey);
+  setPlan('t_brd_chi_phi',  't_brd_chi_phi',  wKey);
+
+  // Month totals for Tổng boxes
+  const sGmvM = (plan['s_cpc_doanh_so']?.plan_month || 0) + (plan['s_nd_gmv']?.plan_month || 0) + (plan['s_live_gmv']?.plan_month || 0);
+  const sCpM  = (plan['s_cpc_chi_phi']?.plan_month || 0) + (plan['s_nd_chi_phi']?.plan_month || 0) + (plan['s_live_chi_phi']?.plan_month || 0);
+  const tGmvM = (plan['t_pgm_doanh_so']?.plan_month || 0) + (plan['t_lgm_doanhthu']?.plan_month || 0);
+  const tCpM  = (plan['t_pgm_chi_phi']?.plan_month || 0) + (plan['t_lgm_chi_phi']?.plan_month || 0) + (plan['t_con_chi_phi']?.plan_month || 0) + (plan['t_brd_chi_phi']?.plan_month || 0);
+  sd('p_s_tot_gmv', sGmvM ? fmt(sGmvM, '₫') : '—');
+  sd('p_s_tot_cp',  sCpM  ? fmt(sCpM,  '₫') : '—');
+  sd('p_t_tot_gmv', tGmvM ? fmt(tGmvM, '₫') : '—');
+  sd('p_t_tot_cp',  tCpM  ? fmt(tCpM,  '₫') : '—');
+}
+
+/* ── CALC SHOPEE ── */
+function calcShopee() {
+  const ds = gv('s_cpc_doanh_so'), cp = gv('s_cpc_chi_phi');
+  const xem = gv('s_cpc_luot_xem'), click = gv('s_cpc_luot_click'), dh = gv('s_cpc_don_hang');
+  sd('s_cpc_roas', cp ? fmt(ds/cp, 'x') : '—');
+  sd('s_cpc_cpc',  click ? fmt(cp/click, '₫') : '—');
+  sd('s_cpc_ctr',  xem ? fmt(click/xem*100, '%') : '—');
+  sd('s_cpc_cr',   click ? fmt(dh/click*100, '%') : '—');
+  sd('s_cpc_aov',  dh ? fmt(ds/dh, '₫') : '—');
+
+  const nd_gmv = gv('s_nd_gmv'), nd_cp = gv('s_nd_chi_phi');
+  const nd_xem = gv('s_nd_luot_xem'), nd_click = gv('s_nd_luot_click');
+  sd('s_nd_roas', nd_cp ? fmt(nd_gmv/nd_cp, 'x') : '—');
+  sd('s_nd_cpc',  nd_click ? fmt(nd_cp/nd_click, '₫') : '—');
+  sd('s_nd_ctr',  nd_xem ? fmt(nd_click/nd_xem*100, '%') : '—');
+
+  const lv_gmv = gv('s_live_gmv'), lv_cp = gv('s_live_chi_phi');
+  sd('s_live_roas', lv_cp ? fmt(lv_gmv/lv_cp, 'x') : '—');
+
+  const tot_gmv = ds + nd_gmv + lv_gmv;
+  const tot_cp  = cp + nd_cp + lv_cp;
+  const tot_xem = xem + nd_xem + gv('s_live_luot_xem');
+  const tot_click = click + nd_click;
+
+  sd('s_tot_gmv',   fmt(tot_gmv, '₫'));
+  sd('s_tot_cp',    fmt(tot_cp, '₫'));
+  sd('s_tot_roas',  tot_cp ? fmt(tot_gmv/tot_cp, 'x') : '—');
+  sd('s_tot_xem',   fmt(tot_xem));
+  sd('s_tot_click', fmt(tot_click));
+  STATE.shopee.tot = { gmv: tot_gmv, cp: tot_cp, xem: tot_xem, click: tot_click };
+
+  if (STATE.plan) {
+    const wKey = `plan_w${STATE.weekNum}`;
+    const planFields = {
+      'pt_s_cpc_doanh_so': [ds, STATE.plan['s_cpc_doanh_so']?.[wKey]],
+      'pt_s_cpc_chi_phi':  [cp, STATE.plan['s_cpc_chi_phi']?.[wKey]],
+      'pt_s_nd_gmv':       [nd_gmv, STATE.plan['s_nd_gmv']?.[wKey]],
+      'pt_s_nd_chi_phi':   [nd_cp, STATE.plan['s_nd_chi_phi']?.[wKey]],
+      'pt_s_live_gmv':     [lv_gmv, STATE.plan['s_live_gmv']?.[wKey]],
+      'pt_s_live_chi_phi': [lv_cp, STATE.plan['s_live_chi_phi']?.[wKey]],
+    };
+    Object.entries(planFields).forEach(([id, [act, plan]]) => sc(id, getPct(act, plan)));
+    const sGmvM = (STATE.plan['s_cpc_doanh_so']?.plan_month||0)+(STATE.plan['s_nd_gmv']?.plan_month||0)+(STATE.plan['s_live_gmv']?.plan_month||0);
+    const sCpM  = (STATE.plan['s_cpc_chi_phi']?.plan_month||0)+(STATE.plan['s_nd_chi_phi']?.plan_month||0)+(STATE.plan['s_live_chi_phi']?.plan_month||0);
+    sc('pt_s_tot_gmv', getPct(tot_gmv, sGmvM));
+    sc('pt_s_tot_cp',  getPct(tot_cp, sCpM));
+  }
+}
+
+/* ── CALC TIKTOK ── */
+function calcTikTok() {
+  const pgm_ds = gv('t_pgm_doanh_so'), pgm_cp = gv('t_pgm_chi_phi');
+  const pgm_xem = gv('t_pgm_luot_xem'), pgm_click = gv('t_pgm_luot_click'), pgm_dh = gv('t_pgm_don_hang');
+  sd('t_pgm_roas', pgm_cp ? fmt(pgm_ds/pgm_cp, 'x') : '—');
+  sd('t_pgm_cpc',  pgm_click ? fmt(pgm_cp/pgm_click, '₫') : '—');
+  sd('t_pgm_ctr',  pgm_xem ? fmt(pgm_click/pgm_xem*100, '%') : '—');
+  sd('t_pgm_cr',   pgm_click ? fmt(pgm_dh/pgm_click*100, '%') : '—');
+  sd('t_pgm_aov',  pgm_dh ? fmt(pgm_ds/pgm_dh, '₫') : '—');
+
+  const lgm_dt = gv('t_lgm_doanhthu'), lgm_cp = gv('t_lgm_chi_phi');
+  sd('t_lgm_roi', lgm_cp ? fmt(lgm_dt/lgm_cp, 'x') : '—');
+
+  const con_nguoi = gv('t_con_nguoi'), con_cp = gv('t_con_chi_phi');
+  sd('t_con_cpa', con_nguoi ? fmt(con_cp/con_nguoi, '₫') : '—');
+
+  const brd_follow = gv('t_brd_follow'), brd_cp = gv('t_brd_chi_phi');
+  sd('t_brd_cpa', brd_follow ? fmt(brd_cp/brd_follow, '₫') : '—');
+
+  const tot_gmv = pgm_ds + lgm_dt;
+  const tot_cp  = pgm_cp + lgm_cp + con_cp + brd_cp;
+  sd('t_tot_gmv', fmt(tot_gmv, '₫'));
+  sd('t_tot_cp',  fmt(tot_cp, '₫'));
+  sd('t_tot_roi', tot_cp ? fmt(tot_gmv/tot_cp, 'x') : '—');
+  STATE.tiktok.tot = { gmv: tot_gmv, cp: tot_cp };
+
+  if (STATE.plan) {
+    const wKey = `plan_w${STATE.weekNum}`;
+    const planFields = {
+      'pt_t_pgm_doanh_so': [pgm_ds, STATE.plan['t_pgm_doanh_so']?.[wKey]],
+      'pt_t_pgm_chi_phi':  [pgm_cp, STATE.plan['t_pgm_chi_phi']?.[wKey]],
+      'pt_t_lgm_doanhthu': [lgm_dt, STATE.plan['t_lgm_doanhthu']?.[wKey]],
+      'pt_t_lgm_chi_phi':  [lgm_cp, STATE.plan['t_lgm_chi_phi']?.[wKey]],
+      'pt_t_con_chi_phi':  [con_cp, STATE.plan['t_con_chi_phi']?.[wKey]],
+      'pt_t_brd_chi_phi':  [brd_cp, STATE.plan['t_brd_chi_phi']?.[wKey]],
+    };
+    Object.entries(planFields).forEach(([id, [act, plan]]) => sc(id, getPct(act, plan)));
+    const tGmvM = (STATE.plan['t_pgm_doanh_so']?.plan_month||0)+(STATE.plan['t_lgm_doanhthu']?.plan_month||0);
+    const tCpM  = (STATE.plan['t_pgm_chi_phi']?.plan_month||0)+(STATE.plan['t_lgm_chi_phi']?.plan_month||0)+(STATE.plan['t_con_chi_phi']?.plan_month||0)+(STATE.plan['t_brd_chi_phi']?.plan_month||0);
+    sc('pt_t_tot_gmv', getPct(tot_gmv, tGmvM));
+    sc('pt_t_tot_cp',  getPct(tot_cp, tCpM));
+  }
+}
+
+/* ── AI GENERATE ── */
+async function generateAI() {
+  const btn = document.getElementById('ai-btn');
+  const loading = document.getElementById('ai-loading');
+  btn.disabled = true;
+  loading.style.display = 'flex';
+
+  const { brand, weekInfo, plan, history, platforms } = STATE;
+  const wKey = `plan_w${STATE.weekNum}`;
+  const prevW = history.filter(h => parseInt(h.week_num) < STATE.weekNum);
+  const prevW_last = prevW.sort((a,b)=>b.week_num-a.week_num)[0];
+
+  const s = STATE.shopee.tot, t = STATE.tiktok.tot;
+  const sRoas = s.cp ? (s.gmv/s.cp).toFixed(2) : 0;
+  const tRoi  = t.cp ? (t.gmv/t.cp).toFixed(2) : 0;
+  const sPlanRoas = plan ? (() => {
+    const pgmv = (plan['s_cpc_doanh_so']?.[wKey]||0)+(plan['s_nd_gmv']?.[wKey]||0)+(plan['s_live_gmv']?.[wKey]||0);
+    const pcp  = (plan['s_cpc_chi_phi']?.[wKey]||0)+(plan['s_nd_chi_phi']?.[wKey]||0)+(plan['s_live_chi_phi']?.[wKey]||0);
+    return pcp ? (pgmv/pcp).toFixed(2) : 0;
+  })() : 0;
+  const tPlanRoi = plan ? (() => {
+    const pgmv = (plan['t_pgm_doanh_so']?.[wKey]||0)+(plan['t_lgm_doanhthu']?.[wKey]||0);
+    const pcp  = (plan['t_pgm_chi_phi']?.[wKey]||0)+(plan['t_lgm_chi_phi']?.[wKey]||0)+(plan['t_con_chi_phi']?.[wKey]||0)+(plan['t_brd_chi_phi']?.[wKey]||0);
+    return pcp ? (pgmv/pcp).toFixed(2) : 0;
+  })() : 0;
+
+  const prevSGmv = prevW_last ? (parseFloat(prevW_last.s_cpc_doanh_so||0)+parseFloat(prevW_last.s_nd_gmv||0)+parseFloat(prevW_last.s_live_gmv||0)) : 0;
+  const prevTGmv = prevW_last ? (parseFloat(prevW_last.t_pgm_doanh_so||0)+parseFloat(prevW_last.t_lgm_doanhthu||0)) : 0;
+
+  const sysPrompt = `Bạn là chuyên gia performance marketing Ecommerce Marketplace VN.
+Chỉ Shopee Ads và TikTok Shop Ads.
+Trả về JSON với 5 key, không có text khác:
+{"highlight":"2-3 bullet, metric vượt plan hoặc tăng vs tuần trước","lowlight":"2-3 bullet, metric dưới plan hoặc giảm vs tuần trước","thuc_trang":"1-2 câu, có số liệu cụ thể","van_de":"1-2 câu root cause","giai_phap":"2-3 bullet actionable cho tuần tới"}
+Tiếng Việt, mix English term (ROAS, CTR, CR, PGM, LGM, GMV). Không padding.`;
+
+  let userMsg = `Brand: ${brand} | ${weekInfo?.label} | Platform: ${[platforms.shopee?'Shopee':'',platforms.tiktok?'TikTok':''].filter(Boolean).join(', ')}\n\n`;
+  if (platforms.shopee) {
+    userMsg += `SHOPEE:\n  Tổng: GMV=${fmtBig(s.gmv)}, Chi phí=${fmtBig(s.cp)}, ROAS=${sRoas}x | Plan ROAS=${sPlanRoas}x → ${getPct(sRoas,sPlanRoas)||'—'}%\n`;
+    userMsg += `  CPC: DS=${fmtBig(gv('s_cpc_doanh_so'))}, CP=${fmtBig(gv('s_cpc_chi_phi'))}\n`;
+    userMsg += `  ND: GMV=${fmtBig(gv('s_nd_gmv'))}, CP=${fmtBig(gv('s_nd_chi_phi'))}\n`;
+    userMsg += `  Live: GMV=${fmtBig(gv('s_live_gmv'))}, CP=${fmtBig(gv('s_live_chi_phi'))}\n\n`;
+  }
+  if (platforms.tiktok) {
+    userMsg += `TIKTOK:\n  Tổng: GMV=${fmtBig(t.gmv)}, CP=${fmtBig(t.cp)}, ROI=${tRoi}x | Plan ROI=${tPlanRoi}x → ${getPct(tRoi,tPlanRoi)||'—'}%\n`;
+    userMsg += `  PGM: DS=${fmtBig(gv('t_pgm_doanh_so'))}, CP=${fmtBig(gv('t_pgm_chi_phi'))}\n`;
+    userMsg += `  LGM: DT=${fmtBig(gv('t_lgm_doanhthu'))}, CP=${fmtBig(gv('t_lgm_chi_phi'))}\n\n`;
+  }
+  if (prevW_last) {
+    userMsg += `SO SÁNH TUẦN TRƯỚC (W${prevW_last.week_num}):\n`;
+    if (platforms.shopee) userMsg += `  Shopee GMV: ${fmtBig(s.gmv)} vs ${fmtBig(prevSGmv)} (${getPct(s.gmv,prevSGmv)||'—'}%)\n`;
+    if (platforms.tiktok) userMsg += `  TikTok GMV: ${fmtBig(t.gmv)} vs ${fmtBig(prevTGmv)} (${getPct(t.gmv,prevTGmv)||'—'}%)\n`;
+  }
+
+  try {
+    const j = await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'callClaude', system: sysPrompt, user: userMsg })
+    }).then(r => r.json());
+
+    if (!j.ok) throw new Error(j.error || 'AI error');
+    let text = j.data.trim();
+    if (text.startsWith('```')) text = text.replace(/^```json?\n?/,'').replace(/```$/,'').trim();
+    const ai = JSON.parse(text);
+    ['highlight','lowlight','thuc_trang','van_de','giai_phap'].forEach(k => {
+      const el = document.getElementById('ai_' + k);
+      if (el) el.textContent = ai[k] || '';
+      STATE.ai[k] = ai[k] || '';
+    });
+    showToast('✅ AI đã generate xong!');
+  } catch(e) {
+    showToast('❌ Lỗi AI: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+/* ── PREVIEW ── */
+function buildAndGoStep3() {
+  // Collect AI text from editable fields
+  ['highlight','lowlight','thuc_trang','van_de','giai_phap'].forEach(k => {
+    const el = document.getElementById('ai_' + k);
+    STATE.ai[k] = el ? el.textContent.trim() : '';
+  });
+  buildPreview();
+  goStep(3);
+}
+
+function getHistGmv(weekNum) {
+  const row = STATE.history.find(h => parseInt(h.week_num) === weekNum);
+  if (!row) return null;
+  let g = 0;
+  if (STATE.platforms.shopee) g += parseFloat(row.s_cpc_doanh_so||0)+parseFloat(row.s_nd_gmv||0)+parseFloat(row.s_live_gmv||0);
+  if (STATE.platforms.tiktok) g += parseFloat(row.t_pgm_doanh_so||0)+parseFloat(row.t_lgm_doanhthu||0);
+  return g;
+}
+function getHistCp(weekNum) {
+  const row = STATE.history.find(h => parseInt(h.week_num) === weekNum);
+  if (!row) return null;
+  let c = 0;
+  if (STATE.platforms.shopee) c += parseFloat(row.s_cpc_chi_phi||0)+parseFloat(row.s_nd_chi_phi||0)+parseFloat(row.s_live_chi_phi||0);
+  if (STATE.platforms.tiktok) c += parseFloat(row.t_pgm_chi_phi||0)+parseFloat(row.t_lgm_chi_phi||0)+parseFloat(row.t_con_chi_phi||0)+parseFloat(row.t_brd_chi_phi||0);
+  return c;
+}
+function getPlanGmvW(weekNum) {
+  if (!STATE.plan) return 0;
+  const wKey = `plan_w${weekNum}`;
+  let g = 0;
+  if (STATE.platforms.shopee) g += (STATE.plan['s_cpc_doanh_so']?.[wKey]||0)+(STATE.plan['s_nd_gmv']?.[wKey]||0)+(STATE.plan['s_live_gmv']?.[wKey]||0);
+  if (STATE.platforms.tiktok) g += (STATE.plan['t_pgm_doanh_so']?.[wKey]||0)+(STATE.plan['t_lgm_doanhthu']?.[wKey]||0);
+  return g;
+}
+
+function buildChart() {
+  const canvas = document.getElementById('report-chart');
+  if (STATE.chartInst) { STATE.chartInst.destroy(); STATE.chartInst = null; }
+
+  const labels = STATE.weeks.map(w => `W${w.w}\n${fmtDR(w.start,w.end)}`);
+  const planData = STATE.weeks.map(w => getPlanGmvW(w.w) || null);
+  const actualData = STATE.weeks.map(w => {
+    if (w.w === STATE.weekNum) {
+      return (STATE.shopee.tot.gmv||0) + (STATE.tiktok.tot.gmv||0);
+    }
+    return getHistGmv(w.w);
+  });
+  const cpDtData = STATE.weeks.map(w => {
+    let gmv, cp;
+    if (w.w === STATE.weekNum) {
+      gmv = (STATE.shopee.tot.gmv||0)+(STATE.tiktok.tot.gmv||0);
+      cp  = (STATE.shopee.tot.cp||0)+(STATE.tiktok.tot.cp||0);
+    } else {
+      gmv = getHistGmv(w.w);
+      cp  = getHistCp(w.w);
+    }
+    if (!gmv || !cp) return null;
+    return parseFloat(((cp/gmv)*100).toFixed(1));
+  });
+
+  STATE.chartInst = new Chart(canvas, {
+    data: {
+      labels,
+      datasets: [
+        { type:'bar', label:'Kế hoạch GMV', data: planData, backgroundColor:'rgba(26,46,92,.7)', borderRadius:4, order:2 },
+        { type:'bar', label:'Thực hiện GMV', data: actualData, backgroundColor:'rgba(220,38,38,.75)', borderRadius:4, order:2 },
+        { type:'line', label:'%CP/DT', data: cpDtData, borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,.1)',
+          borderWidth:2, pointRadius:4, pointBackgroundColor:'#F59E0B', yAxisID:'y2', tension:.3, order:1 }
+      ]
+    },
+    options: {
+      responsive:true, interaction:{ mode:'index', intersect:false },
+      plugins:{ legend:{ position:'top' }, title:{ display:true, text:`GMV Ads — ${STATE.brand} — T${STATE.month}/${STATE.year}` } },
+      scales:{
+        y:{ position:'left', ticks:{ callback: v => v >= 1e9 ? (v/1e9).toFixed(1)+'B' : v >= 1e6 ? (v/1e6).toFixed(0)+'M' : v } },
+        y2:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ callback: v => v+'%' } }
+      }
+    }
+  });
+}
+
+function buildPreview() {
+  const { brand, weekInfo, platforms, plan, history, ai, user } = STATE;
+  const q = Math.ceil(STATE.month / 3);
+  const subject = `MEDIA x ${brand} | Báo cáo tuần & Kế hoạch hành động | ${weekInfo?.label}`;
+  document.getElementById('mail-subject').textContent = subject;
+
+  buildChart();
+
+  const s = STATE.shopee.tot, t = STATE.tiktok.tot;
+  const totalGmv = (s.gmv||0) + (t.gmv||0);
+  const totalCp  = (s.cp||0)  + (t.cp||0);
+  const totalRoi = totalCp ? (totalGmv/totalCp).toFixed(2) : 0;
+
+  // Build week column headers
+  const wCols = STATE.weeks.map(w => `<th style="padding:5px 8px;border:1px solid #ccc;background:#f0f4ff;font-size:11px">Plan W${w.w}</th><th style="padding:5px 8px;border:1px solid #ccc;font-size:11px">TH W${w.w}</th><th style="padding:5px 8px;border:1px solid #ccc;font-size:11px">%W${w.w}</th>`).join('');
+
+  // Get MTD (sum all weeks up to current)
+  const getMTD = (getter) => {
+    let sum = 0;
+    STATE.weeks.filter(w => w.w < STATE.weekNum).forEach(w => { sum += getter(w.w) || 0; });
+    return sum + (getter(STATE.weekNum) || 0);
+  };
+  const getMTDGmv_S = () => getMTD(w => { const r = history.find(h=>parseInt(h.week_num)===w); return r ? parseFloat(r.s_cpc_doanh_so||0)+parseFloat(r.s_nd_gmv||0)+parseFloat(r.s_live_gmv||0) : (w===STATE.weekNum?s.gmv:0); });
+  const getMTDGmv_T = () => getMTD(w => { const r = history.find(h=>parseInt(h.week_num)===w); return r ? parseFloat(r.t_pgm_doanh_so||0)+parseFloat(r.t_lgm_doanhthu||0) : (w===STATE.weekNum?t.gmv:0); });
+
+  const ts = (v, bold=false) => `style="padding:5px 9px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:12px${bold?';font-weight:bold':''}"`;
+  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:12px"`;
+  const th = (v) => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:12px;${v}"`;
+
+  function wRow(label, planMth, mtdAct, planMth2, getAct, getPlan) {
+    const pctMtd = getPct(mtdAct, planMth);
+    const wCells = STATE.weeks.map(w => {
+      const pw = getPlan ? getPlan(w.w) : null;
+      const act = getAct ? getAct(w.w) : null;
+      const pct = getPct(act, pw);
+      const clr = pct ? `color:${pctClr(pct)};font-weight:bold` : '';
+      return `<td ${ts()}>${pw ? fmtBig(pw) : '—'}</td><td ${ts()}>${act !== null ? fmtBig(act) : '—'}</td><td ${ts()} style="${[ts().slice(7,-1),clr].filter(Boolean).join(';')}">${pct ? pct+'%' : '—'}</td>`;
+    }).join('');
+    const pctMtdClr = pctMtd ? `color:${pctClr(pctMtd)};font-weight:bold` : '';
+    return `<tr><td ${tsL()}>${label}</td><td ${ts()}>${planMth ? fmtBig(planMth) : '—'}</td><td ${ts()}>${fmtBig(mtdAct)}</td><td ${ts()} style="${[ts().slice(7,-1),pctMtdClr].filter(Boolean).join(';')}">${pctMtd ? pctMtd+'%' : '—'}</td>${wCells}</tr>`;
+  }
+
+  const hdr = `<tr><th ${th('text-align:left')}>Metric</th><th ${th('')}>Plan Tháng</th><th ${th('')}>Luỹ tiến</th><th ${th('')}>%TH</th>${STATE.weeks.map(w=>`<th ${th('')}>Plan W${w.w}</th><th ${th('')}>TH W${w.w}</th><th ${th('')}>%W${w.w}</th>`).join('')}</tr>`;
+
+  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:12px;margin:6px 0 18px`;
+
+  // Total GMV plan month
+  const sPlanGmvM = plan ? (plan['s_cpc_doanh_so']?.plan_month||0)+(plan['s_nd_gmv']?.plan_month||0)+(plan['s_live_gmv']?.plan_month||0) : 0;
+  const tPlanGmvM = plan ? (plan['t_pgm_doanh_so']?.plan_month||0)+(plan['t_lgm_doanhthu']?.plan_month||0) : 0;
+  const totPlanGmvM = sPlanGmvM + tPlanGmvM;
+  const sPlanCpM = plan ? (plan['s_cpc_chi_phi']?.plan_month||0)+(plan['s_nd_chi_phi']?.plan_month||0)+(plan['s_live_chi_phi']?.plan_month||0) : 0;
+  const tPlanCpM = plan ? (plan['t_pgm_chi_phi']?.plan_month||0)+(plan['t_lgm_chi_phi']?.plan_month||0)+(plan['t_con_chi_phi']?.plan_month||0)+(plan['t_brd_chi_phi']?.plan_month||0) : 0;
+
+  // Actual W per week
+  const getActualGmv = w => {
+    if (w === STATE.weekNum) return (s.gmv||0)+(t.gmv||0);
+    return getHistGmv(w);
+  };
+  const getPlanGmvFn = w => getPlanGmvW(w) || null;
+  const mtdTotGmv = STATE.weeks.filter(wk=>wk.w<=STATE.weekNum).reduce((acc,wk)=>{
+    const v = wk.w===STATE.weekNum ? (s.gmv+t.gmv) : (getHistGmv(wk.w)||0);
+    return acc+v;
+  },0);
+
+  let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:13px;color:#000;line-height:1.6;max-width:900px">`;
+  body += `<p><strong>BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
+  body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
+
+  // ─── TỔNG 2 SÀN ───
+  if (platforms.shopee && platforms.tiktok) {
+    body += `<p><strong>━━━ TỔNG 2 SÀN ━━━</strong></p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('GMV Ads', totPlanGmvM||null, mtdTotGmv, null, getActualGmv, getPlanGmvFn);
+    body += `</tbody></table>`;
+  }
+
+  // ─── SHOPEE ───
+  if (platforms.shopee) {
+    body += `<p><strong>━━━ SHOPEE ADS ━━━</strong></p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    const getActS = w => { if(w===STATE.weekNum) return s.gmv||0; const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.s_cpc_doanh_so||0)+parseFloat(r.s_nd_gmv||0)+parseFloat(r.s_live_gmv||0)):null; };
+    const getPlanS = w => plan?((plan['s_cpc_doanh_so']?.[`plan_w${w}`]||0)+(plan['s_nd_gmv']?.[`plan_w${w}`]||0)+(plan['s_live_gmv']?.[`plan_w${w}`]||0)):null;
+    const mtdSGmv = getMTDGmv_S();
+    body += wRow('GMV Shopee', sPlanGmvM||null, mtdSGmv, null, getActS, getPlanS);
+    body += `</tbody></table>`;
+
+    // CPC table
+    const cpcDsAct = w => { if(w===STATE.weekNum) return gv('s_cpc_doanh_so'); const r=history.find(h=>parseInt(h.week_num)===w); return r?parseFloat(r.s_cpc_doanh_so||0):null; };
+    const cpcCpAct = w => { if(w===STATE.weekNum) return gv('s_cpc_chi_phi'); const r=history.find(h=>parseInt(h.week_num)===w); return r?parseFloat(r.s_cpc_chi_phi||0):null; };
+    if (gv('s_cpc_doanh_so') || gv('s_cpc_chi_phi')) {
+      body += `<p style="font-size:11px;color:#555;margin:4px 0 2px"><strong>Ads CPC</strong></p>`;
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+      body += wRow('Doanh số', plan?.['s_cpc_doanh_so']?.plan_month||null, getMTD(cpcDsAct), null, cpcDsAct, w=>plan?.['s_cpc_doanh_so']?.[`plan_w${w}`]||null);
+      body += wRow('Chi phí', plan?.['s_cpc_chi_phi']?.plan_month||null, getMTD(cpcCpAct), null, cpcCpAct, w=>plan?.['s_cpc_chi_phi']?.[`plan_w${w}`]||null);
+      body += `</tbody></table>`;
+    }
+  }
+
+  // ─── TIKTOK ───
+  if (platforms.tiktok) {
+    body += `<p><strong>━━━ TIKTOK SHOP ━━━</strong></p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    const getActT = w => { if(w===STATE.weekNum) return t.gmv||0; const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.t_pgm_doanh_so||0)+parseFloat(r.t_lgm_doanhthu||0)):null; };
+    const getPlanT = w => plan?((plan['t_pgm_doanh_so']?.[`plan_w${w}`]||0)+(plan['t_lgm_doanhthu']?.[`plan_w${w}`]||0)):null;
+    const mtdTGmv = getMTDGmv_T();
+    body += wRow('GMV TikTok', tPlanGmvM||null, mtdTGmv, null, getActT, getPlanT);
+    body += `</tbody></table>`;
+  }
+
+  // ─── HIGHLIGHT / LOWLIGHT ───
+  body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
+  body += `<table style="${tblStyle}"><thead><tr>
+    <th style="padding:6px 12px;border:1px solid #999;background:#1a5c2e;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:12px">✅ Highlight</th>
+    <th style="padding:6px 12px;border:1px solid #999;background:#5c1a1a;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:12px">⚠️ Lowlight</th>
+  </tr></thead><tbody><tr>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:12px">${(ai.highlight||'').replace(/\n/g,'<br>')}</td>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:12px">${(ai.lowlight||'').replace(/\n/g,'<br>')}</td>
+  </tr></tbody></table>`;
+
+  // ─── NHẬN XÉT ───
+  body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
+  body += `<p><strong>━━━ NHẬN XÉT & KẾ HOẠCH ━━━</strong></p>`;
+  body += `<p><strong>Thực trạng:</strong><br>${(ai.thuc_trang||'').replace(/\n/g,'<br>')}</p>`;
+  body += `<p><strong>Vấn đề:</strong><br>${(ai.van_de||'').replace(/\n/g,'<br>')}</p>`;
+  body += `<p><strong>Giải pháp & Plan tuần tới:</strong><br>${(ai.giai_phap||'').replace(/\n/g,'<br>')}</p>`;
+  body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
+  body += `<p style="color:#555;font-size:11px">Reported by: ${user?.name} | ${fmtD(new Date())}</p>`;
+  body += `</div>`;
+
+  document.getElementById('mail-body').innerHTML = body;
+}
+
+/* ── COPY ── */
+async function copyMail() {
+  const subject = document.getElementById('mail-subject').textContent;
+  const bodyEl  = document.getElementById('mail-body');
+  const btn = document.getElementById('copy-btn');
+
+  // Try to include chart as base64 image
+  let chartImgTag = '';
+  try {
+    const canvas = document.getElementById('report-chart');
+    const dataUrl = canvas.toDataURL('image/png');
+    chartImgTag = `<img src="${dataUrl}" style="max-width:100%;margin:12px 0;" alt="GMV Chart">`;
+  } catch(e) {}
+
+  const fullHtml = `<b>Subject: ${subject}</b><br><br>${chartImgTag}${bodyEl.innerHTML}`;
+
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'text/html': new Blob([fullHtml], { type:'text/html' }) })
+    ]);
+    btn.textContent = '✓ Đã copy!';
+    showToast('✅ Đã copy (có chart) — paste vào Lark Mail!');
+  } catch {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'text/html': new Blob([`<b>Subject: ${subject}</b><br><br>${bodyEl.innerHTML}`], { type:'text/html' }) })
+      ]);
+      btn.textContent = '✓ Đã copy!';
+      showToast('✅ Đã copy (không có chart) — paste vào Lark!');
+    } catch {
+      navigator.clipboard.writeText(`Subject: ${subject}\n\n${bodyEl.innerText}`);
+      showToast('Đã copy dạng text (xem chart trong tool)', 'success');
+    }
+  }
+  setTimeout(() => { btn.textContent = '📋 Copy → Lark'; }, 3000);
+}
+
+/* ── SAVE ── */
+async function saveReport() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Đang lưu...';
+  const { brand, weekInfo, user, ai, platforms } = STATE;
+
+  const payload = {
+    action: 'saveWeekly',
+    username: user.username, brand_name: brand,
+    month: STATE.month, year: STATE.year,
+    week_num: STATE.weekNum,
+    week_start: fmtD(weekInfo.start), week_end: fmtD(weekInfo.end),
+    highlight: ai.highlight, lowlight: ai.lowlight,
+    nhan_xet_thuc_trang: ai.thuc_trang,
+    nhan_xet_van_de: ai.van_de,
+    nhan_xet_giai_phap: ai.giai_phap,
+  };
+
+  // Collect all input fields
+  ['s_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
+   's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
+   's_live_gmv','s_live_chi_phi','s_live_luot_xem',
+   't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
+   't_lgm_doanhthu','t_lgm_chi_phi','t_con_nguoi','t_con_chi_phi',
+   't_brd_view','t_brd_follow','t_brd_chi_phi'
+  ].forEach(f => { payload[f] = gv(f); });
+
+  try {
+    const j = await fetch(API, { method:'POST', body:JSON.stringify(payload) }).then(r=>r.json());
+    if (j.ok) showToast('✅ Đã lưu vào Google Sheets!');
+    else throw new Error(j.error);
+  } catch(e) { showToast('❌ Lỗi lưu: ' + e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = '💾 Lưu vào Sheets'; }
+}
+
+/* ── PLAN MODAL ── */
+function showPlanModal() {
+  const modal = document.getElementById('plan-modal');
+  modal.classList.add('open');
+  const body = document.getElementById('plan-modal-body');
+  const { platforms, month, year, brand } = STATE;
+  const plan = STATE.plan || {};
+
+  const PLAN_ROWS = [];
+  if (platforms.shopee) {
+    PLAN_ROWS.push({ label:'── SHOPEE ──', section:true });
+    PLAN_ROWS.push({ label:'CPC Doanh số', key:'s_cpc_doanh_so' });
+    PLAN_ROWS.push({ label:'CPC Chi phí',  key:'s_cpc_chi_phi' });
+    PLAN_ROWS.push({ label:'ND GMV',       key:'s_nd_gmv' });
+    PLAN_ROWS.push({ label:'ND Chi phí',   key:'s_nd_chi_phi' });
+    PLAN_ROWS.push({ label:'Live GMV',     key:'s_live_gmv' });
+    PLAN_ROWS.push({ label:'Live Chi phí', key:'s_live_chi_phi' });
+  }
+  if (platforms.tiktok) {
+    PLAN_ROWS.push({ label:'── TIKTOK SHOP ──', section:true });
+    PLAN_ROWS.push({ label:'PGM Doanh số',  key:'t_pgm_doanh_so' });
+    PLAN_ROWS.push({ label:'PGM Chi phí',   key:'t_pgm_chi_phi' });
+    PLAN_ROWS.push({ label:'LGM Doanh thu', key:'t_lgm_doanhthu' });
+    PLAN_ROWS.push({ label:'LGM Chi phí',   key:'t_lgm_chi_phi' });
+    PLAN_ROWS.push({ label:'Con Chi phí',   key:'t_con_chi_phi' });
+    PLAN_ROWS.push({ label:'Brd Chi phí',   key:'t_brd_chi_phi' });
+  }
+
+  const periods = [
+    { id:'plan_month', label:'Cả Tháng' },
+    { id:'plan_w1', label:'W1' }, { id:'plan_w2', label:'W2' },
+    { id:'plan_w3', label:'W3' }, { id:'plan_w4', label:'W4' }, { id:'plan_w5', label:'W5' }
+  ];
+
+  let html = `<p style="font-size:.83rem;color:var(--muted);margin-bottom:16px">Plan cho <strong>${brand}</strong> — Tháng ${month}/${year}</p>`;
+  html += `<div class="pg"><div class="pg-head">Metric</div>${periods.map(p=>`<div class="pg-head">${p.label}</div>`).join('')}`;
+  PLAN_ROWS.forEach(row => {
+    if (row.section) {
+      html += `<div class="pg-section">${row.label}</div>`;
+      return;
+    }
+    html += `<div class="pg-lbl">${row.label}</div>`;
+    periods.forEach(p => {
+      const val = plan[row.key]?.[p.id] || '';
+      html += `<div><input class="pg-inp" type="number" id="pm_${row.key}_${p.id}" value="${val}" placeholder="0"></div>`;
+    });
+  });
+  html += `</div>`;
+  body.innerHTML = html;
+}
+
+function closePlanModal() {
+  document.getElementById('plan-modal').classList.remove('open');
+}
+
+async function savePlan() {
+  const btn = document.getElementById('plan-save-btn');
+  btn.disabled = true; btn.textContent = 'Đang lưu...';
+  const { brand, month, year, user, platforms } = STATE;
+
+  const PLAN_KEYS = [];
+  if (platforms.shopee) ['s_cpc_doanh_so','s_cpc_chi_phi','s_nd_gmv','s_nd_chi_phi','s_live_gmv','s_live_chi_phi'].forEach(k => PLAN_KEYS.push(k));
+  if (platforms.tiktok) ['t_pgm_doanh_so','t_pgm_chi_phi','t_lgm_doanhthu','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi'].forEach(k => PLAN_KEYS.push(k));
+
+  const periods = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
+  const planObj = {};
+  PLAN_KEYS.forEach(k => {
+    planObj[k] = {};
+    periods.forEach(p => {
+      const el = document.getElementById(`pm_${k}_${p}`);
+      planObj[k][p] = parseFloat(el?.value) || 0;
+    });
+  });
+
+  try {
+    const j = await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({ action:'savePlan', username:user.username, brand_name:brand, month, year, plan:planObj })
+    }).then(r=>r.json());
+    if (!j.ok) throw new Error(j.error);
+    STATE.plan = planObj;
+    showToast('✅ Đã lưu Plan!');
+    closePlanModal();
+    initStep2();
+  } catch(e) { showToast('❌ Lỗi lưu Plan: ' + e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Lưu Plan →'; }
+}
 </script>
 </body>
 </html>
