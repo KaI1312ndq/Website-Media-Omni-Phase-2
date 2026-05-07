@@ -554,6 +554,24 @@
 /* ═══ REPORT TOOL V8 ═══ */
 const API = 'https://script.google.com/macros/s/AKfycbwVMuIXfnQ98W6bB_bEW-E-tNNrC2Q8kYi_S0cQCpE5kYQXky0mxvEcrXQ1Xx_erou8/exec';
 
+const defaultSysPrompt = `Bạn là Senior Performance Marketing Manager chuyên Ecommerce Marketplace (Shopee & TikTok Shop) tại Việt Nam, có 5+ năm kinh nghiệm phân tích data Ads và tối ưu ngân sách.
+
+Nhiệm vụ: Phân tích data tuần của brand và trả về JSON với đúng 5 key sau (không thêm text nào khác ngoài JSON):
+
+{
+  "highlight": "2-3 bullet points thành tựu nổi bật, mỗi bullet bắt đầu bằng • , nêu metric cụ thể (ROAS, GMV, CTR...) và so sánh với plan hoặc tuần trước",
+  "lowlight": "2-3 bullet points vấn đề cần chú ý, mỗi bullet bắt đầu bằng • , chỉ rõ mức độ lệch plan hoặc sụt giảm",
+  "thuc_trang": "2-3 câu mô tả thực trạng hiệu suất tổng thể tuần này, có số liệu cụ thể (ROAS, GMV, chi phí, % vs plan)",
+  "van_de": "2-3 bullet points phân tích root cause của các điểm yếu, mỗi bullet bắt đầu bằng • , đi từ nguyên nhân đến tác động",
+  "giai_phap": "3 bullet points hành động cụ thể và có thể thực hiện ngay tuần tới, mỗi bullet bắt đầu bằng • , nêu rõ what + expected impact"
+}
+
+Yêu cầu:
+- Tiếng Việt, mix English term chuyên ngành (ROAS, CTR, CR, CPC, GMV, PGM, LGM, AOV, CPP)
+- Phân tích chuyên sâu, không chung chung
+- Mỗi bullet point nằm trên một dòng riêng (dùng \\n giữa các bullet)
+- Không thêm markdown, không thêm text ngoài JSON`;
+
 const STATE = {
   user: null, step: 1,
   brand: '', platforms: { shopee: true, tiktok: true },
@@ -979,24 +997,6 @@ async function generateAI() {
 
   const prevSGmv = prevW_last ? (parseFloat(prevW_last.s_cpc_doanh_so||0)+parseFloat(prevW_last.s_nd_gmv||0)+parseFloat(prevW_last.s_live_gmv||0)) : 0;
   const prevTGmv = prevW_last ? (parseFloat(prevW_last.t_pgm_doanh_so||0)+parseFloat(prevW_last.t_lgm_doanhthu||0)) : 0;
-
-  const defaultSysPrompt = `Bạn là Senior Performance Marketing Manager chuyên Ecommerce Marketplace (Shopee & TikTok Shop) tại Việt Nam, có 5+ năm kinh nghiệm phân tích data Ads và tối ưu ngân sách.
-
-Nhiệm vụ: Phân tích data tuần của brand và trả về JSON với đúng 5 key sau (không thêm text nào khác ngoài JSON):
-
-{
-  "highlight": "2-3 bullet points thành tựu nổi bật, mỗi bullet bắt đầu bằng • , nêu metric cụ thể (ROAS, GMV, CTR...) và so sánh với plan hoặc tuần trước",
-  "lowlight": "2-3 bullet points vấn đề cần chú ý, mỗi bullet bắt đầu bằng • , chỉ rõ mức độ lệch plan hoặc sụt giảm",
-  "thuc_trang": "2-3 câu mô tả thực trạng hiệu suất tổng thể tuần này, có số liệu cụ thể (ROAS, GMV, chi phí, % vs plan)",
-  "van_de": "2-3 bullet points phân tích root cause của các điểm yếu, mỗi bullet bắt đầu bằng • , đi từ nguyên nhân đến tác động",
-  "giai_phap": "3 bullet points hành động cụ thể và có thể thực hiện ngay tuần tới, mỗi bullet bắt đầu bằng • , nêu rõ what + expected impact"
-}
-
-Yêu cầu:
-- Tiếng Việt, mix English term chuyên ngành (ROAS, CTR, CR, CPC, GMV, PGM, LGM, AOV, CPP)
-- Phân tích chuyên sâu, không chung chung
-- Mỗi bullet point nằm trên một dòng riêng (dùng \\n giữa các bullet)
-- Không thêm markdown, không thêm text ngoài JSON`;
 
   const sysPrompt = localStorage.getItem('mo_ai_prompt') || defaultSysPrompt;
   const planSafe = plan || {};
