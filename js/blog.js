@@ -11,18 +11,22 @@ const FALLBACK_POSTS=[
 let allPosts=[], activeTag='ALL', searchQ='';
 
 async function loadPosts(){
+  // Show fallback immediately — no blank loading state
+  allPosts = FALLBACK_POSTS;
+  buildTagFilters(); renderGrid(allPosts);
+
+  // Fetch live posts in background; replace if successful
   const api = GS_BLOG_URL || localStorage.getItem('mo_blog_api') || '';
-  if(api){
-    try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),6000);
-      const r=await fetch(api+'?action=list',{signal:ctrl.signal});
-      clearTimeout(tid);
-      const j=await r.json();
-      allPosts=(j.posts||[]).filter(p=>p.status==='published');
-    }catch{ allPosts=FALLBACK_POSTS; }
-  }else{ allPosts=FALLBACK_POSTS; }
-  buildTagFilters();renderGrid(allPosts);
+  if(!api) return;
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(api+'?action=list',{signal:ctrl.signal});
+    clearTimeout(tid);
+    const j=await r.json();
+    const live=(j.posts||[]).filter(p=>p.status==='published');
+    if(live.length){ allPosts=live; buildTagFilters(); renderGrid(allPosts); }
+  }catch{ /* keep fallback already rendered */ }
   // Deep link by ?id= query param (or legacy #hash)
   const params = new URLSearchParams(location.search);
   const qid = params.get('id');
