@@ -1334,151 +1334,201 @@ function buildPreview() {
   document.getElementById('mail-subject').textContent = `MEDIA x ${brand} | Báo cáo tuần & Kế hoạch hành động | ${weekInfo?.label}`;
   buildChart();
 
-  // ── data helpers ──────────────────────────────────────────────
-  const hRow = (f,w) => { if(w===STATE.weekNum) return gv(f); const r=history.find(h=>parseInt(h.week_num)===w); return r?parseFloat(r[f]||0):null; };
-  const pW   = (f,w) => plan?.[f]?.[`plan_w${w}`] || 0;
-  const wp   = f => pW(f, STATE.weekNum);
-  const wa   = f => hRow(f, STATE.weekNum);
-  const calc = (nFn, dFn, scale=1) => { const n=nFn(), d=dFn(); return (d&&!isNaN(n)&&!isNaN(d))?n/d*scale:null; };
+  const s = STATE.shopee.tot, t = STATE.tiktok.tot;
+  const ts  = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:15px"`;
+  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:15px"`;
+  const th  = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:15px;text-align:center;${v}"`;
+  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:15px;margin:4px 0 16px`;
+  const hdr = `<tr><th ${th('text-align:left;min-width:130px')}>Metric</th><th ${th()}>Tháng (Plan)</th><th ${th()}>Luỹ tiến</th><th ${th()}>% thực hiện</th>${STATE.weeks.map(w=>`<th ${th()}>W${w.w}</th><th ${th()}>Thực hiện</th><th ${th()}>% thực hiện</th>`).join('')}</tr>`;
 
-  // ── format ─────────────────────────────────────────────────────
-  const fM  = v => (v!==null&&v!==undefined&&!isNaN(v)) ? parseFloat(v).toLocaleString('vi-VN') : '—';
-  const fX  = v => (v!==null&&v!==undefined&&!isNaN(v)) ? parseFloat(v).toFixed(2) : '—';
-  const fP  = v => (v!==null&&v!==undefined&&!isNaN(v)) ? parseFloat(v).toFixed(2)+'%' : '—';
-  const fN  = v => (v!==null&&v!==undefined&&!isNaN(v)) ? parseFloat(v).toLocaleString('vi-VN') : '—';
-  const fCPC= v => (v!==null&&v!==undefined&&!isNaN(v)) ? Math.round(parseFloat(v)).toLocaleString('vi-VN') : '—';
+  // ── data helpers ──
+  const hRow  = (f,w) => { if(w===STATE.weekNum) return gv(f); const r=history.find(h=>parseInt(h.week_num)===w); return r?parseFloat(r[f]||0):null; };
+  const pW    = (f,w) => plan?.[f]?.[`plan_w${w}`] || 0;
+  const pM    = f => plan?.[f]?.plan_month || 0;
+  const getMTD= getter => STATE.weeks.filter(wk=>wk.w<=STATE.weekNum).reduce((a,wk)=>{ const v=getter(wk.w); return a+(v!==null?v:0); },0);
+  const ratioW  = (nF,dF,w) => { const n=hRow(nF,w),d=hRow(dF,w); if(d===null||!d) return null; return n/d; };
+  const ratioPW = (nF,dF,w) => { const d=pW(dF,w); return d?pW(nF,w)/d:null; };
+  const ratioPM = (nF,dF)   => { const d=pM(dF); return d?pM(nF)/d:null; };
+  const ratioMTD= (nF,dF)   => { const n=getMTD(w=>hRow(nF,w)||0),d=getMTD(w=>hRow(dF,w)||0); return d?n/d:null; };
 
-  // ── cell styles ────────────────────────────────────────────────
-  const F = `font-family:'Times New Roman',Times,serif;font-size:15px`;
-  const B = `border:1px solid #ccc`;
-  const P = `padding:5px 9px`;
-  const csR  = (x='') => `style="${P};${B};text-align:right;${F};vertical-align:middle;${x}"`;
-  const csL  = (x='') => `style="${P};${B};text-align:left;${F};vertical-align:middle;${x}"`;
-  const csVT = (x='') => `style="${P};${B};text-align:left;${F};vertical-align:top;${x}"`;
-  const csTH = (x='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;${F};text-align:center;${x}"`;
-
-  // ── row builders ───────────────────────────────────────────────
-  // section sub-header: spans Hạng mục + Target + Actual
-  const sh = lbl => `<tr><td colspan="3" ${csL('background:#e8edf5;font-weight:700;color:#1a2e5c;border-color:#bbb')}>${lbl}</td></tr>`;
-  // metric row: label | planW | actualW
-  const mr = (lbl, p, a, fmtFn=fM, isCalc=false) => {
-    const lb = isCalc ? csL('color:#555;font-style:italic') : csL();
-    const pS = (p!==null&&p!==undefined&&p!==0&&!isNaN(p)) ? fmtFn(p) : '—';
-    const aS = (a!==null&&a!==undefined&&!isNaN(a)) ? fmtFn(a) : '—';
-    return `<tr><td ${lb}>${lbl}</td><td ${csR()}>${pS}</td><td ${csR()}>${aS}</td></tr>`;
-  };
-
-  // ── row counts (fixed per section structure) ───────────────────
-  // Each number = 1 sub-header row + N metric rows
-  const S_CPC  = platforms.shopee ? 11 : 0; // 1+10
-  const S_ND   = platforms.shopee ? 8  : 0; // 1+7
-  const S_LIVE = platforms.shopee ? 5  : 0; // 1+4
-  const T_PGM  = platforms.tiktok ? 12 : 0; // 1+11 (incl CPM)
-  const T_LGM  = platforms.tiktok ? 4  : 0; // 1+3
-  const T_CON  = platforms.tiktok ? 4  : 0; // 1+3
-  const T_BRD  = platforms.tiktok ? 6  : 0; // 1+5
-  const sRC = S_CPC + S_ND + S_LIVE;
-  const tRC = T_PGM + T_LGM + T_CON + T_BRD;
-  const totRC = sRC + tRC;
-
-  // ── AI column content ──────────────────────────────────────────
-  const nl = s => (s||'').replace(/\n/g,'<br>');
-  const dg_shopee = [nl(ai.thuc_trang), nl(ai.van_de)].filter(Boolean).join('<br><br>');
-  const dg_tiktok = [nl(ai.highlight), nl(ai.lowlight)].filter(Boolean).join('<br><br>');
-  const gp_text   = nl(ai.giai_phap);
-
-  // ── build shopee inner rows ────────────────────────────────────
-  let sInner = '';
-  if (platforms.shopee) {
-    sInner += sh('Ads CPC');
-    sInner += mr('Doanh số Ads', wp('s_cpc_doanh_so'), wa('s_cpc_doanh_so'));
-    sInner += mr('Chi phí Dịch vụ hiển thị', wp('s_cpc_chi_phi'), wa('s_cpc_chi_phi'));
-    sInner += mr('ROAS', calc(()=>wp('s_cpc_doanh_so'),()=>wp('s_cpc_chi_phi')), calc(()=>wa('s_cpc_doanh_so'),()=>wa('s_cpc_chi_phi')), fX, true);
-    sInner += mr('CPC = Chi phí / Lượt click', calc(()=>wp('s_cpc_chi_phi'),()=>wp('s_cpc_luot_click')), calc(()=>wa('s_cpc_chi_phi'),()=>wa('s_cpc_luot_click')), fCPC, true);
-    sInner += mr('CTR', calc(()=>wp('s_cpc_luot_click'),()=>wp('s_cpc_luot_xem'),100), calc(()=>wa('s_cpc_luot_click'),()=>wa('s_cpc_luot_xem'),100), fP, true);
-    sInner += mr('CR = Đơn hàng / Lượt click*100 (%)', calc(()=>wp('s_cpc_don_hang'),()=>wp('s_cpc_luot_click'),100), calc(()=>wa('s_cpc_don_hang'),()=>wa('s_cpc_luot_click'),100), fP, true);
-    sInner += mr('Số lượt xem', wp('s_cpc_luot_xem'), wa('s_cpc_luot_xem'), fN);
-    sInner += mr('Số lượt click', wp('s_cpc_luot_click'), wa('s_cpc_luot_click'), fN);
-    sInner += mr('Số đơn hàng', wp('s_cpc_don_hang'), wa('s_cpc_don_hang'), fN);
-    sInner += mr('AOV = Doanh thu / Số đơn hàng', calc(()=>wp('s_cpc_doanh_so'),()=>wp('s_cpc_don_hang')), calc(()=>wa('s_cpc_doanh_so'),()=>wa('s_cpc_don_hang')), fM, true);
-    sInner += sh('Ads nhận diện thương hiệu');
-    sInner += mr('Doanh thu Ads (GMV)', wp('s_nd_gmv'), wa('s_nd_gmv'));
-    sInner += mr('Chi phí ads', wp('s_nd_chi_phi'), wa('s_nd_chi_phi'));
-    sInner += mr('ROAS ads', calc(()=>wp('s_nd_gmv'),()=>wp('s_nd_chi_phi')), calc(()=>wa('s_nd_gmv'),()=>wa('s_nd_chi_phi')), fX, true);
-    sInner += mr('CPC = Chi phí / Lượt click', calc(()=>wp('s_nd_chi_phi'),()=>wp('s_nd_luot_click')), calc(()=>wa('s_nd_chi_phi'),()=>wa('s_nd_luot_click')), fCPC, true);
-    sInner += mr('CTR', calc(()=>wp('s_nd_luot_click'),()=>wp('s_nd_luot_xem'),100), calc(()=>wa('s_nd_luot_click'),()=>wa('s_nd_luot_xem'),100), fP, true);
-    sInner += mr('Số lượt xem', wp('s_nd_luot_xem'), wa('s_nd_luot_xem'), fN);
-    sInner += mr('Số lượt click', wp('s_nd_luot_click'), wa('s_nd_luot_click'), fN);
-    sInner += sh('Ads livestream');
-    sInner += mr('Doanh thu Ads (GMV)', wp('s_live_gmv'), wa('s_live_gmv'));
-    sInner += mr('Chi phí ads', wp('s_live_chi_phi'), wa('s_live_chi_phi'));
-    sInner += mr('ROAS ads', calc(()=>wp('s_live_gmv'),()=>wp('s_live_chi_phi')), calc(()=>wa('s_live_gmv'),()=>wa('s_live_chi_phi')), fX, true);
-    sInner += mr('Lượt xem', wp('s_live_luot_xem'), wa('s_live_luot_xem'), fN);
+  // ── wRow: value metric row ──
+  function wRow(label, planMth, mtdAct, getAct, getPlan, fmtFn) {
+    fmtFn = fmtFn || (v=>(v!==null&&v!==undefined&&!isNaN(v))?parseFloat(v).toLocaleString('vi-VN'):'—');
+    const pctMtd=getPct(mtdAct,planMth), clrMtd=pctMtd?`color:${pctClr(pctMtd)};font-weight:bold`:'';
+    const wCells=STATE.weeks.map(w=>{
+      const pw=getPlan?getPlan(w.w):null, act=getAct?getAct(w.w):null;
+      const pct=getPct(act,pw), clr=pct?`color:${pctClr(pct)};font-weight:bold`:'';
+      return `<td ${ts()}>${(pw!==null&&pw!==undefined&&pw!==0)?fmtFn(pw):'—'}</td><td ${ts()}>${act!==null?fmtFn(act):'—'}</td><td ${ts()} style="${ts().slice(7,-1)};${clr}">${pct?pct+'%':'—'}</td>`;
+    }).join('');
+    return `<tr><td ${tsL()}>${label}</td><td ${ts()}>${planMth?fmtFn(planMth):'—'}</td><td ${ts()}>${(mtdAct!==null&&!isNaN(mtdAct))?fmtFn(mtdAct):'—'}</td><td ${ts()} style="${ts().slice(7,-1)};${clrMtd}">${pctMtd?pctMtd+'%':'—'}</td>${wCells}</tr>`;
+  }
+  // ── dRow: derived/ratio row ──
+  function dRow(label, planMth, mtdAct, getAct, getPlan, fmtFn) {
+    fmtFn = fmtFn || (v=>v!==null?v.toFixed(2):'—');
+    const wCells=STATE.weeks.map(w=>{
+      const pw=getPlan?getPlan(w.w):null, act=getAct?getAct(w.w):null;
+      return `<td ${ts()}>${pw!==null?fmtFn(pw):'—'}</td><td ${ts()}>${act!==null?fmtFn(act):'—'}</td><td ${ts()}>—</td>`;
+    }).join('');
+    return `<tr style="background:#fafafa"><td ${tsL()} style="${tsL().slice(7,-1)};color:#555;font-style:italic">${label}</td><td ${ts()}>${planMth!==null?fmtFn(planMth):'—'}</td><td ${ts()}>${mtdAct!==null?fmtFn(mtdAct):'—'}</td><td ${ts()}>—</td>${wCells}</tr>`;
   }
 
-  // ── build tiktok inner rows ────────────────────────────────────
-  let tInner = '';
-  if (platforms.tiktok) {
-    tInner += sh('Ads_PGM');
-    tInner += mr('Doanh số Ads', wp('t_pgm_doanh_so'), wa('t_pgm_doanh_so'));
-    tInner += mr('Chi Phí Dịch vụ hiển thị', wp('t_pgm_chi_phi'), wa('t_pgm_chi_phi'));
-    tInner += mr('ROAS', calc(()=>wp('t_pgm_doanh_so'),()=>wp('t_pgm_chi_phi')), calc(()=>wa('t_pgm_doanh_so'),()=>wa('t_pgm_chi_phi')), fX, true);
-    tInner += mr('CPC = Chi phí / Lượt click', calc(()=>wp('t_pgm_chi_phi'),()=>wp('t_pgm_luot_click')), calc(()=>wa('t_pgm_chi_phi'),()=>wa('t_pgm_luot_click')), fCPC, true);
-    tInner += mr('CTR', calc(()=>wp('t_pgm_luot_click'),()=>wp('t_pgm_luot_xem'),100), calc(()=>wa('t_pgm_luot_click'),()=>wa('t_pgm_luot_xem'),100), fP, true);
-    tInner += mr('CR = Đơn hàng / Lượt click*100 (%)', calc(()=>wp('t_pgm_don_hang'),()=>wp('t_pgm_luot_click'),100), calc(()=>wa('t_pgm_don_hang'),()=>wa('t_pgm_luot_click'),100), fP, true);
-    tInner += mr('CPM', calc(()=>wp('t_pgm_chi_phi'),()=>wp('t_pgm_luot_xem'),1000), calc(()=>wa('t_pgm_chi_phi'),()=>wa('t_pgm_luot_xem'),1000), fM, true);
-    tInner += mr('Số lượt xem', wp('t_pgm_luot_xem'), wa('t_pgm_luot_xem'), fN);
-    tInner += mr('Số lượt click', wp('t_pgm_luot_click'), wa('t_pgm_luot_click'), fN);
-    tInner += mr('Số đơn hàng', wp('t_pgm_don_hang'), wa('t_pgm_don_hang'), fN);
-    tInner += mr('AOV = Doanh thu / Số đơn hàng', calc(()=>wp('t_pgm_doanh_so'),()=>wp('t_pgm_don_hang')), calc(()=>wa('t_pgm_doanh_so'),()=>wa('t_pgm_don_hang')), fM, true);
-    tInner += sh('Ads_LGM');
-    tInner += mr('Doanh thu', wp('t_lgm_doanhthu'), wa('t_lgm_doanhthu'));
-    tInner += mr('Chi phí', wp('t_lgm_chi_phi'), wa('t_lgm_chi_phi'));
-    tInner += mr('ROI', calc(()=>wp('t_lgm_doanhthu'),()=>wp('t_lgm_chi_phi')), calc(()=>wa('t_lgm_doanhthu'),()=>wa('t_lgm_chi_phi')), fX, true);
-    tInner += sh('Consideration_Ads');
-    tInner += mr('Consider (Số người nhận biết TH)', wp('t_con_nguoi'), wa('t_con_nguoi'), fN);
-    tInner += mr('Chi phí', wp('t_con_chi_phi'), wa('t_con_chi_phi'));
-    tInner += mr('CPA', calc(()=>wp('t_con_chi_phi'),()=>wp('t_con_nguoi')), calc(()=>wa('t_con_chi_phi'),()=>wa('t_con_nguoi')), fM, true);
-    tInner += sh('Branding_Ads');
-    tInner += mr('Lượt xem', wp('t_brd_view'), wa('t_brd_view'), fN);
-    tInner += mr('Follow', wp('t_brd_follow'), wa('t_brd_follow'), fN);
-    tInner += mr('Chi phí', wp('t_brd_chi_phi'), wa('t_brd_chi_phi'));
-    tInner += mr('CPV (Chi phí / Lượt xem)', calc(()=>wp('t_brd_chi_phi'),()=>wp('t_brd_view')), calc(()=>wa('t_brd_chi_phi'),()=>wa('t_brd_view')), fM, true);
-    tInner += mr('CPF (Chi phí / Follow)', calc(()=>wp('t_brd_chi_phi'),()=>wp('t_brd_follow')), calc(()=>wa('t_brd_chi_phi'),()=>wa('t_brd_follow')), fM, true);
-  }
+  const fmtX    = v=>v!==null&&v!==undefined?parseFloat(v).toFixed(2):'—';
+  const fmtPct  = v=>v!==null&&v!==undefined?parseFloat(v).toFixed(2)+'%':'—';
+  const fmtN    = v=>v!==null&&v!==undefined?parseFloat(v).toLocaleString('vi-VN'):'—';
+  const fmtMoney= v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toLocaleString('vi-VN'):'—';
+  const fmtCPC  = v=>v!==null&&v!==undefined&&!isNaN(v)?Math.round(parseFloat(v)).toLocaleString('vi-VN'):'—';
 
-  // ── inject merged cells into first row of each section ────────
-  // The first <tr> of shopeeInner gets: brand (rowspan=totRC) + sàn Shopee (rowspan=sRC) + đánh giá Shopee (rowspan=sRC) + giải pháp (rowspan=totRC)
-  // The first <tr> of tiktokInner gets: sàn TikTok (rowspan=tRC) + đánh giá TikTok (rowspan=tRC)
-  // All sub-header <tr> already have colspan=3 covering Hạng mục+Target+Actual; merged cells from above fill cols 1,2,6,7
-  const brandCell = `<td rowspan="${totRC}" ${csL('font-weight:700;text-align:center;background:#f0f4ff;min-width:90px;border-color:#bbb')}>${brand}</td>`;
-  const sanShopee = `<td rowspan="${sRC}" ${csL('font-weight:600;text-align:center;background:#fff7f0;min-width:70px;border-color:#bbb')}>Shopee</td>`;
-  const sanTiktok = `<td rowspan="${tRC}" ${csL('font-weight:600;text-align:center;background:#f0f4ff;min-width:70px;border-color:#bbb')}>TikTok</td>`;
-  const dgShopee  = `<td rowspan="${sRC}" ${csVT('min-width:130px;border-color:#bbb')}>${dg_shopee}</td>`;
-  const dgTiktok  = `<td rowspan="${tRC}" ${csVT('min-width:130px;border-color:#bbb')}>${dg_tiktok}</td>`;
-  const gpCell    = `<td rowspan="${totRC}" ${csVT('min-width:150px;border-color:#bbb')}>${gp_text}</td>`;
+  const sPlanGmvM  = pM('s_cpc_doanh_so')+pM('s_nd_gmv')+pM('s_live_gmv');
+  const tPlanGmvM  = pM('t_pgm_doanh_so')+pM('t_lgm_doanhthu');
+  const totPlanGmvM= sPlanGmvM+tPlanGmvM;
+  const getMTDGmv_S= ()=>getMTD(w=>{ const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.s_cpc_doanh_so||0)+parseFloat(r.s_nd_gmv||0)+parseFloat(r.s_live_gmv||0)):(w===STATE.weekNum?s.gmv:0); });
+  const getMTDGmv_T= ()=>getMTD(w=>{ const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.t_pgm_doanh_so||0)+parseFloat(r.t_lgm_doanhthu||0)):(w===STATE.weekNum?t.gmv:0); });
+  const mtdTotGmv  = STATE.weeks.filter(wk=>wk.w<=STATE.weekNum).reduce((a,wk)=>{ const v=wk.w===STATE.weekNum?(s.gmv+t.gmv):(getHistGmv(wk.w)||0); return a+v; },0);
 
-  if (sInner) sInner = sInner.replace('<tr>', `<tr>${brandCell}${sanShopee}`).replace(/<\/tr>/, `${dgShopee}${gpCell}</tr>`);
-  else if (tInner) tInner = tInner.replace('<tr>', `<tr>${brandCell}${sanTiktok}`).replace(/<\/tr>/, `${dgTiktok}${gpCell}</tr>`);
-  if (sInner && tInner) tInner = tInner.replace('<tr>', `<tr>${sanTiktok}`).replace(/<\/tr>/, `${dgTiktok}</tr>`);
-
-  // ── assemble final HTML ────────────────────────────────────────
-  const tblStyle = `border-collapse:collapse;width:100%;${F};font-size:15px;margin:4px 0 16px`;
-  let body = `<div style="${F};font-size:15px;color:#000;line-height:1.7;max-width:960px">`;
-  body += `<p style="margin:0 0 4px"><strong style="font-size:16px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
+  let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:15px;color:#000;line-height:1.7;max-width:900px">`;
+  body += `<p style="margin:0 0 4px"><strong style="font-size:15px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
   body += `<hr style="border:1px solid #ccc;margin:8px 0">`;
 
+  // ─── TỔNG 2 SÀN ───
+  if (platforms.shopee && platforms.tiktok) {
+    body += `<p style="margin:6px 0 2px"><strong>━━━ TỔNG 2 SÀN ━━━</strong></p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    const totPlanCpM=(pM('s_cpc_chi_phi')+pM('s_nd_chi_phi')+pM('s_live_chi_phi')+pM('t_pgm_chi_phi')+pM('t_lgm_chi_phi')+pM('t_con_chi_phi')+pM('t_brd_chi_phi'))||0;
+    const mtdTotCp=getMTD(w=>{ const r=history.find(h=>parseInt(h.week_num)===w); if(r) return ['s_cpc_chi_phi','s_nd_chi_phi','s_live_chi_phi','t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi'].reduce((a,f)=>a+parseFloat(r[f]||0),0); return w===STATE.weekNum?(s.cp||0)+(t.cp||0):0; });
+    body += wRow('GMV Ads tổng', totPlanGmvM||null, mtdTotGmv, w=>{ if(w===STATE.weekNum) return (s.gmv||0)+(t.gmv||0); return getHistGmv(w); }, w=>getPlanGmvW(w)||null);
+    body += wRow('Chi phí tổng', totPlanCpM||null, mtdTotCp, w=>{ if(w===STATE.weekNum) return (s.cp||0)+(t.cp||0); const r=history.find(h=>parseInt(h.week_num)===w); return r?['s_cpc_chi_phi','s_nd_chi_phi','s_live_chi_phi','t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi'].reduce((a,f)=>a+parseFloat(r[f]||0),0):null; }, w=>{ const d=(pM('s_cpc_chi_phi')+pM('s_nd_chi_phi')+pM('s_live_chi_phi')+pM('t_pgm_chi_phi')+pM('t_lgm_chi_phi')+pM('t_con_chi_phi')+pM('t_brd_chi_phi')); return d?d:null; });
+    body += dRow('ROAS tổng', totPlanCpM?totPlanGmvM/totPlanCpM:null, (mtdTotCp?mtdTotGmv/mtdTotCp:null), w=>{ const g=w===STATE.weekNum?(s.gmv+t.gmv):(getHistGmv(w)||0); const c=w===STATE.weekNum?(s.cp+t.cp):(getHistCp(w)||0); return c?g/c:null; }, w=>{ const g=getPlanGmvW(w); const c=(pW('s_cpc_chi_phi',w)+pW('s_nd_chi_phi',w)+pW('s_live_chi_phi',w)+pW('t_pgm_chi_phi',w)+pW('t_lgm_chi_phi',w)+pW('t_con_chi_phi',w)+pW('t_brd_chi_phi',w)); return c?g/c:null; }, fmtX);
+    body += `</tbody></table>`;
+  }
+
+  // ─── SHOPEE ADS ───
+  if (platforms.shopee) {
+    body += `<p style="margin:10px 0 2px"><strong>━━━ SHOPEE ADS ━━━</strong></p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Doanh thu Ads (GMV)', sPlanGmvM||null, getMTDGmv_S(), w=>{ if(w===STATE.weekNum) return s.gmv||0; const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.s_cpc_doanh_so||0)+parseFloat(r.s_nd_gmv||0)+parseFloat(r.s_live_gmv||0)):null; }, w=>plan?((pW('s_cpc_doanh_so',w)||0)+(pW('s_nd_gmv',w)||0)+(pW('s_live_gmv',w)||0)):null);
+    body += wRow('Chi phí Ads tổng', pM('s_cpc_chi_phi')+pM('s_nd_chi_phi')+pM('s_live_chi_phi')||null, getMTD(w=>((hRow('s_cpc_chi_phi',w)||0)+(hRow('s_nd_chi_phi',w)||0)+(hRow('s_live_chi_phi',w)||0))), w=>((hRow('s_cpc_chi_phi',w)||0)+(hRow('s_nd_chi_phi',w)||0)+(hRow('s_live_chi_phi',w)||0)), w=>plan?((pW('s_cpc_chi_phi',w)||0)+(pW('s_nd_chi_phi',w)||0)+(pW('s_live_chi_phi',w)||0)):null);
+    body += dRow('ROAS Ads tổng', ratioPM('s_cpc_doanh_so','s_cpc_chi_phi'), ratioMTD('s_cpc_doanh_so','s_cpc_chi_phi'), w=>ratioW('s_cpc_doanh_so','s_cpc_chi_phi',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_chi_phi',w), fmtX);
+    body += wRow('Số lượt clicks tổng', pM('s_cpc_luot_click')+pM('s_nd_luot_click')||null, getMTD(w=>((hRow('s_cpc_luot_click',w)||0)+(hRow('s_nd_luot_click',w)||0))), w=>((hRow('s_cpc_luot_click',w)||0)+(hRow('s_nd_luot_click',w)||0)), w=>plan?((pW('s_cpc_luot_click',w)||0)+(pW('s_nd_luot_click',w)||0)):null, fmtN);
+    body += wRow('Số lượt xem ads tổng', pM('s_cpc_luot_xem')+pM('s_nd_luot_xem')+pM('s_live_luot_xem')||null, getMTD(w=>((hRow('s_cpc_luot_xem',w)||0)+(hRow('s_nd_luot_xem',w)||0)+(hRow('s_live_luot_xem',w)||0))), w=>((hRow('s_cpc_luot_xem',w)||0)+(hRow('s_nd_luot_xem',w)||0)+(hRow('s_live_luot_xem',w)||0)), w=>plan?((pW('s_cpc_luot_xem',w)||0)+(pW('s_nd_luot_xem',w)||0)+(pW('s_live_luot_xem',w)||0)):null, fmtN);
+    body += `</tbody></table>`;
+    // Ads CPC
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Doanh số Ads', pM('s_cpc_doanh_so')||null, getMTD(w=>hRow('s_cpc_doanh_so',w)||0), w=>hRow('s_cpc_doanh_so',w), w=>pW('s_cpc_doanh_so',w)||null);
+    body += wRow('Chi Phí Dịch vụ hiển thị', pM('s_cpc_chi_phi')||null, getMTD(w=>hRow('s_cpc_chi_phi',w)||0), w=>hRow('s_cpc_chi_phi',w), w=>pW('s_cpc_chi_phi',w)||null);
+    body += dRow('ROAS', ratioPM('s_cpc_doanh_so','s_cpc_chi_phi'), ratioMTD('s_cpc_doanh_so','s_cpc_chi_phi'), w=>ratioW('s_cpc_doanh_so','s_cpc_chi_phi',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_chi_phi',w), fmtX);
+    body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_cpc_chi_phi','s_cpc_luot_click'), ratioMTD('s_cpc_chi_phi','s_cpc_luot_click'), w=>ratioW('s_cpc_chi_phi','s_cpc_luot_click',w), w=>ratioPW('s_cpc_chi_phi','s_cpc_luot_click',w), fmtCPC);
+    body += dRow('CTR', ratioPM('s_cpc_luot_click','s_cpc_luot_xem')?ratioPM('s_cpc_luot_click','s_cpc_luot_xem')*100:null, ratioMTD('s_cpc_luot_click','s_cpc_luot_xem')?ratioMTD('s_cpc_luot_click','s_cpc_luot_xem')*100:null, w=>{ const v=ratioW('s_cpc_luot_click','s_cpc_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_cpc_luot_click','s_cpc_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
+    body += dRow('CR = Đơn hàng / Lượt click*100 (%)', ratioPM('s_cpc_don_hang','s_cpc_luot_click')?ratioPM('s_cpc_don_hang','s_cpc_luot_click')*100:null, ratioMTD('s_cpc_don_hang','s_cpc_luot_click')?ratioMTD('s_cpc_don_hang','s_cpc_luot_click')*100:null, w=>{ const v=ratioW('s_cpc_don_hang','s_cpc_luot_click',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_cpc_don_hang','s_cpc_luot_click',w); return v!==null?v*100:null; }, fmtPct);
+    body += wRow('Số lượt xem', pM('s_cpc_luot_xem')||null, getMTD(w=>hRow('s_cpc_luot_xem',w)||0), w=>hRow('s_cpc_luot_xem',w), w=>pW('s_cpc_luot_xem',w)||null, fmtN);
+    body += wRow('Số lượt click', pM('s_cpc_luot_click')||null, getMTD(w=>hRow('s_cpc_luot_click',w)||0), w=>hRow('s_cpc_luot_click',w), w=>pW('s_cpc_luot_click',w)||null, fmtN);
+    body += wRow('Số đơn hàng', pM('s_cpc_don_hang')||null, getMTD(w=>hRow('s_cpc_don_hang',w)||0), w=>hRow('s_cpc_don_hang',w), w=>pW('s_cpc_don_hang',w)||null, fmtN);
+    body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('s_cpc_doanh_so','s_cpc_don_hang'), ratioMTD('s_cpc_doanh_so','s_cpc_don_hang'), w=>ratioW('s_cpc_doanh_so','s_cpc_don_hang',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_don_hang',w), fmtMoney);
+    body += `</tbody></table>`;
+    // Ads ND
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Doanh thu Ads (GMV)', pM('s_nd_gmv')||null, getMTD(w=>hRow('s_nd_gmv',w)||0), w=>hRow('s_nd_gmv',w), w=>pW('s_nd_gmv',w)||null);
+    body += wRow('Chi phí ads', pM('s_nd_chi_phi')||null, getMTD(w=>hRow('s_nd_chi_phi',w)||0), w=>hRow('s_nd_chi_phi',w), w=>pW('s_nd_chi_phi',w)||null);
+    body += dRow('ROAS ads', ratioPM('s_nd_gmv','s_nd_chi_phi'), ratioMTD('s_nd_gmv','s_nd_chi_phi'), w=>ratioW('s_nd_gmv','s_nd_chi_phi',w), w=>ratioPW('s_nd_gmv','s_nd_chi_phi',w), fmtX);
+    body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_nd_chi_phi','s_nd_luot_click'), ratioMTD('s_nd_chi_phi','s_nd_luot_click'), w=>ratioW('s_nd_chi_phi','s_nd_luot_click',w), w=>ratioPW('s_nd_chi_phi','s_nd_luot_click',w), fmtCPC);
+    body += dRow('CTR', ratioPM('s_nd_luot_click','s_nd_luot_xem')?ratioPM('s_nd_luot_click','s_nd_luot_xem')*100:null, ratioMTD('s_nd_luot_click','s_nd_luot_xem')?ratioMTD('s_nd_luot_click','s_nd_luot_xem')*100:null, w=>{ const v=ratioW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
+    body += wRow('Số lượt xem', pM('s_nd_luot_xem')||null, getMTD(w=>hRow('s_nd_luot_xem',w)||0), w=>hRow('s_nd_luot_xem',w), w=>pW('s_nd_luot_xem',w)||null, fmtN);
+    body += wRow('Số lượt click', pM('s_nd_luot_click')||null, getMTD(w=>hRow('s_nd_luot_click',w)||0), w=>hRow('s_nd_luot_click',w), w=>pW('s_nd_luot_click',w)||null, fmtN);
+    body += `</tbody></table>`;
+    // Ads Live
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Doanh thu Ads (GMV)', pM('s_live_gmv')||null, getMTD(w=>hRow('s_live_gmv',w)||0), w=>hRow('s_live_gmv',w), w=>pW('s_live_gmv',w)||null);
+    body += wRow('Chi phí ads', pM('s_live_chi_phi')||null, getMTD(w=>hRow('s_live_chi_phi',w)||0), w=>hRow('s_live_chi_phi',w), w=>pW('s_live_chi_phi',w)||null);
+    body += dRow('ROAS ads', ratioPM('s_live_gmv','s_live_chi_phi'), ratioMTD('s_live_gmv','s_live_chi_phi'), w=>ratioW('s_live_gmv','s_live_chi_phi',w), w=>ratioPW('s_live_gmv','s_live_chi_phi',w), fmtX);
+    body += wRow('Lượt xem', pM('s_live_luot_xem')||null, getMTD(w=>hRow('s_live_luot_xem',w)||0), w=>hRow('s_live_luot_xem',w), w=>pW('s_live_luot_xem',w)||null, fmtN);
+    body += `</tbody></table>`;
+  }
+
+  // ─── TIKTOK SHOP ───
+  if (platforms.tiktok) {
+    body += `<p style="margin:10px 0 2px"><strong>━━━ TIKTOK SHOP ━━━</strong></p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Doanh thu Ads (GMV)', tPlanGmvM||null, getMTDGmv_T(), w=>{ if(w===STATE.weekNum) return t.gmv||0; const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.t_pgm_doanh_so||0)+parseFloat(r.t_lgm_doanhthu||0)):null; }, w=>plan?((pW('t_pgm_doanh_so',w)||0)+(pW('t_lgm_doanhthu',w)||0)):null);
+    body += wRow('Chi phí Ads', pM('t_pgm_chi_phi')+pM('t_lgm_chi_phi')+pM('t_con_chi_phi')+pM('t_brd_chi_phi')||null, getMTD(w=>((hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0))), w=>((hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0)), w=>plan?((pW('t_pgm_chi_phi',w)||0)+(pW('t_lgm_chi_phi',w)||0)+(pW('t_con_chi_phi',w)||0)+(pW('t_brd_chi_phi',w)||0)):null);
+    body += dRow('ROI', null, null, w=>{ const g=(hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0); const c=(hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0); return c?g/c:null; }, null, fmtX);
+    body += `</tbody></table>`;
+    // PGM
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Doanh số Ads', pM('t_pgm_doanh_so')||null, getMTD(w=>hRow('t_pgm_doanh_so',w)||0), w=>hRow('t_pgm_doanh_so',w), w=>pW('t_pgm_doanh_so',w)||null);
+    body += wRow('Chi Phí Dịch vụ hiển thị', pM('t_pgm_chi_phi')||null, getMTD(w=>hRow('t_pgm_chi_phi',w)||0), w=>hRow('t_pgm_chi_phi',w), w=>pW('t_pgm_chi_phi',w)||null);
+    body += dRow('ROAS', ratioPM('t_pgm_doanh_so','t_pgm_chi_phi'), ratioMTD('t_pgm_doanh_so','t_pgm_chi_phi'), w=>ratioW('t_pgm_doanh_so','t_pgm_chi_phi',w), w=>ratioPW('t_pgm_doanh_so','t_pgm_chi_phi',w), fmtX);
+    body += dRow('CPC = Chi phí / Lượt click', ratioPM('t_pgm_chi_phi','t_pgm_luot_click'), ratioMTD('t_pgm_chi_phi','t_pgm_luot_click'), w=>ratioW('t_pgm_chi_phi','t_pgm_luot_click',w), w=>ratioPW('t_pgm_chi_phi','t_pgm_luot_click',w), fmtCPC);
+    body += dRow('CTR', ratioPM('t_pgm_luot_click','t_pgm_luot_xem')?ratioPM('t_pgm_luot_click','t_pgm_luot_xem')*100:null, ratioMTD('t_pgm_luot_click','t_pgm_luot_xem')?ratioMTD('t_pgm_luot_click','t_pgm_luot_xem')*100:null, w=>{ const v=ratioW('t_pgm_luot_click','t_pgm_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('t_pgm_luot_click','t_pgm_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
+    body += dRow('CR = Đơn hàng / Lượt click*100 (%)', ratioPM('t_pgm_don_hang','t_pgm_luot_click')?ratioPM('t_pgm_don_hang','t_pgm_luot_click')*100:null, ratioMTD('t_pgm_don_hang','t_pgm_luot_click')?ratioMTD('t_pgm_don_hang','t_pgm_luot_click')*100:null, w=>{ const v=ratioW('t_pgm_don_hang','t_pgm_luot_click',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('t_pgm_don_hang','t_pgm_luot_click',w); return v!==null?v*100:null; }, fmtPct);
+    body += dRow('CPM', ratioPM('t_pgm_chi_phi','t_pgm_luot_xem')?ratioPM('t_pgm_chi_phi','t_pgm_luot_xem')*1000:null, ratioMTD('t_pgm_chi_phi','t_pgm_luot_xem')?ratioMTD('t_pgm_chi_phi','t_pgm_luot_xem')*1000:null, w=>{ const v=ratioW('t_pgm_chi_phi','t_pgm_luot_xem',w); return v!==null?v*1000:null; }, w=>{ const v=ratioPW('t_pgm_chi_phi','t_pgm_luot_xem',w); return v!==null?v*1000:null; }, fmtMoney);
+    body += wRow('Số lượt xem', pM('t_pgm_luot_xem')||null, getMTD(w=>hRow('t_pgm_luot_xem',w)||0), w=>hRow('t_pgm_luot_xem',w), w=>pW('t_pgm_luot_xem',w)||null, fmtN);
+    body += wRow('Số lượt click', pM('t_pgm_luot_click')||null, getMTD(w=>hRow('t_pgm_luot_click',w)||0), w=>hRow('t_pgm_luot_click',w), w=>pW('t_pgm_luot_click',w)||null, fmtN);
+    body += wRow('Số đơn hàng', pM('t_pgm_don_hang')||null, getMTD(w=>hRow('t_pgm_don_hang',w)||0), w=>hRow('t_pgm_don_hang',w), w=>pW('t_pgm_don_hang',w)||null, fmtN);
+    body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('t_pgm_doanh_so','t_pgm_don_hang'), ratioMTD('t_pgm_doanh_so','t_pgm_don_hang'), w=>ratioW('t_pgm_doanh_so','t_pgm_don_hang',w), w=>ratioPW('t_pgm_doanh_so','t_pgm_don_hang',w), fmtMoney);
+    body += `</tbody></table>`;
+    // LGM
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_LGM</p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Doanh thu LGM', pM('t_lgm_doanhthu')||null, getMTD(w=>hRow('t_lgm_doanhthu',w)||0), w=>hRow('t_lgm_doanhthu',w), w=>pW('t_lgm_doanhthu',w)||null);
+    body += wRow('Chi phí', pM('t_lgm_chi_phi')||null, getMTD(w=>hRow('t_lgm_chi_phi',w)||0), w=>hRow('t_lgm_chi_phi',w), w=>pW('t_lgm_chi_phi',w)||null);
+    body += dRow('ROI', ratioPM('t_lgm_doanhthu','t_lgm_chi_phi'), ratioMTD('t_lgm_doanhthu','t_lgm_chi_phi'), w=>ratioW('t_lgm_doanhthu','t_lgm_chi_phi',w), w=>ratioPW('t_lgm_doanhthu','t_lgm_chi_phi',w), fmtX);
+    body += `</tbody></table>`;
+    // Consideration
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('Consider (Số người nhận biết thương hiệu)', pM('t_con_nguoi')||null, getMTD(w=>hRow('t_con_nguoi',w)||0), w=>hRow('t_con_nguoi',w), w=>pW('t_con_nguoi',w)||null, fmtN);
+    body += wRow('Chi phí', pM('t_con_chi_phi')||null, getMTD(w=>hRow('t_con_chi_phi',w)||0), w=>hRow('t_con_chi_phi',w), w=>pW('t_con_chi_phi',w)||null);
+    body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), fmtMoney);
+    body += `</tbody></table>`;
+    // Branding
+    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
+    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    body += wRow('View', pM('t_brd_view')||null, getMTD(w=>hRow('t_brd_view',w)||0), w=>hRow('t_brd_view',w), w=>pW('t_brd_view',w)||null, fmtN);
+    body += wRow('Follow', pM('t_brd_follow')||null, getMTD(w=>hRow('t_brd_follow',w)||0), w=>hRow('t_brd_follow',w), w=>pW('t_brd_follow',w)||null, fmtN);
+    body += wRow('Chi phí', pM('t_brd_chi_phi')||null, getMTD(w=>hRow('t_brd_chi_phi',w)||0), w=>hRow('t_brd_chi_phi',w), w=>pW('t_brd_chi_phi',w)||null);
+    body += dRow('CPA', ratioPM('t_brd_chi_phi','t_brd_follow'), ratioMTD('t_brd_chi_phi','t_brd_follow'), w=>ratioW('t_brd_chi_phi','t_brd_follow',w), w=>ratioPW('t_brd_chi_phi','t_brd_follow',w), fmtMoney);
+    body += `</tbody></table>`;
+  }
+
+  // ─── HIGHLIGHT / LOWLIGHT ───
+  body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
   body += `<table style="${tblStyle}"><thead><tr>
-    <th ${csTH('min-width:90px')}>Brand</th>
-    <th ${csTH('min-width:70px')}>Sàn</th>
-    <th ${csTH('min-width:200px;text-align:left')}>Hạng mục</th>
-    <th ${csTH('min-width:110px')}>Target</th>
-    <th ${csTH('min-width:110px')}>Actual</th>
-    <th ${csTH('min-width:130px')}>Đánh giá</th>
-    <th ${csTH('min-width:150px')}>Giải pháp/Đề xuất</th>
-  </tr></thead><tbody>
-  ${sInner}${tInner}
-  </tbody></table>`;
+    <th style="padding:6px 12px;border:1px solid #999;background:#1a5c2e;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:15px">Hightligth</th>
+    <th style="padding:6px 12px;border:1px solid #999;background:#5c1a1a;color:#fff;text-align:left;width:50%;font-family:'Times New Roman',serif;font-size:15px">Lowlight</th>
+  </tr></thead><tbody><tr>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:15px">${(ai.highlight||'').replace(/\n/g,'<br>')}</td>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:15px">${(ai.lowlight||'').replace(/\n/g,'<br>')}</td>
+  </tr></tbody></table>`;
+
+  // ─── BRAND / SÀN SUMMARY ───
+  const nl = v => (v||'').replace(/\n/g,'<br>');
+  const thS = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:15px;text-align:center;${v}"`;
+  const tdS = (v='') => `style="padding:6px 10px;border:1px solid #ccc;font-family:'Times New Roman',serif;font-size:15px;vertical-align:top;${v}"`;
+  const platformRows = [platforms.shopee&&'Shopee', platforms.tiktok&&'TikTok'].filter(Boolean);
+  const rc = platformRows.length;
+  body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
+  body += `<table style="${tblStyle}"><thead><tr>
+    <th ${thS('min-width:90px')}>Brand</th>
+    <th ${thS('min-width:80px')}>Sàn</th>
+    <th ${thS('min-width:80px')}>Hạng mục</th>
+    <th ${thS('min-width:160px')}>Thực tế</th>
+    <th ${thS('min-width:160px')}>Vấn đề</th>
+    <th ${thS('min-width:180px')}>Giải pháp/Kế hoạch tới</th>
+  </tr></thead><tbody>`;
+  platformRows.forEach((san, i) => {
+    body += `<tr>`;
+    if (i===0) body += `<td rowspan="${rc}" ${tdS('text-align:center;font-weight:700;vertical-align:middle')}>${brand}</td>`;
+    body += `<td ${tdS('text-align:center')}>${san}</td>`;
+    body += `<td ${tdS('text-align:center')}>Ads</td>`;
+    if (i===0) body += `<td rowspan="${rc}" ${tdS()}>${nl(ai.thuc_trang)}</td>`;
+    if (i===0) body += `<td rowspan="${rc}" ${tdS()}>${nl(ai.van_de)}</td>`;
+    if (i===0) body += `<td rowspan="${rc}" ${tdS()}>${nl(ai.giai_phap)}</td>`;
+    body += `</tr>`;
+  });
+  body += `</tbody></table>`;
 
   body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
   body += `<p style="color:#555;font-size:14px">Reported by: ${user?.name} | ${fmtD(new Date())}</p>`;
