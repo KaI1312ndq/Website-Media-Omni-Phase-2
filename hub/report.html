@@ -675,23 +675,23 @@ function fmt(n, unit='') {
   if (n === null || n === undefined || isNaN(n) || n === '') return '—';
   const v = parseFloat(n);
   if (!isFinite(v) || v === 0) return unit === '%' ? '0%' : '0';
-  if (unit === '₫') return Math.round(v).toLocaleString('en-US');
-  if (unit === 'x') return v.toFixed(2);
-  if (unit === '%') return v.toFixed(2) + '%';
-  return Math.round(v).toLocaleString('en-US');
+  if (unit === '₫') return Math.round(v).toLocaleString('vi-VN');
+  if (unit === 'x') return v.toLocaleString('vi-VN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (unit === '%') return v.toLocaleString('vi-VN', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+  return Math.round(v).toLocaleString('vi-VN');
 }
 function fmtBig(n) {
   if (n === null || n === undefined || isNaN(n) || n === '' || n === '—') return '—';
   const v = parseFloat(n);
   if (!isFinite(v)) return '—';
-  return Math.round(v).toLocaleString('en-US') + '₫';
+  return Math.round(v).toLocaleString('vi-VN') + '₫';
 }
 function fmtBigShort(n) {
   if (!n || isNaN(n)) return '—';
   const v = parseFloat(n);
   if (v >= 1e9) return (v/1e9).toFixed(1) + 'B₫';
   if (v >= 1e6) return (v/1e6).toFixed(1) + 'M₫';
-  return Math.round(v).toLocaleString('en-US') + '₫';
+  return Math.round(v).toLocaleString('vi-VN') + '₫';
 }
 function pctCls(pct) {
   if (!pct) return '';
@@ -716,14 +716,14 @@ function gvRaw(id) { return (document.getElementById(id)?.value||'').replace(/\.
 function sd(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
 function fmtInpNum(el) {
   const v = el.value;
-  if (/[+\-*/]/.test(v.replace(/,/g,''))) {
-    el.classList.add('expr-mode'); // show amber hint while typing expression
+  if (/[+\-*/]/.test(v.replace(/[.,]/g,''))) {
+    el.classList.add('expr-mode');
     return;
   }
   el.classList.remove('expr-mode');
   const raw = v.replace(/[^\d]/g, '');
   if (!raw) { el.value = ''; return; }
-  el.value = parseInt(raw, 10).toLocaleString('en-US');
+  el.value = parseInt(raw, 10).toLocaleString('vi-VN');
 }
 function sc(id, pct) {
   const e = document.getElementById(id);
@@ -932,7 +932,7 @@ function initStep2() {
       const el = document.getElementById(f);
       if (el && thisWeek[f]) {
         const n = parseFloat(thisWeek[f]);
-        el.value = n ? Math.round(n).toLocaleString('en-US') : '';
+        el.value = n ? Math.round(n).toLocaleString('vi-VN') : '';
       }
     });
     ['highlight','lowlight'].forEach(k => {
@@ -1138,9 +1138,9 @@ async function generateAI() {
     userMsg += `[CPC] Doanh số: ${fmtBig(cpcDs)} (Plan: ${fmtBig(planCpcDs)}, %TH: ${getPct(cpcDs,planCpcDs)||'—'}%)\n`;
     userMsg += `[CPC] Chi phí: ${fmtBig(cpcCp)} | ROAS: ${cpcCp?(cpcDs/cpcCp).toFixed(2):'—'} | CPC: ${cpcClick?fmtBig(cpcCp/cpcClick):'—'}\n`;
     userMsg += `[CPC] CTR: ${cpcXem?(cpcClick/cpcXem*100).toFixed(2):'—'}% | CR: ${cpcClick?(cpcDh/cpcClick*100).toFixed(2):'—'}% | AOV: ${cpcDh?fmtBig(cpcDs/cpcDh):'—'}\n`;
-    userMsg += `[CPC] Lượt xem: ${cpcXem.toLocaleString('en-US')} | Lượt click: ${cpcClick.toLocaleString('en-US')} | Đơn hàng: ${cpcDh.toLocaleString('en-US')}\n\n`;
+    userMsg += `[CPC] Lượt xem: ${cpcXem.toLocaleString('vi-VN')} | Lượt click: ${cpcClick.toLocaleString('vi-VN')} | Đơn hàng: ${cpcDh.toLocaleString('vi-VN')}\n\n`;
     userMsg += `[ND] GMV: ${fmtBig(ndGmv)} (Plan: ${fmtBig(planNdGmv)}) | Chi phí: ${fmtBig(ndCp)} | ROAS: ${ndCp?(ndGmv/ndCp).toFixed(2):'—'}\n`;
-    userMsg += `[ND] CTR: ${ndXem?(ndClick/ndXem*100).toFixed(2):'—'}% | Lượt xem: ${ndXem.toLocaleString('en-US')}\n\n`;
+    userMsg += `[ND] CTR: ${ndXem?(ndClick/ndXem*100).toFixed(2):'—'}% | Lượt xem: ${ndXem.toLocaleString('vi-VN')}\n\n`;
     userMsg += `[Live] GMV: ${fmtBig(lvGmv)} (Plan: ${fmtBig(planLvGmv)}) | Chi phí: ${fmtBig(lvCp)} | ROAS: ${lvCp?(lvGmv/lvCp).toFixed(2):'—'}\n\n`;
   }
   if (platforms.tiktok) {
@@ -1152,8 +1152,8 @@ async function generateAI() {
     userMsg += `[PGM] Doanh số: ${fmtBig(pgmDs)} (Plan: ${fmtBig(planPgmDs)}) | Chi phí: ${fmtBig(pgmCp)} | ROAS: ${pgmCp?(pgmDs/pgmCp).toFixed(2):'—'}\n`;
     userMsg += `[PGM] CTR: ${pgmXem?(pgmClick/pgmXem*100).toFixed(2):'—'}% | CR: ${pgmClick?(pgmDh/pgmClick*100).toFixed(2):'—'}% | AOV: ${pgmDh?fmtBig(pgmDs/pgmDh):'—'}\n\n`;
     userMsg += `[LGM] Doanh thu: ${fmtBig(lgmDt)} (Plan: ${fmtBig(planLgmDt)}) | Chi phí: ${fmtBig(lgmCp)} | ROI: ${lgmCp?(lgmDt/lgmCp).toFixed(2):'—'}\n\n`;
-    userMsg += `[Con người] Người tiếp cận: ${conNg.toLocaleString('en-US')} | Chi phí: ${fmtBig(conCp)} | CPP: ${conNg?fmtBig(conCp/conNg):'—'}\n`;
-    userMsg += `[Branding] Lượt xem: ${brdXem.toLocaleString('en-US')} | Follow: ${brdFlw.toLocaleString('en-US')} | Chi phí: ${fmtBig(brdCp)}\n\n`;
+    userMsg += `[Con người] Người tiếp cận: ${conNg.toLocaleString('vi-VN')} | Chi phí: ${fmtBig(conCp)} | CPP: ${conNg?fmtBig(conCp/conNg):'—'}\n`;
+    userMsg += `[Branding] Lượt xem: ${brdXem.toLocaleString('vi-VN')} | Follow: ${brdFlw.toLocaleString('vi-VN')} | Chi phí: ${fmtBig(brdCp)}\n\n`;
   }
   if (prevW_last) {
     userMsg += `--- SO SÁNH TUẦN TRƯỚC (W${prevW_last.week_num}) ---\n`;
@@ -1282,7 +1282,7 @@ function handlePlanUpload(file) {
           const el = document.getElementById(`pm_${key}_${p}`);
           if (!el) return;
           const v = parseInt((row[i + 1] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
-          el.value = v ? v.toLocaleString('en-US') : '';
+          el.value = v ? v.toLocaleString('vi-VN') : '';
           filled++;
         });
       });
@@ -1367,7 +1367,7 @@ function buildChart() {
     return parseFloat(((cp/gmv)*100).toFixed(1));
   });
 
-  const fmtV = v => v >= 1e9 ? (v/1e9).toFixed(1)+'B₫' : v >= 1e6 ? (v/1e6).toFixed(0)+'M₫' : v.toLocaleString('en-US')+'₫';
+  const fmtV = v => v >= 1e9 ? (v/1e9).toFixed(1)+'B₫' : v >= 1e6 ? (v/1e6).toFixed(0)+'M₫' : v.toLocaleString('vi-VN')+'₫';
 
   STATE.chartInst = new Chart(canvas, {
     data: {
@@ -1433,7 +1433,7 @@ function buildPreview() {
   };
   const fmtMail = v => {
     if (v === null || v === undefined || isNaN(v)) return '—';
-    return Math.round(parseFloat(v)).toLocaleString('en-US');
+    return Math.round(parseFloat(v)).toLocaleString('vi-VN');
   };
   const hdr = `<tr><th ${th('text-align:center;min-width:130px')}>Metric</th><th ${th()}>Tháng (Plan)</th><th ${th()}>Luỹ tiến</th><th ${th()}>% thực hiện</th>${STATE.weeks.map(w=>`<th ${th()}>W${w.w}</th><th ${th()}>Thực hiện</th><th ${th()}>% thực hiện</th>`).join('')}</tr>`;
 
@@ -1460,7 +1460,7 @@ function buildPreview() {
   }
   // ── dRow: derived/ratio row ──
   function dRow(label, planMth, mtdAct, getAct, getPlan, fmtFn) {
-    fmtFn = fmtFn || (v=>v!==null?v.toFixed(2):'—');
+    fmtFn = fmtFn || (v=>v!==null?parseFloat(v).toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—');
     const pctMtd=getPct(mtdAct,planMth);
     const wCells=STATE.weeks.map(w=>{
       const pw=getPlan?getPlan(w.w):null, act=getAct?getAct(w.w):null;
@@ -1470,8 +1470,8 @@ function buildPreview() {
     return `<tr style="background:#fafafa"><td ${tsL()} style="${tsL().slice(7,-1)};color:#555;font-style:italic">${label}</td><td ${ts()}>${planMth!==null?fmtFn(planMth):'—'}</td><td ${ts()}>${mtdAct!==null?fmtFn(mtdAct):'—'}</td><td ${ts()}>${pctMtd?pctMtd+'%':'—'}</td>${wCells}</tr>`;
   }
 
-  const fmtX    = v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toFixed(2):'—';
-  const fmtPct  = v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toFixed(2)+'%':'—';
+  const fmtX    = v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+  const fmtPct  = v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2})+'%':'—';
   const fmtN    = v=>fmtMail(v);
   const fmtMoney= v=>fmtMail(v);
   const fmtCPC  = v=>fmtMail(v);
@@ -1990,7 +1990,7 @@ function showPlanModal() {
     html += `<div class="pg-lbl">${row.label}</div>`;
     periods.forEach(p => {
       const rawVal = plan[row.key]?.[p.id] || 0;
-      const val = rawVal ? Math.round(rawVal).toLocaleString('en-US') : '';
+      const val = rawVal ? Math.round(rawVal).toLocaleString('vi-VN') : '';
       html += `<div><input class="pg-inp" type="text" inputmode="numeric" id="pm_${row.key}_${p.id}" value="${val}" placeholder="0" oninput="fmtInpNum(this)" onpaste="handlePlanPaste(event,'${row.key}','${p.id}')"></div>`;
     });
   });
@@ -2035,7 +2035,7 @@ function handleActualPaste(e, fieldId) {
     if (!el) return;
     const raw = (cols[0] || '').trim().replace(/[^\d]/g, '');
     const v = parseInt(raw, 10) || 0;
-    el.value = v ? v.toLocaleString('en-US') : '';
+    el.value = v ? v.toLocaleString('vi-VN') : '';
     flashInput(el);
     anyFilled = true;
   });
@@ -2045,14 +2045,14 @@ function handleActualPaste(e, fieldId) {
 function evalActualExpr(el) {
   const raw = el.value.trim();
   if (!raw) { el.classList.remove('expr-mode'); return; }
-  const stripped = raw.replace(/,/g, '');
+  const stripped = raw.replace(/[.,]/g, '');
   if (!/[+\-*/]/.test(stripped)) { el.classList.remove('expr-mode'); return; }
   try {
-    if (!/^[\d\s+\-*/().]+$/.test(stripped)) return;
+    if (!/^[\d\s+\-*/()]+$/.test(stripped)) return;
     const result = Function('"use strict";return(' + stripped + ')')();
     if (!isFinite(result) || isNaN(result)) return;
     const rounded = Math.round(result);
-    el.value = rounded ? rounded.toLocaleString('en-US') : '';
+    el.value = rounded ? rounded.toLocaleString('vi-VN') : '';
     el.classList.remove('expr-mode');
     flashInput(el);
     calcShopee(); calcTikTok();
@@ -2080,7 +2080,7 @@ function handlePlanPaste(e, key, periodId) {
       const el = document.getElementById(`pm_${rowKey}_${colPeriod}`);
       if (!el) return;
       const v = parseInt(raw.trim().replace(/[^\d]/g, ''), 10) || 0;
-      el.value = v ? v.toLocaleString('en-US') : '';
+      el.value = v ? v.toLocaleString('vi-VN') : '';
       flashInput(el);
     });
   });
@@ -2116,7 +2116,7 @@ function handleModalPaste(e) {
         if (!el) return;
         const raw = (cols[valStart + i] || '').toString().trim();
         const v = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
-        el.value = v ? v.toLocaleString('en-US') : '';
+        el.value = v ? v.toLocaleString('vi-VN') : '';
         flashInput(el);
         filled++;
       });
@@ -2139,7 +2139,7 @@ function handleModalPaste(e) {
         if (!el) return;
         const raw = (cols[offset + i] || '').toString().trim();
         const v = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
-        el.value = v ? v.toLocaleString('en-US') : '';
+        el.value = v ? v.toLocaleString('vi-VN') : '';
         flashInput(el);
         filled++;
       });
@@ -2294,7 +2294,7 @@ function handleActualUpload(file) {
         const el = document.getElementById(key);
         if (!el) return;
         const v = parseInt((row[1] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
-        el.value = v ? v.toLocaleString('en-US') : '';
+        el.value = v ? v.toLocaleString('vi-VN') : '';
         filled++;
       });
       calcShopee(); calcTikTok();
