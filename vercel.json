@@ -1,6 +1,12 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/quiz",      "destination": "/quiz.html" },
+    { "source": "/admin",     "destination": "/admin.html" },
+    { "source": "/hub/report",    "destination": "/hub/report.html" },
+    { "source": "/hub/tasks",     "destination": "/hub/tasks.html" }
+  ]
 }

@@ -196,36 +196,18 @@
 <div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
 <script src="/js/shared.js"></script>
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbyIePKw-lUiNXVxAltUUohDxxGTpl60nuI-LUsbcTDlZp_1ebNv5tNOEi18UHcY0a3L/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwmLt2SFY5iMg22qrUmvxmgI5Njwje5wRYGdHIwxizQvELMAHKmVlahHj0XJVOMuYMu/exec';
 
 // ── STATE ──
 let ALL_BRANDS = [];
 let SELECTED_BRANDS = []; // empty = all
 let DATA = {}; // { brand: { plan, history, weeks } }
 let CHART_GMV = null, CHART_CP = null;
-let CU = null;
-
-// ── FETCH WITH TIMEOUT ──
-// AbortController không hoạt động qua GAS redirect chain → dùng Promise.race
-function apiFetch(url, timeoutMs = 20000) {
-  const timeoutP = new Promise((_, rej) =>
-    setTimeout(() => rej(new Error(`Timeout sau ${timeoutMs/1000}s — GAS chưa phản hồi`)), timeoutMs)
-  );
-  return Promise.race([
-    fetch(url).then(r => r.json()),
-    timeoutP
-  ]);
-}
 
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
-  CU = Auth.get();
-  if (!CU) { try { CU = JSON.parse(localStorage.getItem('mo_persist')); } catch {} }
-  if (!CU) { location.href = '/'; return; }
-  localStorage.setItem('mo_persist', JSON.stringify(CU));
-  Auth.set(CU);
-
   initFilters();
+  await fetchBrands();
   loadData();
   document.addEventListener('click', e => {
     if (!document.getElementById('brand-filter-wrap').contains(e.target))
@@ -251,7 +233,11 @@ function initFilters() {
   }
 }
 
-function buildBrandDDFromList() {
+async function fetchBrands() {
+  try {
+    const j = await fetch(`${API}?action=getBrands`).then(r => r.json());
+    ALL_BRANDS = (j.ok && j.data) ? j.data : [];
+  } catch { ALL_BRANDS = []; }
   buildBrandDD();
   renderBrandTags();
 }
@@ -324,39 +310,27 @@ function toggleBrandDD() {
 async function loadData() {
   const month = parseInt(document.getElementById('sel-month').value);
   const year  = parseInt(document.getElementById('sel-year').value);
+  const brands = SELECTED_BRANDS.length > 0 ? SELECTED_BRANDS : ALL_BRANDS;
 
   document.getElementById('main-content').innerHTML =
-    `<div class="an-loading"><div class="spin"></div><br><br>Đang tải dữ liệu...</div>`;
+    `<div class="an-loading"><div class="spin"></div><br><br>Đang tải dữ liệu ${brands.length} brand...</div>`;
 
-  try {
-    const j = await apiFetch(`${API}?action=getAllData&month=${month}&year=${year}`);
-    if (!j.ok) throw new Error(j.error || 'API lỗi');
+  DATA = {};
+  const weeks = getWeeksOfMonth(year, month);
 
-    const { brands: apiBrands, plans, history } = j.data;
+  await Promise.all(brands.map(async brand => {
+    const [pj, hj] = await Promise.all([
+      fetch(`${API}?action=getPlan&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).then(r=>r.json()).catch(()=>({ok:false})),
+      fetch(`${API}?action=getWeeklyHistory&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).then(r=>r.json()).catch(()=>({ok:false}))
+    ]);
+    DATA[brand] = {
+      plan:    pj.ok ? pj.data : null,
+      history: hj.ok ? (hj.data || []) : [],
+      weeks
+    };
+  }));
 
-    // update brand list + filter UI on first load
-    if (!ALL_BRANDS.length) {
-      ALL_BRANDS = apiBrands;
-      buildBrandDDFromList();
-    }
-
-    const brands = SELECTED_BRANDS.length > 0 ? SELECTED_BRANDS : apiBrands;
-    const weeks  = getWeeksOfMonth(year, month);
-
-    DATA = {};
-    brands.forEach(brand => {
-      DATA[brand] = {
-        plan:    plans[brand] || null,
-        history: history[brand] || [],
-        weeks
-      };
-    });
-
-    render(brands, month, year, weeks);
-  } catch(e) {
-    document.getElementById('main-content').innerHTML =
-      `<div class="an-loading">❌ Lỗi tải dữ liệu: ${e.message}<br><br><button class="an-sel" onclick="loadData()" style="margin-top:8px">Thử lại</button></div>`;
-  }
+  render(brands, month, year, weeks);
 }
 
 // ── WEEK UTILS ──
