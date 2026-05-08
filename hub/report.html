@@ -151,8 +151,13 @@
 .pg{display:grid;grid-template-columns:minmax(160px,1fr) repeat(6,90px);gap:5px;align-items:center;font-size:.8rem}
 .pg-head{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:center;padding:4px 4px}
 .pg-lbl{font-weight:600;color:var(--ink);padding:4px 0}
-.pg-inp{width:100%;padding:5px 6px;border:1.5px solid var(--border);border-radius:5px;font-size:.8rem;text-align:right;font-family:var(--f-mono);background:var(--bg);box-sizing:border-box;color:var(--ink)}
+.pg-inp{width:100%;padding:5px 6px;border:1.5px solid var(--border);border-radius:5px;font-size:.8rem;text-align:right;font-family:var(--f-mono);background:var(--bg);box-sizing:border-box;color:var(--ink);transition:border-color .15s,background .15s}
 .pg-inp:focus{outline:none;border-color:var(--blue)}
+.pg-inp-flashed{border-color:#22c55e!important;background:#f0fdf4!important}
+.pg-paste-zone{display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:14px;border:1.5px dashed var(--blue);border-radius:8px;background:rgba(37,99,235,.05);color:var(--blue);font-size:.78rem;cursor:pointer;user-select:none}
+.pg-paste-zone svg{flex-shrink:0;opacity:.7}
+.pg-paste-zone strong{font-weight:700}
+.pg-paste-zone span{opacity:.75}
 .pg-row{display:contents}
 .pg-section{grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;padding:10px 0 4px;border-bottom:1px solid var(--border2)}
 .pg-sub{grid-column:1/-1;font-size:.7rem;font-weight:600;color:var(--muted);padding:8px 0 2px;margin-top:4px}
@@ -1668,6 +1673,7 @@ async function saveReport() {
 function showPlanModal() {
   const modal = document.getElementById('plan-modal');
   modal.classList.add('open');
+  modal.addEventListener('paste', handleModalPaste);
   const body = document.getElementById('plan-modal-body');
   const { platforms, month, year, brand } = STATE;
   const plan = STATE.plan || {};
@@ -1717,7 +1723,11 @@ function showPlanModal() {
     { id:'plan_w3', label:'W3' }, { id:'plan_w4', label:'W4' }, { id:'plan_w5', label:'W5' }
   ];
 
-  let html = `<p style="font-size:.83rem;color:var(--muted);margin-bottom:16px">Plan cho <strong>${brand}</strong> — Tháng ${month}/${year}</p>`;
+  let html = `<p style="font-size:.83rem;color:var(--muted);margin-bottom:10px">Plan cho <strong>${brand}</strong> — Tháng ${month}/${year}</p>`;
+  html += `<div class="pg-paste-zone" id="pg-paste-hint" onclick="this.focus()" tabindex="0" title="Click vào đây rồi Ctrl+V để dán toàn bộ bảng từ Excel/Sheets">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M8 4H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2"/><path d="M12 11v6"/><path d="M9 14l3-3 3 3"/></svg>
+    <div><strong>Ctrl+V để dán toàn bộ bảng từ Excel / Google Sheets</strong><br><span>Copy range từ template (bao gồm cột _key_) → paste vào đây. Hoặc dùng "Upload xlsx" bên dưới.</span></div>
+  </div>`;
   html += `<div class="pg"><div class="pg-head">Metric</div>${periods.map(p=>`<div class="pg-head">${p.label}</div>`).join('')}`;
   PLAN_ROWS.forEach(row => {
     if (row.section) { html += `<div class="pg-section">${row.label}</div>`; return; }
@@ -1734,15 +1744,16 @@ function showPlanModal() {
 }
 
 function closePlanModal() {
-  document.getElementById('plan-modal').classList.remove('open');
+  const modal = document.getElementById('plan-modal');
+  modal.classList.remove('open');
+  modal.removeEventListener('paste', handleModalPaste);
 }
 
 const PLAN_PERIOD_ORDER = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
 function handlePlanPaste(e, key, periodId) {
   const text = (e.clipboardData || window.clipboardData).getData('text');
-  // Split by tab (Excel/Sheets row copy) or multiple values
   const parts = text.split('\t');
-  if (parts.length <= 1) return; // single value — let browser handle normally
+  if (parts.length <= 1) return;
   e.preventDefault();
   const startIdx = PLAN_PERIOD_ORDER.indexOf(periodId);
   if (startIdx === -1) return;
@@ -1754,6 +1765,79 @@ function handlePlanPaste(e, key, periodId) {
     const v = parseInt(raw.trim().replace(/[^\d]/g, ''), 10) || 0;
     el.value = v ? v.toLocaleString('en-US') : '';
   });
+}
+
+function handleModalPaste(e) {
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  const lines = text.split(/\r?\n/).map(l => l.trimEnd()).filter(l => l.trim());
+  if (lines.length < 2) return; // single line → let individual cell handler work
+
+  // Check if any line has a known _key_ in last column (full template copy)
+  const allKeys = new Set(PLAN_XLSX_ROWS.filter(r => r.key).map(r => r.key));
+  const useKeyCol = lines.some(line => {
+    const cols = line.split('\t');
+    return allKeys.has((cols[cols.length - 1] || '').trim());
+  });
+
+  e.preventDefault();
+  let filled = 0;
+
+  if (useKeyCol) {
+    // Strategy A: template copy with _key_ in last column
+    // Row format: [label?, month, w1, w2, w3, w4, w5, key]  (label may or may not be present)
+    lines.forEach(line => {
+      const cols = line.split('\t');
+      const key = (cols[cols.length - 1] || '').trim();
+      if (!allKeys.has(key)) return;
+      // Values are the 6 cells before the key column; skip leading label col if present
+      const valStart = cols.length >= 8 ? 1 : 0; // col[0]=label, col[1..6]=values, col[7]=key
+      PLAN_PERIODS.forEach((p, i) => {
+        const el = document.getElementById(`pm_${key}_${p}`);
+        if (!el) return;
+        const raw = (cols[valStart + i] || '').toString().trim();
+        const v = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
+        el.value = v ? v.toLocaleString('en-US') : '';
+        flashInput(el);
+        filled++;
+      });
+    });
+  } else {
+    // Strategy B: sequential rows matched to PLAN_XLSX_ROWS order
+    // Row format: [label?, month, w1, w2, w3, w4, w5]  OR  [month, w1, w2, w3, w4, w5]
+    const dataRows = PLAN_XLSX_ROWS.filter(r => r.key);
+    let dataIdx = 0;
+    lines.forEach(line => {
+      if (dataIdx >= dataRows.length) return;
+      const cols = line.split('\t');
+      // Skip pure-label rows (section headers, sub-headers) — no digits
+      if (!cols.some(c => /\d/.test(c))) return;
+      const key = dataRows[dataIdx].key; dataIdx++;
+      // Detect offset: if first col looks like a label (has letters), skip it
+      const offset = /[a-zA-ZÀ-ɏẠ-ỹ]/.test(cols[0]) ? 1 : 0;
+      PLAN_PERIODS.forEach((p, i) => {
+        const el = document.getElementById(`pm_${key}_${p}`);
+        if (!el) return;
+        const raw = (cols[offset + i] || '').toString().trim();
+        const v = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
+        el.value = v ? v.toLocaleString('en-US') : '';
+        flashInput(el);
+        filled++;
+      });
+    });
+  }
+
+  if (filled > 0) {
+    showToast(`Đã dán ${filled} ô từ clipboard!`);
+    const hint = document.getElementById('pg-paste-hint');
+    if (hint) { hint.style.borderColor = '#22c55e'; hint.style.background = 'rgba(34,197,94,.08)'; setTimeout(() => { hint.style.borderColor=''; hint.style.background=''; }, 1500); }
+  } else {
+    showToast('Không nhận diện được dữ liệu. Hãy dùng template hoặc upload xlsx.', 'error');
+  }
+}
+
+function flashInput(el) {
+  el.classList.add('pg-inp-flashed');
+  setTimeout(() => el.classList.remove('pg-inp-flashed'), 900);
 }
 
 async function savePlan() {
