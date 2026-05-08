@@ -1521,9 +1521,13 @@ function buildPreview() {
   if (platforms.tiktok) {
     body += `<p style="margin:10px 0 2px"><strong>━━━ TIKTOK SHOP ━━━</strong></p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+    const tPlanCpM = pM('t_pgm_chi_phi')+pM('t_lgm_chi_phi')+pM('t_con_chi_phi')+pM('t_brd_chi_phi');
+    const tPlanRoiM = tPlanCpM ? tPlanGmvM/tPlanCpM : null;
+    const mtdTCp = getMTD(w=>((hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0)));
+    const mtdTRoi = mtdTCp ? getMTDGmv_T()/mtdTCp : null;
     body += wRow('Doanh thu Ads (GMV)', tPlanGmvM||null, getMTDGmv_T(), w=>{ if(w===STATE.weekNum) return t.gmv||0; const r=history.find(h=>parseInt(h.week_num)===w); return r?(parseFloat(r.t_pgm_doanh_so||0)+parseFloat(r.t_lgm_doanhthu||0)):null; }, w=>plan?((pW('t_pgm_doanh_so',w)||0)+(pW('t_lgm_doanhthu',w)||0)):null);
-    body += wRow('Chi phí Ads', pM('t_pgm_chi_phi')+pM('t_lgm_chi_phi')+pM('t_con_chi_phi')+pM('t_brd_chi_phi')||null, getMTD(w=>((hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0))), w=>((hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0)), w=>plan?((pW('t_pgm_chi_phi',w)||0)+(pW('t_lgm_chi_phi',w)||0)+(pW('t_con_chi_phi',w)||0)+(pW('t_brd_chi_phi',w)||0)):null);
-    body += dRow('ROI', null, null, w=>{ const g=(hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0); const c=(hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0); return c?g/c:null; }, null, fmtX);
+    body += wRow('Chi phí Ads', tPlanCpM||null, mtdTCp, w=>((hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0)), w=>plan?((pW('t_pgm_chi_phi',w)||0)+(pW('t_lgm_chi_phi',w)||0)+(pW('t_con_chi_phi',w)||0)+(pW('t_brd_chi_phi',w)||0)):null);
+    body += dRow('ROI', tPlanRoiM, mtdTRoi, w=>{ const g=(hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0); const c=(hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0); return c?g/c:null; }, w=>{ const g=(pW('t_pgm_doanh_so',w)||0)+(pW('t_lgm_doanhthu',w)||0); const c=(pW('t_pgm_chi_phi',w)||0)+(pW('t_lgm_chi_phi',w)||0)+(pW('t_con_chi_phi',w)||0)+(pW('t_brd_chi_phi',w)||0); return c?g/c:null; }, fmtX);
     body += `</tbody></table>`;
     // PGM
     body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`;
