@@ -81,6 +81,7 @@ function doGet(e) {
     if (action === 'getPlan')         return getPlan(e.parameter);
     if (action === 'getWeeklyHistory')return getWeeklyHistory(e.parameter);
     if (action === 'checkPlan')       return checkPlan(e.parameter);
+    if (action === 'getAllData')       return getAllData(e.parameter);
     return jsonOut({ ok: false, error: 'Unknown action: ' + action });
   } catch(err) { return jsonOut({ ok: false, error: err.message }); }
 }
@@ -159,6 +160,44 @@ function checkPlan(params) {
     parseInt(r.year)  === year
   );
   return jsonOut({ ok: true, data: { exists } });
+}
+
+/* ── getAllData ── returns brands + plans + history in ONE call ── */
+function getAllData(params) {
+  const month = parseInt(params.month);
+  const year  = parseInt(params.year);
+
+  const brandSh   = getSheet('BrandList', BRAND_COLS);
+  const planSh    = getSheet('PlanData',  PLAN_COLS);
+  const weeklySh  = getSheet('WeeklyData', WEEKLY_COLS);
+
+  const brandRows  = sheetToJson(brandSh);
+  const planRows   = sheetToJson(planSh);
+  const weeklyRows = sheetToJson(weeklySh);
+
+  const brands = brandRows.filter(r => r.brand_name).map(r => r.brand_name.toString());
+
+  const plans = {};
+  planRows
+    .filter(r => parseInt(r.month) === month && parseInt(r.year) === year)
+    .forEach(row => {
+      const plan = {};
+      PLAN_METRIC_KEYS.forEach(k => {
+        plan[k] = {};
+        PLAN_WS.forEach(w => { plan[k][w] = parseFloat(row[`${k}__${w}`]) || 0; });
+      });
+      plans[row.brand_name] = plan;
+    });
+
+  const history = {};
+  weeklyRows
+    .filter(r => parseInt(r.month) === month && parseInt(r.year) === year)
+    .forEach(row => {
+      if (!history[row.brand_name]) history[row.brand_name] = [];
+      history[row.brand_name].push(row);
+    });
+
+  return jsonOut({ ok: true, data: { brands, plans, history } });
 }
 
 /* ── getWeeklyHistory ── */
