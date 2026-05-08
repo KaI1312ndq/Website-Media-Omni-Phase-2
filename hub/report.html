@@ -1379,7 +1379,7 @@ function buildPreview() {
   const hdr = `<tr><th ${th('text-align:center;min-width:130px')}>Metric</th><th ${th()}>Tháng (Plan)</th><th ${th()}>Luỹ tiến</th><th ${th()}>% thực hiện</th>${STATE.weeks.map(w=>`<th ${th()}>W${w.w}</th><th ${th()}>Thực hiện</th><th ${th()}>% thực hiện</th>`).join('')}</tr>`;
 
   // ── data helpers ──
-  const hRow  = (f,w) => { if(w===STATE.weekNum) return gv(f); const r=history.find(h=>parseInt(h.week_num)===w); return r?parseFloat(r[f]||0):null; };
+  const hRow  = (f,w) => { if(w===STATE.weekNum) return gv(f); const r=history.find(h=>parseInt(h.week_num)===w); if(!r) return null; const v=parseFloat(r[f]); return isNaN(v)?0:v; };
   const pW    = (f,w) => plan?.[f]?.[`plan_w${w}`] || 0;
   const pM    = f => plan?.[f]?.plan_month || 0;
   const getMTD= getter => STATE.weeks.filter(wk=>wk.w<=STATE.weekNum).reduce((a,wk)=>{ const v=getter(wk.w); return a+(v!==null?v:0); },0);
@@ -1411,9 +1411,9 @@ function buildPreview() {
     return `<tr style="background:#fafafa"><td ${tsL()} style="${tsL().slice(7,-1)};color:#555;font-style:italic">${label}</td><td ${ts()}>${planMth!==null?fmtFn(planMth):'—'}</td><td ${ts()}>${mtdAct!==null?fmtFn(mtdAct):'—'}</td><td ${ts()}>${pctMtd?pctMtd+'%':'—'}</td>${wCells}</tr>`;
   }
 
-  const fmtX    = v=>v!==null&&v!==undefined?parseFloat(v).toFixed(2):'—';
-  const fmtPct  = v=>v!==null&&v!==undefined?parseFloat(v).toFixed(2)+'%':'—';
-  const fmtN    = v=>v!==null&&v!==undefined?Math.round(parseFloat(v)).toLocaleString('en-US'):'—';
+  const fmtX    = v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toFixed(2):'—';
+  const fmtPct  = v=>v!==null&&v!==undefined&&!isNaN(v)?parseFloat(v).toFixed(2)+'%':'—';
+  const fmtN    = v=>v!==null&&v!==undefined&&!isNaN(v)?Math.round(parseFloat(v)).toLocaleString('en-US'):'—';
   const fmtMoney= v=>v!==null&&v!==undefined&&!isNaN(v)?Math.round(parseFloat(v)).toLocaleString('en-US'):'—';
   const fmtCPC  = v=>v!==null&&v!==undefined&&!isNaN(v)?Math.round(parseFloat(v)).toLocaleString('en-US'):'—';
 
@@ -1725,7 +1725,7 @@ function showPlanModal() {
     periods.forEach(p => {
       const rawVal = plan[row.key]?.[p.id] || 0;
       const val = rawVal ? Math.round(rawVal).toLocaleString('en-US') : '';
-      html += `<div><input class="pg-inp" type="text" inputmode="numeric" id="pm_${row.key}_${p.id}" value="${val}" placeholder="0" oninput="fmtInpNum(this)"></div>`;
+      html += `<div><input class="pg-inp" type="text" inputmode="numeric" id="pm_${row.key}_${p.id}" value="${val}" placeholder="0" oninput="fmtInpNum(this)" onpaste="handlePlanPaste(event,'${row.key}','${p.id}')"></div>`;
     });
   });
   html += `</div>`;
@@ -1734,6 +1734,25 @@ function showPlanModal() {
 
 function closePlanModal() {
   document.getElementById('plan-modal').classList.remove('open');
+}
+
+const PLAN_PERIOD_ORDER = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
+function handlePlanPaste(e, key, periodId) {
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  // Split by tab (Excel/Sheets row copy) or multiple values
+  const parts = text.split('\t');
+  if (parts.length <= 1) return; // single value — let browser handle normally
+  e.preventDefault();
+  const startIdx = PLAN_PERIOD_ORDER.indexOf(periodId);
+  if (startIdx === -1) return;
+  parts.forEach((raw, i) => {
+    const pid = PLAN_PERIOD_ORDER[startIdx + i];
+    if (!pid) return;
+    const el = document.getElementById(`pm_${key}_${pid}`);
+    if (!el) return;
+    const v = parseInt(raw.trim().replace(/[^\d]/g, ''), 10) || 0;
+    el.value = v ? v.toLocaleString('en-US') : '';
+  });
 }
 
 async function savePlan() {
