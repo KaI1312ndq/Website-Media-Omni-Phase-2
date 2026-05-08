@@ -203,12 +203,34 @@ let ALL_BRANDS = [];
 let SELECTED_BRANDS = []; // empty = all
 let DATA = {}; // { brand: { plan, history, weeks } }
 let CHART_GMV = null, CHART_CP = null;
+let CU = null;
+
+// ── FETCH WITH TIMEOUT ──
+async function apiFetch(url, timeoutMs = 15000) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(tid);
+    return await r.json();
+  } catch(e) {
+    clearTimeout(tid);
+    if (e.name === 'AbortError') throw new Error('Timeout');
+    throw e;
+  }
+}
 
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
+  CU = Auth.get();
+  if (!CU) { try { CU = JSON.parse(localStorage.getItem('mo_persist')); } catch {} }
+  if (!CU) { location.href = '/'; return; }
+  localStorage.setItem('mo_persist', JSON.stringify(CU));
+  Auth.set(CU);
+
   initFilters();
-  await fetchBrands();
-  loadData();
+  const ok = await fetchBrands();
+  if (ok !== false) loadData();
   document.addEventListener('click', e => {
     if (!document.getElementById('brand-filter-wrap').contains(e.target))
       document.getElementById('brand-dd').classList.remove('open');
@@ -235,11 +257,17 @@ function initFilters() {
 
 async function fetchBrands() {
   try {
-    const j = await fetch(`${API}?action=getBrands`).then(r => r.json());
+    const j = await apiFetch(`${API}?action=getBrands`);
     ALL_BRANDS = (j.ok && j.data) ? j.data : [];
-  } catch { ALL_BRANDS = []; }
+  } catch(e) {
+    ALL_BRANDS = [];
+    document.getElementById('main-content').innerHTML =
+      `<div class="an-loading">❌ Không thể kết nối API.<br><span style="font-size:.8rem;color:var(--faint)">${e.message}</span><br><br><button class="an-sel" onclick="location.reload()" style="margin-top:8px">Thử lại</button></div>`;
+    return false;
+  }
   buildBrandDD();
   renderBrandTags();
+  return true;
 }
 
 function buildBrandDD() {
@@ -312,25 +340,35 @@ async function loadData() {
   const year  = parseInt(document.getElementById('sel-year').value);
   const brands = SELECTED_BRANDS.length > 0 ? SELECTED_BRANDS : ALL_BRANDS;
 
+  if (!brands.length) {
+    document.getElementById('main-content').innerHTML =
+      `<div class="an-loading">Không có brand nào. Kiểm tra kết nối API hoặc <button class="an-sel" onclick="location.reload()" style="margin-top:8px">Tải lại trang</button></div>`;
+    return;
+  }
+
   document.getElementById('main-content').innerHTML =
     `<div class="an-loading"><div class="spin"></div><br><br>Đang tải dữ liệu ${brands.length} brand...</div>`;
 
   DATA = {};
   const weeks = getWeeksOfMonth(year, month);
 
-  await Promise.all(brands.map(async brand => {
-    const [pj, hj] = await Promise.all([
-      fetch(`${API}?action=getPlan&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).then(r=>r.json()).catch(()=>({ok:false})),
-      fetch(`${API}?action=getWeeklyHistory&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).then(r=>r.json()).catch(()=>({ok:false}))
-    ]);
-    DATA[brand] = {
-      plan:    pj.ok ? pj.data : null,
-      history: hj.ok ? (hj.data || []) : [],
-      weeks
-    };
-  }));
-
-  render(brands, month, year, weeks);
+  try {
+    await Promise.all(brands.map(async brand => {
+      const [pj, hj] = await Promise.all([
+        apiFetch(`${API}?action=getPlan&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).catch(()=>({ok:false})),
+        apiFetch(`${API}?action=getWeeklyHistory&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).catch(()=>({ok:false}))
+      ]);
+      DATA[brand] = {
+        plan:    pj.ok ? pj.data : null,
+        history: hj.ok ? (hj.data || []) : [],
+        weeks
+      };
+    }));
+    render(brands, month, year, weeks);
+  } catch(e) {
+    document.getElementById('main-content').innerHTML =
+      `<div class="an-loading">❌ Lỗi tải dữ liệu: ${e.message}<br><br><button class="an-sel" onclick="loadData()" style="margin-top:8px">Thử lại</button></div>`;
+  }
 }
 
 // ── WEEK UTILS ──
