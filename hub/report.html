@@ -586,27 +586,28 @@
 /* ═══ REPORT TOOL V8 ═══ */
 const API = 'https://script.google.com/macros/s/AKfycbwmLt2SFY5iMg22qrUmvxmgI5Njwje5wRYGdHIwxizQvELMAHKmVlahHj0XJVOMuYMu/exec';
 
-const defaultSysPrompt = `Bạn là Senior Performance Marketing Manager chuyên Ecommerce Marketplace (Shopee & TikTok Shop) tại Việt Nam, có 5+ năm kinh nghiệm phân tích data Ads và tối ưu ngân sách.
+const defaultSysPrompt = `Bạn là Senior Performance Marketing Manager với 7 năm thực chiến trên Shopee Ads và TikTok Shop Ads tại thị trường Việt Nam. Bạn không chỉ đọc số — bạn hiểu cơ chế vận hành từng nền tảng và biết chính xác đòn bẩy nào cần kéo để cải thiện kết quả.
 
-Nhiệm vụ: Phân tích data tuần của brand và trả về JSON với các key sau (không thêm text nào khác ngoài JSON):
+Nhiệm vụ: Phân tích data báo cáo tuần và trả về JSON (không thêm bất kỳ text nào ngoài JSON):
 
 {
-  "highlight": "2-3 bullet points thành tựu nổi bật (tổng hợp cả 2 sàn nếu có), mỗi bullet bắt đầu bằng • , nêu metric cụ thể và so sánh với plan hoặc tuần trước",
-  "lowlight": "2-3 bullet points vấn đề cần chú ý (tổng hợp), mỗi bullet bắt đầu bằng • , chỉ rõ mức độ lệch plan hoặc sụt giảm",
-  "shopee_thuc_trang": "2-3 câu mô tả thực trạng Shopee tuần này, có số liệu cụ thể (ROAS, GMV, chi phí, % vs plan). Để trống '' nếu không có data Shopee",
-  "shopee_van_de": "2-3 bullet points vấn đề Shopee, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data Shopee",
-  "shopee_giai_phap": "2-3 bullet points giải pháp cho Shopee tuần tới, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data Shopee",
-  "tiktok_thuc_trang": "2-3 câu mô tả thực trạng TikTok tuần này, có số liệu cụ thể (ROI, GMV, chi phí, % vs plan). Để trống '' nếu không có data TikTok",
-  "tiktok_van_de": "2-3 bullet points vấn đề TikTok, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data TikTok",
-  "tiktok_giai_phap": "2-3 bullet points giải pháp cho TikTok tuần tới, mỗi bullet bắt đầu bằng • . Để trống '' nếu không có data TikTok"
+  "highlight": "2–3 điểm sáng tuần này (tổng hợp cả 2 sàn nếu có). Mỗi bullet bắt đầu bằng •, nêu metric cụ thể và mức vượt plan hoặc cải thiện so tuần trước",
+  "lowlight": "2–3 điểm cần xử lý (tổng hợp). Mỗi bullet bắt đầu bằng •, chỉ rõ mức lệch plan, xu hướng xấu hoặc rủi ro cụ thể",
+  "shopee_thuc_trang": "2–3 câu đánh giá thực trạng Shopee tuần này — viết như chuyên gia nói chuyện với team, có số liệu (ROAS, GMV, chi phí, % vs plan, CPC, CTR, CR, AOV). Để trống nếu không có data",
+  "shopee_van_de": "2–3 vấn đề cốt lõi Shopee. Mỗi bullet bắt đầu bằng •, đi thẳng vào root cause — ví dụ: CPC tăng do keyword cạnh tranh leo thang giờ peak, CR thấp do creative thiếu relevance với search intent, CTR kém do bid thấp mất impression share, AOV giảm do mix sản phẩm lệch. Để trống nếu không có data",
+  "shopee_giai_phap": "2–3 action cụ thể cho Shopee tuần tới. Mỗi bullet bắt đầu bằng •, có cơ chế rõ ràng — ví dụ: điều chỉnh max bid keyword theo CPC target thực tế, tăng ngân sách campaign đang có ROAS cao / cắt campaign ROAS thấp, chuyển keyword broad sang exact để kiểm soát CR, bổ sung negative keyword giảm lãng phí, A/B test creative banner mới nếu CTR < 2%, kiểm tra tỷ lệ phân bổ ngân sách giữa Search Ads và Product Ads. Để trống nếu không có data",
+  "tiktok_thuc_trang": "2–3 câu đánh giá thực trạng TikTok tuần này — viết như chuyên gia nói chuyện với team, có số liệu (ROI, GMV PGM & LGM, chi phí, % vs plan, CTR, CR, CPP). Để trống nếu không có data",
+  "tiktok_van_de": "2–3 vấn đề cốt lõi TikTok. Mỗi bullet bắt đầu bằng •, đi thẳng vào root cause — ví dụ: PGM ROI thấp do bid CPC quá cao so với giá trị chuyển đổi thực tế, LGM delivery kém do creative fatigue (CTR giảm dần qua các ngày) hoặc budget chưa đủ để thuật toán thoát learning phase, CPP Consideration tăng do audience overlap với PGM, GMV Boost chưa được kích hoạt đúng thời điểm live. Để trống nếu không có data",
+  "tiktok_giai_phap": "2–3 action cụ thể cho TikTok tuần tới. Mỗi bullet bắt đầu bằng •, có cơ chế rõ ràng — ví dụ: PGM — điều chỉnh ROI target về mức thực tế hơn để tăng delivery, hoặc dùng day-parting tập trung budget vào khung giờ có conversion cao; LGM — refresh ít nhất 2 creative mới (A/B test concept khác nhau), tăng budget tối thiểu 20% để rút ngắn learning phase, bật GMV Boost + View Boost trước 30 phút mỗi live session; nếu tổng ROI dưới plan, ưu tiên shift budget sang loại ad đang có ROI cao nhất thay vì dàn đều. Để trống nếu không có data"
 }
 
-Yêu cầu:
-- Tiếng Việt, mix English term chuyên ngành (ROAS, CTR, CR, CPC, GMV, PGM, LGM, AOV, CPP)
-- Phân tích chuyên sâu, không chung chung
-- Số liệu dùng định dạng 100,000 (không dùng đơn vị ₫ hay x sau số)
-- Mỗi bullet point nằm trên một dòng riêng (dùng \\n giữa các bullet)
-- Không thêm markdown, không thêm text ngoài JSON`;
+Nguyên tắc viết:
+— Tiếng Việt tự nhiên, mix English term chuyên ngành đúng chỗ: ROAS, ROI, CTR, CR, CPC, GMV, PGM, LGM, AOV, CPP, day-parting, A/B test, View Boost, GMV Boost, Smart+, learning phase, impression share, creative fatigue
+— Viết như chuyên gia nói thẳng với team, không dùng câu sáo rỗng kiểu "cần theo dõi thêm" hay "tiếp tục duy trì"
+— ROAS và ROI là số thuần, không viết thêm bất kỳ ký hiệu đơn vị nào sau số
+— Số liệu dùng định dạng 100,000 (không dùng ký hiệu ₫)
+— Mỗi bullet point trên một dòng riêng (dùng \\n giữa các bullet)
+— Không thêm markdown, không thêm text nào ngoài JSON`;
 
 const STATE = {
   user: null, step: 1,
@@ -1086,24 +1087,24 @@ async function generateAI() {
     const planLvGmv=pv('s_live_gmv',wk),planLvCp=pv('s_live_chi_phi',wk);
     userMsg += `--- SHOPEE ADS ---\n`;
     userMsg += `Tổng GMV: ${fmtBig(s.gmv)} | Plan: ${fmtBig(sPlanGmvW)} | %TH: ${getPct(s.gmv,sPlanGmvW)||'—'}%\n`;
-    userMsg += `Tổng Chi phí: ${fmtBig(s.cp)} | ROAS: ${sRoas}x | Plan ROAS: ${sPlanRoas}x\n\n`;
+    userMsg += `Tổng Chi phí: ${fmtBig(s.cp)} | ROAS: ${sRoas} | Plan ROAS: ${sPlanRoas}\n\n`;
     userMsg += `[CPC] Doanh số: ${fmtBig(cpcDs)} (Plan: ${fmtBig(planCpcDs)}, %TH: ${getPct(cpcDs,planCpcDs)||'—'}%)\n`;
-    userMsg += `[CPC] Chi phí: ${fmtBig(cpcCp)} | ROAS: ${cpcCp?( cpcDs/cpcCp).toFixed(2):'—'}x | CPC: ${cpcClick?fmtBig(cpcCp/cpcClick):'—'}\n`;
+    userMsg += `[CPC] Chi phí: ${fmtBig(cpcCp)} | ROAS: ${cpcCp?(cpcDs/cpcCp).toFixed(2):'—'} | CPC: ${cpcClick?fmtBig(cpcCp/cpcClick):'—'}\n`;
     userMsg += `[CPC] CTR: ${cpcXem?(cpcClick/cpcXem*100).toFixed(2):'—'}% | CR: ${cpcClick?(cpcDh/cpcClick*100).toFixed(2):'—'}% | AOV: ${cpcDh?fmtBig(cpcDs/cpcDh):'—'}\n`;
     userMsg += `[CPC] Lượt xem: ${cpcXem.toLocaleString('en-US')} | Lượt click: ${cpcClick.toLocaleString('en-US')} | Đơn hàng: ${cpcDh.toLocaleString('en-US')}\n\n`;
-    userMsg += `[ND] GMV: ${fmtBig(ndGmv)} (Plan: ${fmtBig(planNdGmv)}) | Chi phí: ${fmtBig(ndCp)} | ROAS: ${ndCp?(ndGmv/ndCp).toFixed(2):'—'}x\n`;
+    userMsg += `[ND] GMV: ${fmtBig(ndGmv)} (Plan: ${fmtBig(planNdGmv)}) | Chi phí: ${fmtBig(ndCp)} | ROAS: ${ndCp?(ndGmv/ndCp).toFixed(2):'—'}\n`;
     userMsg += `[ND] CTR: ${ndXem?(ndClick/ndXem*100).toFixed(2):'—'}% | Lượt xem: ${ndXem.toLocaleString('en-US')}\n\n`;
-    userMsg += `[Live] GMV: ${fmtBig(lvGmv)} (Plan: ${fmtBig(planLvGmv)}) | Chi phí: ${fmtBig(lvCp)} | ROAS: ${lvCp?(lvGmv/lvCp).toFixed(2):'—'}x\n\n`;
+    userMsg += `[Live] GMV: ${fmtBig(lvGmv)} (Plan: ${fmtBig(planLvGmv)}) | Chi phí: ${fmtBig(lvCp)} | ROAS: ${lvCp?(lvGmv/lvCp).toFixed(2):'—'}\n\n`;
   }
   if (platforms.tiktok) {
     const planPgmDs=pv('t_pgm_doanh_so',wk),planPgmCp=pv('t_pgm_chi_phi',wk);
     const planLgmDt=pv('t_lgm_doanhthu',wk),planLgmCp=pv('t_lgm_chi_phi',wk);
     userMsg += `--- TIKTOK SHOP ---\n`;
     userMsg += `Tổng GMV: ${fmtBig(t.gmv)} | Plan: ${fmtBig(tPlanGmvW)} | %TH: ${getPct(t.gmv,tPlanGmvW)||'—'}%\n`;
-    userMsg += `Tổng Chi phí: ${fmtBig(t.cp)} | ROI: ${tRoi}x | Plan ROI: ${tPlanRoi}x\n\n`;
-    userMsg += `[PGM] Doanh số: ${fmtBig(pgmDs)} (Plan: ${fmtBig(planPgmDs)}) | Chi phí: ${fmtBig(pgmCp)} | ROAS: ${pgmCp?(pgmDs/pgmCp).toFixed(2):'—'}x\n`;
+    userMsg += `Tổng Chi phí: ${fmtBig(t.cp)} | ROI: ${tRoi} | Plan ROI: ${tPlanRoi}\n\n`;
+    userMsg += `[PGM] Doanh số: ${fmtBig(pgmDs)} (Plan: ${fmtBig(planPgmDs)}) | Chi phí: ${fmtBig(pgmCp)} | ROAS: ${pgmCp?(pgmDs/pgmCp).toFixed(2):'—'}\n`;
     userMsg += `[PGM] CTR: ${pgmXem?(pgmClick/pgmXem*100).toFixed(2):'—'}% | CR: ${pgmClick?(pgmDh/pgmClick*100).toFixed(2):'—'}% | AOV: ${pgmDh?fmtBig(pgmDs/pgmDh):'—'}\n\n`;
-    userMsg += `[LGM] Doanh thu: ${fmtBig(lgmDt)} (Plan: ${fmtBig(planLgmDt)}) | Chi phí: ${fmtBig(lgmCp)} | ROI: ${lgmCp?(lgmDt/lgmCp).toFixed(2):'—'}x\n\n`;
+    userMsg += `[LGM] Doanh thu: ${fmtBig(lgmDt)} (Plan: ${fmtBig(planLgmDt)}) | Chi phí: ${fmtBig(lgmCp)} | ROI: ${lgmCp?(lgmDt/lgmCp).toFixed(2):'—'}\n\n`;
     userMsg += `[Con người] Người tiếp cận: ${conNg.toLocaleString('en-US')} | Chi phí: ${fmtBig(conCp)} | CPP: ${conNg?fmtBig(conCp/conNg):'—'}\n`;
     userMsg += `[Branding] Lượt xem: ${brdXem.toLocaleString('en-US')} | Follow: ${brdFlw.toLocaleString('en-US')} | Chi phí: ${fmtBig(brdCp)}\n\n`;
   }
