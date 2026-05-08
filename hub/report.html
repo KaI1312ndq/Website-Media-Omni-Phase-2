@@ -688,8 +688,10 @@ function pctClr(pct) {
   return p >= 100 ? '#059669' : p >= 80 ? '#D97706' : '#DC2626';
 }
 function getPct(act, plan) {
-  if (!plan || !parseFloat(plan)) return null;
-  return ((parseFloat(act) / parseFloat(plan)) * 100).toFixed(1);
+  if (act === null || act === undefined) return null;
+  const a = parseFloat(act), p = parseFloat(plan);
+  if (!p || isNaN(a) || isNaN(p)) return null;
+  return ((a / p) * 100).toFixed(1);
 }
 
 /* ── INPUT HELPERS ── */
@@ -1370,10 +1372,10 @@ function buildPreview() {
   buildChart();
 
   const s = STATE.shopee.tot, t = STATE.tiktok.tot;
-  const ts  = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:15px"`;
-  const tsL = () => `style="padding:5px 9px;border:1px solid #ccc;text-align:center;font-family:'Times New Roman',serif;font-size:15px"`;
-  const th  = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:15px;text-align:center;${v}"`;
-  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:15px;margin:4px 0 16px`;
+  const ts  = () => `style="padding:4px 8px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:13px;white-space:nowrap"`;
+  const tsL = () => `style="padding:4px 8px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:13px;white-space:nowrap;min-width:120px"`;
+  const th  = (v='') => `style="padding:5px 8px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:13px;text-align:center;white-space:nowrap;${v}"`;
+  const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:13px;margin:4px 0 16px`;
   const hdr = `<tr><th ${th('text-align:center;min-width:130px')}>Metric</th><th ${th()}>Tháng (Plan)</th><th ${th()}>Luỹ tiến</th><th ${th()}>% thực hiện</th>${STATE.weeks.map(w=>`<th ${th()}>W${w.w}</th><th ${th()}>Thực hiện</th><th ${th()}>% thực hiện</th>`).join('')}</tr>`;
 
   // ── data helpers ──
@@ -1425,14 +1427,14 @@ function buildPreview() {
   // ── Dear intro (above chart) ──
   const introEl = document.getElementById('mail-intro');
   if (introEl) {
-    introEl.innerHTML = `<div style="font-family:'Times New Roman',Times,serif;font-size:15px;color:#000;line-height:1.7">` +
+    introEl.innerHTML = `<div style="font-family:'Times New Roman',Times,serif;font-size:13px;color:#000;line-height:1.7">` +
       `<p style="margin:0 0 4px">Dear: <strong>Growth Phụ trách dự án</strong><br>và Leader Team Media Omni, PIC Marketing B2C</p>` +
       `<p style="margin:0 0 6px">Tôi xin phép gửi Report của <strong>${weekInfo?.label}</strong> dự án <strong>${brand}</strong></p>` +
       `</div>`;
   }
 
-  let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:15px;color:#000;line-height:1.7;max-width:900px">`;
-  body += `<p style="margin:0 0 4px"><strong style="font-size:15px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
+  let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:13px;color:#000;line-height:1.6">`;
+  body += `<p style="margin:0 0 4px"><strong style="font-size:13px">BÁO CÁO HIỆU SUẤT — ${brand.toUpperCase()}</strong><br>${weekInfo?.label} | ${fmtDR(weekInfo?.start,weekInfo?.end)}${weekInfo?.days!==7?` (${weekInfo?.days} ngày)`:''}</p>`;
   body += `<hr style="border:1px solid #ccc;margin:8px 0">`;
 
   // ─── TỔNG 2 SÀN ───
@@ -1458,7 +1460,7 @@ function buildPreview() {
     body += wRow('Số lượt xem ads tổng', pM('s_cpc_luot_xem')+pM('s_nd_luot_xem')+pM('s_live_luot_xem')||null, getMTD(w=>((hRow('s_cpc_luot_xem',w)||0)+(hRow('s_nd_luot_xem',w)||0)+(hRow('s_live_luot_xem',w)||0))), w=>((hRow('s_cpc_luot_xem',w)||0)+(hRow('s_nd_luot_xem',w)||0)+(hRow('s_live_luot_xem',w)||0)), w=>plan?((pW('s_cpc_luot_xem',w)||0)+(pW('s_nd_luot_xem',w)||0)+(pW('s_live_luot_xem',w)||0)):null, fmtN);
     body += `</tbody></table>`;
     // Ads CPC
-    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh số Ads', pM('s_cpc_doanh_so')||null, getMTD(w=>hRow('s_cpc_doanh_so',w)||0), w=>hRow('s_cpc_doanh_so',w), w=>pW('s_cpc_doanh_so',w)||null);
     body += wRow('Chi Phí Dịch vụ hiển thị', pM('s_cpc_chi_phi')||null, getMTD(w=>hRow('s_cpc_chi_phi',w)||0), w=>hRow('s_cpc_chi_phi',w), w=>pW('s_cpc_chi_phi',w)||null);
@@ -1472,7 +1474,7 @@ function buildPreview() {
     body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('s_cpc_doanh_so','s_cpc_don_hang'), ratioMTD('s_cpc_doanh_so','s_cpc_don_hang'), w=>ratioW('s_cpc_doanh_so','s_cpc_don_hang',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_don_hang',w), fmtMoney);
     body += `</tbody></table>`;
     // Ads ND
-    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu Ads (GMV)', pM('s_nd_gmv')||null, getMTD(w=>hRow('s_nd_gmv',w)||0), w=>hRow('s_nd_gmv',w), w=>pW('s_nd_gmv',w)||null);
     body += wRow('Chi phí ads', pM('s_nd_chi_phi')||null, getMTD(w=>hRow('s_nd_chi_phi',w)||0), w=>hRow('s_nd_chi_phi',w), w=>pW('s_nd_chi_phi',w)||null);
@@ -1483,7 +1485,7 @@ function buildPreview() {
     body += wRow('Số lượt click', pM('s_nd_luot_click')||null, getMTD(w=>hRow('s_nd_luot_click',w)||0), w=>hRow('s_nd_luot_click',w), w=>pW('s_nd_luot_click',w)||null, fmtN);
     body += `</tbody></table>`;
     // Ads Live
-    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu Ads (GMV)', pM('s_live_gmv')||null, getMTD(w=>hRow('s_live_gmv',w)||0), w=>hRow('s_live_gmv',w), w=>pW('s_live_gmv',w)||null);
     body += wRow('Chi phí ads', pM('s_live_chi_phi')||null, getMTD(w=>hRow('s_live_chi_phi',w)||0), w=>hRow('s_live_chi_phi',w), w=>pW('s_live_chi_phi',w)||null);
@@ -1501,7 +1503,7 @@ function buildPreview() {
     body += dRow('ROI', null, null, w=>{ const g=(hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0); const c=(hRow('t_pgm_chi_phi',w)||0)+(hRow('t_lgm_chi_phi',w)||0)+(hRow('t_con_chi_phi',w)||0)+(hRow('t_brd_chi_phi',w)||0); return c?g/c:null; }, null, fmtX);
     body += `</tbody></table>`;
     // PGM
-    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh số Ads', pM('t_pgm_doanh_so')||null, getMTD(w=>hRow('t_pgm_doanh_so',w)||0), w=>hRow('t_pgm_doanh_so',w), w=>pW('t_pgm_doanh_so',w)||null);
     body += wRow('Chi Phí Dịch vụ hiển thị', pM('t_pgm_chi_phi')||null, getMTD(w=>hRow('t_pgm_chi_phi',w)||0), w=>hRow('t_pgm_chi_phi',w), w=>pW('t_pgm_chi_phi',w)||null);
@@ -1516,21 +1518,21 @@ function buildPreview() {
     body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('t_pgm_doanh_so','t_pgm_don_hang'), ratioMTD('t_pgm_doanh_so','t_pgm_don_hang'), w=>ratioW('t_pgm_doanh_so','t_pgm_don_hang',w), w=>ratioPW('t_pgm_doanh_so','t_pgm_don_hang',w), fmtMoney);
     body += `</tbody></table>`;
     // LGM
-    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_LGM</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_LGM</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Doanh thu LGM', pM('t_lgm_doanhthu')||null, getMTD(w=>hRow('t_lgm_doanhthu',w)||0), w=>hRow('t_lgm_doanhthu',w), w=>pW('t_lgm_doanhthu',w)||null);
     body += wRow('Chi phí', pM('t_lgm_chi_phi')||null, getMTD(w=>hRow('t_lgm_chi_phi',w)||0), w=>hRow('t_lgm_chi_phi',w), w=>pW('t_lgm_chi_phi',w)||null);
     body += dRow('ROI', ratioPM('t_lgm_doanhthu','t_lgm_chi_phi'), ratioMTD('t_lgm_doanhthu','t_lgm_chi_phi'), w=>ratioW('t_lgm_doanhthu','t_lgm_chi_phi',w), w=>ratioPW('t_lgm_doanhthu','t_lgm_chi_phi',w), fmtX);
     body += `</tbody></table>`;
     // Consideration
-    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('Consider (Số người nhận biết thương hiệu)', pM('t_con_nguoi')||null, getMTD(w=>hRow('t_con_nguoi',w)||0), w=>hRow('t_con_nguoi',w), w=>pW('t_con_nguoi',w)||null, fmtN);
     body += wRow('Chi phí', pM('t_con_chi_phi')||null, getMTD(w=>hRow('t_con_chi_phi',w)||0), w=>hRow('t_con_chi_phi',w), w=>pW('t_con_chi_phi',w)||null);
     body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), fmtMoney);
     body += `</tbody></table>`;
     // Branding
-    body += `<p style="font-size:15px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
+    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
     body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
     body += wRow('View', pM('t_brd_view')||null, getMTD(w=>hRow('t_brd_view',w)||0), w=>hRow('t_brd_view',w), w=>pW('t_brd_view',w)||null, fmtN);
     body += wRow('Follow', pM('t_brd_follow')||null, getMTD(w=>hRow('t_brd_follow',w)||0), w=>hRow('t_brd_follow',w), w=>pW('t_brd_follow',w)||null, fmtN);
@@ -1542,17 +1544,17 @@ function buildPreview() {
   // ─── HIGHLIGHT / LOWLIGHT ───
   body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
   body += `<table style="${tblStyle}"><thead><tr>
-    <th style="padding:6px 12px;border:1px solid #999;background:#1a5c2e;color:#fff;text-align:center;width:50%;font-family:'Times New Roman',serif;font-size:15px">Hightligth</th>
-    <th style="padding:6px 12px;border:1px solid #999;background:#5c1a1a;color:#fff;text-align:center;width:50%;font-family:'Times New Roman',serif;font-size:15px">Lowlight</th>
+    <th style="padding:6px 12px;border:1px solid #999;background:#1a5c2e;color:#fff;text-align:center;width:50%;font-family:'Times New Roman',serif;font-size:13px">Hightligth</th>
+    <th style="padding:6px 12px;border:1px solid #999;background:#5c1a1a;color:#fff;text-align:center;width:50%;font-family:'Times New Roman',serif;font-size:13px">Lowlight</th>
   </tr></thead><tbody><tr>
-    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:15px">${(ai.highlight||'').replace(/\n/g,'<br>')}</td>
-    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:15px">${(ai.lowlight||'').replace(/\n/g,'<br>')}</td>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:13px">${(ai.highlight||'').replace(/\n/g,'<br>')}</td>
+    <td style="padding:10px 12px;border:1px solid #ccc;vertical-align:top;font-family:'Times New Roman',serif;font-size:13px">${(ai.lowlight||'').replace(/\n/g,'<br>')}</td>
   </tr></tbody></table>`;
 
   // ─── BRAND / SÀN SUMMARY ───
   const nl = v => (v||'').replace(/\n/g,'<br>');
-  const thS = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:15px;text-align:center;${v}"`;
-  const tdS = (v='') => `style="padding:6px 10px;border:1px solid #ccc;font-family:'Times New Roman',serif;font-size:15px;vertical-align:top;${v}"`;
+  const thS = (v='') => `style="padding:6px 9px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:13px;text-align:center;${v}"`;
+  const tdS = (v='') => `style="padding:6px 10px;border:1px solid #ccc;font-family:'Times New Roman',serif;font-size:13px;vertical-align:top;${v}"`;
   const platformRows = [platforms.shopee&&'shopee', platforms.tiktok&&'tiktok'].filter(Boolean);
   const rc = platformRows.length;
   body += `<hr style="border:1px solid #ccc;margin:10px 0">`;
