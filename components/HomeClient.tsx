@@ -77,9 +77,9 @@ export default function HomeClient({ settings, team, posts }: Props) {
     }
 
     // Scroll-reveal
-    const revealEls = document.querySelectorAll<HTMLElement>('.rv')
+    const revealEls = document.querySelectorAll<HTMLElement>('.rv,.rv-l,.rv-r')
     const io = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) { (e.target as HTMLElement).classList.add('visible'); io.unobserve(e.target) } }),
+      entries => entries.forEach(e => { if (e.isIntersecting) { (e.target as HTMLElement).classList.add('on'); io.unobserve(e.target) } }),
       { threshold: 0.1 }
     )
     revealEls.forEach(el => io.observe(el))
