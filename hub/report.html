@@ -212,6 +212,7 @@
       <div class="rg" style="margin-bottom:16px">
         <div>
           <label class="rl">Brand *</label>
+          <input class="ri" type="search" id="inp-brand-search" placeholder="Tìm brand..." oninput="filterBrands(this.value)" style="margin-bottom:6px;padding:8px 13px;font-size:.85rem" autocomplete="off">
           <div style="display:flex;gap:8px;align-items:stretch">
             <select class="rs" id="inp-brand" style="flex:1">
               <option value="">Đang tải...</option>
@@ -785,6 +786,8 @@ function onPlatChange() {
   if (tf) tf.style.display = STATE.platforms.tiktok ? 'block' : 'none';
 }
 
+let _allBrands = [];
+
 async function fetchBrands() {
   const sel = document.getElementById('inp-brand');
   sel.innerHTML = '<option value="">⏳ Đang tải...</option>';
@@ -797,6 +800,7 @@ async function fetchBrands() {
       sel.innerHTML = '<option value="">Chưa có brand trong BrandList</option>';
       showToast('BrandList trống — thêm brand vào Google Sheets', 'error');
     } else {
+      _allBrands = brands;
       sel.innerHTML = brands.map(b => `<option value="${b}">${b}</option>`).join('');
       STATE.brand = brands[0];
       showToast(`✅ Đã tải ${brands.length} brands`);
@@ -806,6 +810,19 @@ async function fetchBrands() {
     showToast('❌ ' + e.message, 'error');
     console.error('fetchBrands error:', e);
   }
+}
+
+function filterBrands(q) {
+  const sel = document.getElementById('inp-brand');
+  const filtered = q.trim()
+    ? _allBrands.filter(b => b.toLowerCase().includes(q.trim().toLowerCase()))
+    : _allBrands;
+  const prev = sel.value;
+  sel.innerHTML = filtered.length
+    ? filtered.map(b => `<option value="${b}">${b}</option>`).join('')
+    : '<option value="">Không tìm thấy brand</option>';
+  if (filtered.includes(prev)) sel.value = prev;
+  STATE.brand = sel.value;
 }
 
 /* ── STEP NAVIGATION ── */
@@ -1717,6 +1734,9 @@ function showPlanModal() {
     PLAN_ROWS.push({ label:'Chi phí',    key:'t_brd_chi_phi' });
   }
 
+  // Build ordered key list for 2D paste grid navigation
+  _planGridKeys = PLAN_ROWS.filter(r => r.key).map(r => r.key);
+
   const periods = [
     { id:'plan_month', label:'Cả Tháng' },
     { id:'plan_w1', label:'W1' }, { id:'plan_w2', label:'W2' },
@@ -1750,20 +1770,32 @@ function closePlanModal() {
 }
 
 const PLAN_PERIOD_ORDER = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
+let _planGridKeys = []; // populated by showPlanModal — ordered list of metric keys
+
 function handlePlanPaste(e, key, periodId) {
   const text = (e.clipboardData || window.clipboardData).getData('text');
-  const parts = text.split('\t');
-  if (parts.length <= 1) return;
+  // Parse as 2D block: rows split by newline, cols split by tab
+  const lines = text.split(/\r?\n/).filter(l => l !== '');
+  const grid = lines.map(l => l.split('\t'));
+  // Single cell with single value → let browser handle normally
+  if (grid.length === 1 && grid[0].length === 1) return;
+
   e.preventDefault();
-  const startIdx = PLAN_PERIOD_ORDER.indexOf(periodId);
-  if (startIdx === -1) return;
-  parts.forEach((raw, i) => {
-    const pid = PLAN_PERIOD_ORDER[startIdx + i];
-    if (!pid) return;
-    const el = document.getElementById(`pm_${key}_${pid}`);
-    if (!el) return;
-    const v = parseInt(raw.trim().replace(/[^\d]/g, ''), 10) || 0;
-    el.value = v ? v.toLocaleString('en-US') : '';
+  const startRow = _planGridKeys.indexOf(key);
+  const startCol = PLAN_PERIOD_ORDER.indexOf(periodId);
+  if (startRow === -1 || startCol === -1) return;
+
+  grid.forEach((cols, dr) => {
+    cols.forEach((raw, dc) => {
+      const rowKey = _planGridKeys[startRow + dr];
+      const colPeriod = PLAN_PERIOD_ORDER[startCol + dc];
+      if (!rowKey || !colPeriod) return;
+      const el = document.getElementById(`pm_${rowKey}_${colPeriod}`);
+      if (!el) return;
+      const v = parseInt(raw.trim().replace(/[^\d]/g, ''), 10) || 0;
+      el.value = v ? v.toLocaleString('en-US') : '';
+      flashInput(el);
+    });
   });
 }
 
