@@ -668,14 +668,14 @@ function fmtBig(n) {
   if (n === null || n === undefined || isNaN(n) || n === '' || n === '—') return '—';
   const v = parseFloat(n);
   if (!isFinite(v)) return '—';
-  return v.toLocaleString('vi-VN') + '₫';
+  return Math.round(v).toLocaleString('en-US') + '₫';
 }
 function fmtBigShort(n) {
   if (!n || isNaN(n)) return '—';
   const v = parseFloat(n);
   if (v >= 1e9) return (v/1e9).toFixed(1) + 'B₫';
   if (v >= 1e6) return (v/1e6).toFixed(1) + 'M₫';
-  return v.toLocaleString('vi-VN') + '₫';
+  return Math.round(v).toLocaleString('en-US') + '₫';
 }
 function pctCls(pct) {
   if (!pct) return '';
@@ -699,14 +699,14 @@ function sd(id, v) { const e = document.getElementById(id); if (e) e.textContent
 function fmtInpNum(el) {
   const raw = el.value.replace(/[^\d]/g, '');
   if (!raw) { el.value = ''; return; }
-  el.value = parseInt(raw, 10).toLocaleString('vi-VN');
+  el.value = parseInt(raw, 10).toLocaleString('en-US');
 }
 function sc(id, pct) {
   const e = document.getElementById(id);
   if (!e) return;
   if (pct === null) { e.textContent = '—'; e.className = 'pct'; return; }
   e.textContent = pct + '%';
-  e.className = 'pct ' + pctCls(pct);
+  e.className = 'pct';
 }
 
 /* ── BOOT ── */
@@ -882,7 +882,7 @@ function initStep2() {
       const el = document.getElementById(f);
       if (el && thisWeek[f]) {
         const n = parseFloat(thisWeek[f]);
-        el.value = n ? n.toLocaleString('vi-VN') : '';
+        el.value = n ? Math.round(n).toLocaleString('en-US') : '';
       }
     });
     ['highlight','lowlight'].forEach(k => {
@@ -1088,9 +1088,9 @@ async function generateAI() {
     userMsg += `[CPC] Doanh số: ${fmtBig(cpcDs)} (Plan: ${fmtBig(planCpcDs)}, %TH: ${getPct(cpcDs,planCpcDs)||'—'}%)\n`;
     userMsg += `[CPC] Chi phí: ${fmtBig(cpcCp)} | ROAS: ${cpcCp?( cpcDs/cpcCp).toFixed(2):'—'}x | CPC: ${cpcClick?fmtBig(cpcCp/cpcClick):'—'}\n`;
     userMsg += `[CPC] CTR: ${cpcXem?(cpcClick/cpcXem*100).toFixed(2):'—'}% | CR: ${cpcClick?(cpcDh/cpcClick*100).toFixed(2):'—'}% | AOV: ${cpcDh?fmtBig(cpcDs/cpcDh):'—'}\n`;
-    userMsg += `[CPC] Lượt xem: ${cpcXem.toLocaleString('vi-VN')} | Lượt click: ${cpcClick.toLocaleString('vi-VN')} | Đơn hàng: ${cpcDh.toLocaleString('vi-VN')}\n\n`;
+    userMsg += `[CPC] Lượt xem: ${cpcXem.toLocaleString('en-US')} | Lượt click: ${cpcClick.toLocaleString('en-US')} | Đơn hàng: ${cpcDh.toLocaleString('en-US')}\n\n`;
     userMsg += `[ND] GMV: ${fmtBig(ndGmv)} (Plan: ${fmtBig(planNdGmv)}) | Chi phí: ${fmtBig(ndCp)} | ROAS: ${ndCp?(ndGmv/ndCp).toFixed(2):'—'}x\n`;
-    userMsg += `[ND] CTR: ${ndXem?(ndClick/ndXem*100).toFixed(2):'—'}% | Lượt xem: ${ndXem.toLocaleString('vi-VN')}\n\n`;
+    userMsg += `[ND] CTR: ${ndXem?(ndClick/ndXem*100).toFixed(2):'—'}% | Lượt xem: ${ndXem.toLocaleString('en-US')}\n\n`;
     userMsg += `[Live] GMV: ${fmtBig(lvGmv)} (Plan: ${fmtBig(planLvGmv)}) | Chi phí: ${fmtBig(lvCp)} | ROAS: ${lvCp?(lvGmv/lvCp).toFixed(2):'—'}x\n\n`;
   }
   if (platforms.tiktok) {
@@ -1102,8 +1102,8 @@ async function generateAI() {
     userMsg += `[PGM] Doanh số: ${fmtBig(pgmDs)} (Plan: ${fmtBig(planPgmDs)}) | Chi phí: ${fmtBig(pgmCp)} | ROAS: ${pgmCp?(pgmDs/pgmCp).toFixed(2):'—'}x\n`;
     userMsg += `[PGM] CTR: ${pgmXem?(pgmClick/pgmXem*100).toFixed(2):'—'}% | CR: ${pgmClick?(pgmDh/pgmClick*100).toFixed(2):'—'}% | AOV: ${pgmDh?fmtBig(pgmDs/pgmDh):'—'}\n\n`;
     userMsg += `[LGM] Doanh thu: ${fmtBig(lgmDt)} (Plan: ${fmtBig(planLgmDt)}) | Chi phí: ${fmtBig(lgmCp)} | ROI: ${lgmCp?(lgmDt/lgmCp).toFixed(2):'—'}x\n\n`;
-    userMsg += `[Con người] Người tiếp cận: ${conNg.toLocaleString('vi-VN')} | Chi phí: ${fmtBig(conCp)} | CPP: ${conNg?fmtBig(conCp/conNg):'—'}\n`;
-    userMsg += `[Branding] Lượt xem: ${brdXem.toLocaleString('vi-VN')} | Follow: ${brdFlw.toLocaleString('vi-VN')} | Chi phí: ${fmtBig(brdCp)}\n\n`;
+    userMsg += `[Con người] Người tiếp cận: ${conNg.toLocaleString('en-US')} | Chi phí: ${fmtBig(conCp)} | CPP: ${conNg?fmtBig(conCp/conNg):'—'}\n`;
+    userMsg += `[Branding] Lượt xem: ${brdXem.toLocaleString('en-US')} | Follow: ${brdFlw.toLocaleString('en-US')} | Chi phí: ${fmtBig(brdCp)}\n\n`;
   }
   if (prevW_last) {
     userMsg += `--- SO SÁNH TUẦN TRƯỚC (W${prevW_last.week_num}) ---\n`;
@@ -1232,7 +1232,7 @@ function handlePlanUpload(file) {
           const el = document.getElementById(`pm_${key}_${p}`);
           if (!el) return;
           const v = parseInt((row[i + 1] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
-          el.value = v || '';
+          el.value = v ? v.toLocaleString('en-US') : '';
           filled++;
         });
       });
@@ -1317,7 +1317,7 @@ function buildChart() {
     return parseFloat(((cp/gmv)*100).toFixed(1));
   });
 
-  const fmtV = v => v >= 1e9 ? (v/1e9).toFixed(1)+'B₫' : v >= 1e6 ? (v/1e6).toFixed(0)+'M₫' : v.toLocaleString('vi-VN')+'₫';
+  const fmtV = v => v >= 1e9 ? (v/1e9).toFixed(1)+'B₫' : v >= 1e6 ? (v/1e6).toFixed(0)+'M₫' : v.toLocaleString('en-US')+'₫';
 
   STATE.chartInst = new Chart(canvas, {
     data: {
@@ -1388,23 +1388,25 @@ function buildPreview() {
 
   // ── wRow: value metric row ──
   function wRow(label, planMth, mtdAct, getAct, getPlan, fmtFn) {
-    fmtFn = fmtFn || (v=>(v!==null&&v!==undefined&&!isNaN(v))?parseFloat(v).toLocaleString('vi-VN'):'—');
-    const pctMtd=getPct(mtdAct,planMth), clrMtd=pctMtd?`color:${pctClr(pctMtd)};font-weight:bold`:'';
+    fmtFn = fmtFn || (v=>(v!==null&&v!==undefined&&!isNaN(v))?Math.round(parseFloat(v)).toLocaleString('en-US'):'—');
+    const pctMtd=getPct(mtdAct,planMth);
     const wCells=STATE.weeks.map(w=>{
       const pw=getPlan?getPlan(w.w):null, act=getAct?getAct(w.w):null;
-      const pct=getPct(act,pw), clr=pct?`color:${pctClr(pct)};font-weight:bold`:'';
-      return `<td ${ts()}>${(pw!==null&&pw!==undefined&&pw!==0)?fmtFn(pw):'—'}</td><td ${ts()}>${act!==null?fmtFn(act):'—'}</td><td ${ts()} style="${ts().slice(7,-1)};${clr}">${pct?pct+'%':'—'}</td>`;
+      const pct=getPct(act,pw);
+      return `<td ${ts()}>${(pw!==null&&pw!==undefined&&pw!==0)?fmtFn(pw):'—'}</td><td ${ts()}>${act!==null?fmtFn(act):'—'}</td><td ${ts()}>${pct?pct+'%':'—'}</td>`;
     }).join('');
-    return `<tr><td ${tsL()}>${label}</td><td ${ts()}>${planMth?fmtFn(planMth):'—'}</td><td ${ts()}>${(mtdAct!==null&&!isNaN(mtdAct))?fmtFn(mtdAct):'—'}</td><td ${ts()} style="${ts().slice(7,-1)};${clrMtd}">${pctMtd?pctMtd+'%':'—'}</td>${wCells}</tr>`;
+    return `<tr><td ${tsL()}>${label}</td><td ${ts()}>${planMth?fmtFn(planMth):'—'}</td><td ${ts()}>${(mtdAct!==null&&!isNaN(mtdAct))?fmtFn(mtdAct):'—'}</td><td ${ts()}>${pctMtd?pctMtd+'%':'—'}</td>${wCells}</tr>`;
   }
   // ── dRow: derived/ratio row ──
   function dRow(label, planMth, mtdAct, getAct, getPlan, fmtFn) {
     fmtFn = fmtFn || (v=>v!==null?v.toFixed(2):'—');
+    const pctMtd=getPct(mtdAct,planMth);
     const wCells=STATE.weeks.map(w=>{
       const pw=getPlan?getPlan(w.w):null, act=getAct?getAct(w.w):null;
-      return `<td ${ts()}>${pw!==null?fmtFn(pw):'—'}</td><td ${ts()}>${act!==null?fmtFn(act):'—'}</td><td ${ts()}>—</td>`;
+      const pct=getPct(act,pw);
+      return `<td ${ts()}>${pw!==null?fmtFn(pw):'—'}</td><td ${ts()}>${act!==null?fmtFn(act):'—'}</td><td ${ts()}>${pct?pct+'%':'—'}</td>`;
     }).join('');
-    return `<tr style="background:#fafafa"><td ${tsL()} style="${tsL().slice(7,-1)};color:#555;font-style:italic">${label}</td><td ${ts()}>${planMth!==null?fmtFn(planMth):'—'}</td><td ${ts()}>${mtdAct!==null?fmtFn(mtdAct):'—'}</td><td ${ts()}>—</td>${wCells}</tr>`;
+    return `<tr style="background:#fafafa"><td ${tsL()} style="${tsL().slice(7,-1)};color:#555;font-style:italic">${label}</td><td ${ts()}>${planMth!==null?fmtFn(planMth):'—'}</td><td ${ts()}>${mtdAct!==null?fmtFn(mtdAct):'—'}</td><td ${ts()}>${pctMtd?pctMtd+'%':'—'}</td>${wCells}</tr>`;
   }
 
   const fmtX    = v=>v!==null&&v!==undefined?parseFloat(v).toFixed(2):'—';
@@ -1719,8 +1721,9 @@ function showPlanModal() {
     if (row.sub)     { html += `<div class="pg-sub">${row.label}</div>`; return; }
     html += `<div class="pg-lbl">${row.label}</div>`;
     periods.forEach(p => {
-      const val = plan[row.key]?.[p.id] || '';
-      html += `<div><input class="pg-inp" type="number" id="pm_${row.key}_${p.id}" value="${val}" placeholder="0"></div>`;
+      const rawVal = plan[row.key]?.[p.id] || 0;
+      const val = rawVal ? Math.round(rawVal).toLocaleString('en-US') : '';
+      html += `<div><input class="pg-inp" type="text" inputmode="numeric" id="pm_${row.key}_${p.id}" value="${val}" placeholder="0" oninput="fmtInpNum(this)"></div>`;
     });
   });
   html += `</div>`;
@@ -1865,7 +1868,7 @@ function handleActualUpload(file) {
         const el = document.getElementById(key);
         if (!el) return;
         const v = parseInt((row[1] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
-        el.value = v ? v.toLocaleString('vi-VN') : '';
+        el.value = v ? v.toLocaleString('en-US') : '';
         filled++;
       });
       calcShopee(); calcTikTok();
