@@ -229,8 +229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   Auth.set(CU);
 
   initFilters();
-  const ok = await fetchBrands();
-  if (ok !== false) loadData();
+  loadData();
   document.addEventListener('click', e => {
     if (!document.getElementById('brand-filter-wrap').contains(e.target))
       document.getElementById('brand-dd').classList.remove('open');
@@ -255,19 +254,9 @@ function initFilters() {
   }
 }
 
-async function fetchBrands() {
-  try {
-    const j = await apiFetch(`${API}?action=getBrands`);
-    ALL_BRANDS = (j.ok && j.data) ? j.data : [];
-  } catch(e) {
-    ALL_BRANDS = [];
-    document.getElementById('main-content').innerHTML =
-      `<div class="an-loading">❌ Không thể kết nối API.<br><span style="font-size:.8rem;color:var(--faint)">${e.message}</span><br><br><button class="an-sel" onclick="location.reload()" style="margin-top:8px">Thử lại</button></div>`;
-    return false;
-  }
+function buildBrandDDFromList() {
   buildBrandDD();
   renderBrandTags();
-  return true;
 }
 
 function buildBrandDD() {
@@ -338,32 +327,34 @@ function toggleBrandDD() {
 async function loadData() {
   const month = parseInt(document.getElementById('sel-month').value);
   const year  = parseInt(document.getElementById('sel-year').value);
-  const brands = SELECTED_BRANDS.length > 0 ? SELECTED_BRANDS : ALL_BRANDS;
-
-  if (!brands.length) {
-    document.getElementById('main-content').innerHTML =
-      `<div class="an-loading">Không có brand nào. Kiểm tra kết nối API hoặc <button class="an-sel" onclick="location.reload()" style="margin-top:8px">Tải lại trang</button></div>`;
-    return;
-  }
 
   document.getElementById('main-content').innerHTML =
-    `<div class="an-loading"><div class="spin"></div><br><br>Đang tải dữ liệu ${brands.length} brand...</div>`;
-
-  DATA = {};
-  const weeks = getWeeksOfMonth(year, month);
+    `<div class="an-loading"><div class="spin"></div><br><br>Đang tải dữ liệu...</div>`;
 
   try {
-    await Promise.all(brands.map(async brand => {
-      const [pj, hj] = await Promise.all([
-        apiFetch(`${API}?action=getPlan&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).catch(()=>({ok:false})),
-        apiFetch(`${API}?action=getWeeklyHistory&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).catch(()=>({ok:false}))
-      ]);
+    const j = await apiFetch(`${API}?action=getAllData&month=${month}&year=${year}`);
+    if (!j.ok) throw new Error(j.error || 'API lỗi');
+
+    const { brands: apiBrands, plans, history } = j.data;
+
+    // update brand list + filter UI on first load
+    if (!ALL_BRANDS.length) {
+      ALL_BRANDS = apiBrands;
+      buildBrandDDFromList();
+    }
+
+    const brands = SELECTED_BRANDS.length > 0 ? SELECTED_BRANDS : apiBrands;
+    const weeks  = getWeeksOfMonth(year, month);
+
+    DATA = {};
+    brands.forEach(brand => {
       DATA[brand] = {
-        plan:    pj.ok ? pj.data : null,
-        history: hj.ok ? (hj.data || []) : [],
+        plan:    plans[brand] || null,
+        history: history[brand] || [],
         weeks
       };
-    }));
+    });
+
     render(brands, month, year, weeks);
   } catch(e) {
     document.getElementById('main-content').innerHTML =
