@@ -31,7 +31,7 @@ export async function generateMetadata(
     ? urlFor(post.ogImage).width(1200).height(630).url()
     : post.coverImage?.asset
     ? urlFor(post.coverImage).width(1200).height(630).url()
-    : 'https://mediaomni.site/og-image.png'
+    : 'https://www.mediaomni.site/og-image.png'
 
   return {
     title: post.seoTitle ?? post.title,
@@ -39,7 +39,7 @@ export async function generateMetadata(
     openGraph: {
       title: post.seoTitle ?? post.title,
       description: post.seoDescription ?? post.excerpt,
-      url: `https://mediaomni.site/blog/${params.slug}`,
+      url: `https://www.mediaomni.site/blog/${params.slug}`,
       type: 'article',
       publishedTime: post.publishedAt,
       authors: [post.author ?? 'Media Omni'],
@@ -114,9 +114,9 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     publisher: {
       '@type': 'Organization',
       name: 'Media Omni',
-      logo: { '@type': 'ImageObject', url: 'https://mediaomni.site/favicon.svg' },
+      logo: { '@type': 'ImageObject', url: 'https://www.mediaomni.site/favicon.svg' },
     },
-    url: `https://mediaomni.site/blog/${params.slug}`,
+    url: `https://www.mediaomni.site/blog/${params.slug}`,
     ...(post.coverImage?.asset && {
       image: urlFor(post.coverImage).width(1200).height(630).url(),
     }),

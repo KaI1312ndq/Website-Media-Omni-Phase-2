@@ -1,5 +1,6 @@
-import { blogPost } from './blogPost'
+import { blogPost }    from './blogPost'
 import { siteSettings } from './siteSettings'
-import { teamMember } from './teamMember'
+import { teamMember }   from './teamMember'
+import { brand }        from './brand'
 
-export const schemaTypes = [blogPost, siteSettings, teamMember]
+export const schemaTypes = [blogPost, siteSettings, teamMember, brand]

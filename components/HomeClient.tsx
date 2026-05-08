@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { urlFor } from '@/lib/sanity'
 
 interface SiteSettings {
   ticker?: string[]
@@ -21,21 +20,16 @@ interface TeamMember {
   avatar?: { asset: { url: string } }
 }
 
-interface BlogPost {
+export interface SanityBrand {
   _id: string
-  title: string
-  slug: { current: string }
-  excerpt?: string
-  tags?: string[]
-  publishedAt?: string
-  bgGradient?: string
-  coverImage?: { asset: { url: string }; alt?: string }
+  name: string
+  category: 'skincare' | 'fashion' | 'baby' | 'fmcg' | 'electronics'
 }
 
 interface Props {
   settings: SiteSettings | null
   team: TeamMember[]
-  posts: BlogPost[]
+  brands: SanityBrand[]
 }
 
 const TICKER_DEFAULT = [
@@ -43,27 +37,7 @@ const TICKER_DEFAULT = [
   'TikTok Shop', 'Shopee', 'Meta', 'Google', 'UpBase Vietnam',
 ]
 
-const BG_GRADIENTS: Record<string, string> = {
-  blue: 'linear-gradient(135deg,#1e3a8a,#2563eb)',
-  teal: 'linear-gradient(135deg,#134e4a,#0d9488)',
-  purple: 'linear-gradient(135deg,#4c1d95,#7c3aed)',
-  orange: 'linear-gradient(135deg,#7c2d12,#ea580c)',
-  navy: 'linear-gradient(135deg,#0f172a,#1e3a8a)',
-}
-
-function getGradient(key?: string) {
-  if (!key) return BG_GRADIENTS.navy
-  return BG_GRADIENTS[key] ?? BG_GRADIENTS.navy
-}
-
-function formatDate(iso?: string) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  })
-}
-
-export default function HomeClient({ settings, team, posts }: Props) {
+export default function HomeClient({ settings, team, brands }: Props) {
   const tickerItems = settings?.ticker ?? TICKER_DEFAULT
 
   useEffect(() => {
@@ -285,8 +259,8 @@ export default function HomeClient({ settings, team, posts }: Props) {
         </div>
       </section>
 
-      {/* BRANDS — static marquee rows */}
-      <BrandsSection />
+      {/* BRANDS */}
+      <BrandsSection brands={brands} />
 
       {/* PARTNERS */}
       <PartnersSection />
@@ -325,36 +299,19 @@ export default function HomeClient({ settings, team, posts }: Props) {
         </div>
       </section>
 
-      {/* BLOG PREVIEW */}
-      <section id="blog">
+      {/* BLOG CTA */}
+      <section id="blog" className="blog-cta-section">
         <div className="container">
-          <div className="sec-hd-flex rv">
-            <div>
+          <div className="blog-cta-inner rv">
+            <div className="blog-cta-left">
               <div className="sec-label">Insights & Blog</div>
               <h2 className="sec-title">Kiến thức thực chiến<br />từ Media Omni.</h2>
-              <p className="sec-sub">Case study, framework và playbook — chia sẻ để cùng grow.</p>
+              <p className="sec-sub">Case study, framework và playbook — chia sẻ để cùng grow với ecommerce đa kênh.</p>
             </div>
-            <Link href="/blog" className="btn-outline">
-              Xem tất cả bài viết
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            <Link href="/blog" className="blog-cta-btn">
+              <span>Xem tất cả bài viết</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
-          </div>
-          <div className="blog-grid">
-            {posts.length > 0 ? posts.map(p => (
-              <Link key={p._id} href={`/blog/${p.slug.current}`} className="blog-prev-card" style={{ background: getGradient(p.bgGradient) }}>
-                <div className="bpc-tags">
-                  {(p.tags ?? []).slice(0, 2).map(t => <span key={t} className="tag tag--white">{t}</span>)}
-                </div>
-                <h3 className="bpc-title">{p.title}</h3>
-                {p.excerpt && <p className="bpc-excerpt">{p.excerpt}</p>}
-                <div className="bpc-footer">
-                  <span className="bpc-date">{formatDate(p.publishedAt)}</span>
-                  <span className="bpc-read">Đọc bài →</span>
-                </div>
-              </Link>
-            )) : (
-              <p style={{ color: 'var(--muted)', gridColumn: '1/-1' }}>Chưa có bài viết nào.</p>
-            )}
           </div>
         </div>
       </section>
@@ -548,15 +505,59 @@ function ServiceCard({ icon, iconBg, name, sub, chips, delay, scopes }: ServiceC
   )
 }
 
-const BRAND_ROWS = [
-  { names: ['The Ordinary', 'Paula\'s Choice', 'Anessa', 'Hada Labo', 'Bioderma', 'CeraVe', 'La Roche-Posay', 'Neutrogena', 'Eucerin', 'Innisfree'], dur: '55s', rev: false },
-  { names: ['Nón Sơn', 'Biti\'s', 'Vascara', 'Owen', 'Coolmate', 'CANIFA', 'Aristino', 'Routine', 'The KAFi', 'Elise'], dur: '65s', rev: true },
-  { names: ['Huggies', 'Pampers', 'Bobby', 'Mamamy', 'Cussons', 'Pigeon', 'Chicco', 'NUK', 'Graco', 'Cybex'], dur: '50s', rev: false },
-  { names: ['Vinamilk', 'TH True Milk', 'NutiFood', 'Nestlé', 'Abbott', 'Mead Johnson', 'Dutch Lady', 'Fami', 'Bibica', 'Kinh Đô'], dur: '70s', rev: true },
-  { names: ['Sunhouse', 'Kangaroo', 'Karofi', 'Lock&Lock', 'Tefal', 'Philips', 'Panasonic', 'Electrolux', 'Samsung', 'LG'], dur: '60s', rev: false },
+/* ── Brand row config: category → row order, duration, direction ── */
+const CATEGORY_ROWS: Record<string, { dur: string; rev: boolean }> = {
+  skincare:    { dur: '55s', rev: false },
+  fashion:     { dur: '65s', rev: true  },
+  baby:        { dur: '50s', rev: false },
+  fmcg:        { dur: '70s', rev: true  },
+  electronics: { dur: '60s', rev: false },
+}
+
+/* Fallback brands if Sanity is not set up yet */
+const FALLBACK_BRANDS: SanityBrand[] = [
+  { _id: 'f1',  name: 'The Ordinary',   category: 'skincare'    },
+  { _id: 'f2',  name: "Paula's Choice", category: 'skincare'    },
+  { _id: 'f3',  name: 'Anessa',         category: 'skincare'    },
+  { _id: 'f4',  name: 'Hada Labo',      category: 'skincare'    },
+  { _id: 'f5',  name: 'CeraVe',         category: 'skincare'    },
+  { _id: 'f6',  name: 'La Roche-Posay', category: 'skincare'    },
+  { _id: 'f7',  name: 'Nón Sơn',        category: 'fashion'     },
+  { _id: 'f8',  name: "Biti's",         category: 'fashion'     },
+  { _id: 'f9',  name: 'Vascara',        category: 'fashion'     },
+  { _id: 'f10', name: 'Coolmate',       category: 'fashion'     },
+  { _id: 'f11', name: 'CANIFA',         category: 'fashion'     },
+  { _id: 'f12', name: 'Elise',          category: 'fashion'     },
+  { _id: 'f13', name: 'Huggies',        category: 'baby'        },
+  { _id: 'f14', name: 'Pampers',        category: 'baby'        },
+  { _id: 'f15', name: 'Bobby',          category: 'baby'        },
+  { _id: 'f16', name: 'Pigeon',         category: 'baby'        },
+  { _id: 'f17', name: 'Chicco',         category: 'baby'        },
+  { _id: 'f18', name: 'Vinamilk',       category: 'fmcg'        },
+  { _id: 'f19', name: 'TH True Milk',   category: 'fmcg'        },
+  { _id: 'f20', name: 'NutiFood',       category: 'fmcg'        },
+  { _id: 'f21', name: 'Nestlé',         category: 'fmcg'        },
+  { _id: 'f22', name: 'Kinh Đô',        category: 'fmcg'        },
+  { _id: 'f23', name: 'Sunhouse',       category: 'electronics' },
+  { _id: 'f24', name: 'Kangaroo',       category: 'electronics' },
+  { _id: 'f25', name: 'Philips',        category: 'electronics' },
+  { _id: 'f26', name: 'Panasonic',      category: 'electronics' },
+  { _id: 'f27', name: 'Samsung',        category: 'electronics' },
 ]
 
-function BrandsSection() {
+function BrandsSection({ brands }: { brands: SanityBrand[] }) {
+  const source = brands.length > 0 ? brands : FALLBACK_BRANDS
+
+  /* Group brands by category in defined row order */
+  const rowOrder: SanityBrand['category'][] = ['skincare', 'fashion', 'baby', 'fmcg', 'electronics']
+  const rows = rowOrder
+    .map(cat => ({
+      cat,
+      names: source.filter(b => b.category === cat).map(b => b.name),
+      ...CATEGORY_ROWS[cat],
+    }))
+    .filter(r => r.names.length > 0)
+
   return (
     <section id="brands">
       <div className="container">
@@ -567,7 +568,7 @@ function BrandsSection() {
         </div>
       </div>
       <div className="brands-container rv">
-        {BRAND_ROWS.map((row, i) => (
+        {rows.map((row, i) => (
           <div
             key={i}
             className={`brands-track${row.rev ? ' brands-track-reverse' : ''}`}

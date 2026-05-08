@@ -31,3 +31,9 @@ export const teamQuery = groq`
     _id, name, role, isLead, avatar { asset->{ url } }
   }
 `
+
+export const brandsQuery = groq`
+  *[_type == "brand" && active != false] | order(category asc, order asc) {
+    _id, name, category
+  }
+`

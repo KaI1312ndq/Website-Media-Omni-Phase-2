@@ -1,8 +1,8 @@
 import { client } from '@/lib/sanity'
-import { siteSettingsQuery, teamQuery, blogListQuery } from '@/lib/queries'
+import { siteSettingsQuery, teamQuery, brandsQuery } from '@/lib/queries'
 import HomeClient from '@/components/HomeClient'
 
-// ISR: regenerate every hour. Falls back to empty data when Sanity env not set.
+// ISR: regenerate every hour. On-demand revalidation via /api/revalidate
 export const revalidate = 3600
 
 const hasSanity = Boolean(
@@ -11,13 +11,19 @@ const hasSanity = Boolean(
 )
 
 export default async function HomePage() {
-  const [settings, team, posts] = hasSanity
+  const [settings, team, brands] = hasSanity
     ? await Promise.all([
         client.fetch(siteSettingsQuery).catch(() => null),
         client.fetch(teamQuery).catch(() => []),
-        client.fetch(blogListQuery).catch(() => []),
+        client.fetch(brandsQuery).catch(() => []),
       ])
     : [null, [], []]
 
-  return <HomeClient settings={settings} team={team} posts={(posts as unknown[]).slice(0, 3) as Parameters<typeof HomeClient>[0]['posts']} />
+  return (
+    <HomeClient
+      settings={settings}
+      team={team as Parameters<typeof HomeClient>[0]['team']}
+      brands={brands as Parameters<typeof HomeClient>[0]['brands']}
+    />
+  )
 }

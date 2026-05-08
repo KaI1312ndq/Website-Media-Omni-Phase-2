@@ -49,9 +49,21 @@ export const blogPost = defineType({
       fields: [{ name: 'alt', type: 'string', title: 'Alt text' }],
     }),
     defineField({
-      name: 'bgGradient', title: 'Màu nền thumbnail', type: 'string',
-      initialValue: 'linear-gradient(135deg,#050F2C,#0A2A6E)',
-      description: 'CSS gradient — dùng khi không có ảnh bìa',
+      name: 'bgGradient',
+      title: 'Màu nền thumbnail',
+      type: 'string',
+      initialValue: 'navy',
+      description: 'Chọn màu nền — hiển thị khi không có ảnh bìa',
+      options: {
+        list: [
+          { title: '🟦 Navy (mặc định)',   value: 'navy'   },
+          { title: '🔵 Blue',              value: 'blue'   },
+          { title: '🩵 Teal',              value: 'teal'   },
+          { title: '🟣 Purple',            value: 'purple' },
+          { title: '🟠 Orange',            value: 'orange' },
+        ],
+        layout: 'radio',
+      },
     }),
     defineField({
       name: 'tags', title: 'Tags', type: 'array',
