@@ -234,7 +234,7 @@ export default function AnalyticsPage() {
     <div className="an" style={{ maxWidth: 1100, margin: '0 auto', padding: '88px 20px 80px' }}>
       {/* Back */}
       <div style={{ marginBottom: 6 }}>
-        <Link href="/hub/dashboard" style={{ fontSize: '.82rem', color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <Link href="/dashboard" style={{ fontSize: '.82rem', color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
           Dashboard
         </Link>

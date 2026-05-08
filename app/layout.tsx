@@ -26,7 +26,7 @@ const robotoMono = Roboto_Mono({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://mediaomni.site'),
+  metadataBase: new URL('https://www.mediaomni.site'),
   title: {
     default: 'Media Omni — Performance Marketing Team | UpBase Vietnam',
     template: '%s | Media Omni',
@@ -34,26 +34,28 @@ export const metadata: Metadata = {
   description:
     'Media Omni vận hành performance marketing đa kênh cho 100+ brands — TikTok Shop, Shopee, Meta, Google. 356B NMV · >7x ROAS · 12 Growth Operators.',
   keywords: [
-    'performance marketing', 'media agency', 'TikTok Shop', 'Shopee ads',
-    'Meta ads', 'Google ads', 'ecommerce marketing Vietnam', 'UpBase',
+    'performance marketing Vietnam', 'media agency Vietnam', 'TikTok Shop partner',
+    'Shopee ads', 'Meta ads CPAS', 'Google ads', 'ecommerce marketing Vietnam',
+    'UpBase Vietnam', 'Media Omni', 'agency performance', 'quảng cáo đa kênh',
   ],
-  robots: { index: true, follow: true },
-  alternates: { canonical: 'https://mediaomni.site' },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+  alternates: { canonical: 'https://www.mediaomni.site' },
   openGraph: {
     type: 'website',
-    url: 'https://mediaomni.site',
+    url: 'https://www.mediaomni.site',
     siteName: 'Media Omni',
     title: 'Media Omni — Performance Marketing Team | UpBase Vietnam',
     description:
       'Vận hành performance marketing đa kênh cho 100+ brands ecommerce hàng đầu Việt Nam. 356B NMV · >7x ROAS · 12 Growth Operators.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: 'https://www.mediaomni.site/og-image.png', width: 1200, height: 630, alt: 'Media Omni — Performance Marketing Team' }],
     locale: 'vi_VN',
   },
   twitter: {
     card: 'summary_large_image',
+    site: '@mediaomni',
     title: 'Media Omni — Performance Marketing Team',
     description: 'Vận hành performance marketing đa kênh cho 100+ brands ecommerce hàng đầu Việt Nam.',
-    images: ['/og-image.png'],
+    images: ['https://www.mediaomni.site/og-image.png'],
   },
   icons: {
     icon: [

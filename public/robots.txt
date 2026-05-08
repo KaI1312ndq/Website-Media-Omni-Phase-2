@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Block internal hub pages from indexing
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /hub/
+Disallow: /quiz
+Disallow: /users
+Disallow: /studio
+
+Sitemap: https://www.mediaomni.site/sitemap.xml
