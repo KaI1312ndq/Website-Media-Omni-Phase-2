@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog & Insights — Media Omni | Performance Marketing</title>
+<meta name="description" content="Kiến thức thực chiến từ Media Omni: case study, framework và playbook về performance marketing đa kênh — TikTok Shop, Shopee, Meta, Google.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://mediaomni.site/blog">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="https://mediaomni.site/blog">
+<meta property="og:title"       content="Blog & Insights — Media Omni">
+<meta property="og:description" content="Kiến thức thực chiến về performance marketing: case study, framework và playbook từ Media Omni.">
+<meta property="og:image"       content="https://mediaomni.site/og-image.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name"   content="Media Omni">
+<meta property="og:locale"      content="vi_VN">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Blog & Insights — Media Omni">
+<meta name="twitter:description" content="Kiến thức thực chiến về performance marketing: case study, framework và playbook từ Media Omni.">
+<meta name="twitter:image"       content="https://mediaomni.site/og-image.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "name": "Blog & Insights — Media Omni",
+  "description": "Kiến thức thực chiến từ Media Omni: case study, framework và playbook về performance marketing đa kênh.",
+  "url": "https://mediaomni.site/blog",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Media Omni",
+    "url": "https://mediaomni.site",
+    "logo": "https://mediaomni.site/favicon.svg"
+  },
+  "inLanguage": "vi-VN"
+}
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TYTP82G06N"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-TYTP82G06N');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/blog.css">
+</head>
+<body>
+<div id="sp"></div>
+
+<nav id="main-nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
+    <div class="nav-links">
+      <a href="/" class="nav-link">← Home</a>
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+      <a href="/admin" class="nav-link">CMS Admin</a>
+    </div>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+  </div>
+  <div class="nav-mob" id="nav-mob">
+    <a href="/" class="nav-mob-link">← Home</a>
+    <a href="/dashboard" class="nav-mob-link">Dashboard</a>
+    <a href="/admin" class="nav-mob-link">CMS Admin</a>
+  </div>
+</nav>
+<div class="mob-overlay" id="mob-overlay"></div>
+
+<!-- LIST -->
+<div id="list-page">
+  <div class="blog-hdr rv">
+    <div class="sec-label">Blog & Insights</div>
+    <h1>Kiến thức thực chiến<br>từ Media Omni.</h1>
+    <p>Case study, framework và playbook — chia sẻ để cùng grow.</p>
+  </div>
+  <div class="blog-controls rv d1">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="blog-search" id="blog-search" type="text" placeholder="Tìm bài viết..." oninput="filterPosts()">
+    </div>
+    <div class="tag-filters" id="tag-filters"></div>
+  </div>
+  <div class="blog-grid" id="blog-grid">
+    <div class="blog-empty">⏳ Đang tải bài viết...</div>
+  </div>
+</div>
+
+<!-- SINGLE POST -->
+<div id="post-page">
+  <button class="post-back" onclick="backToList()">
+    <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Quay lại tất cả bài
+  </button>
+  <div class="post-hdr">
+    <div class="post-tag-row" id="post-tag-row"></div>
+    <h1 class="post-title" id="post-title"></h1>
+    <div class="post-meta-row">
+      <span class="post-author" id="post-author"></span>
+      <span id="post-date"></span>
+      <span id="post-read"></span>
+    </div>
+  </div>
+  <div class="post-thumb" id="post-thumb"></div>
+  <div class="post-body" id="post-body"></div>
+</div>
+
+<div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
+<script src="/js/shared.js"></script>
+<script src="/js/blog.js"></script>
+</body>
+</html>

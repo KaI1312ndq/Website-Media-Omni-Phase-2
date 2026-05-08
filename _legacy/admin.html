@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS Admin — Media Omni</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div id="sp"></div>
+
+<nav id="main-nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><span class="nav-logo-mark">MO</span>MediaOmni</a>
+    <div class="nav-links">
+      <a href="/blog" class="nav-link">← Blog</a>
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+      <span style="font-family:var(--f-mono);font-size:.65rem;font-weight:700;padding:.25rem .65rem;border-radius:var(--r-pill);background:rgba(239,68,68,.1);color:var(--error)">Admin Only</span>
+    </div>
+    <button class="nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+  </div>
+  <div class="nav-mob" id="nav-mob">
+    <a href="/blog" class="nav-mob-link">← Blog</a>
+    <a href="/dashboard" class="nav-mob-link">Dashboard</a>
+  </div>
+</nav>
+<div class="mob-overlay" id="mob-overlay"></div>
+
+<div class="admin-wrap">
+  <div class="admin-hdr rv">
+    <div>
+      <h1>Blog CMS</h1>
+      <p>Quản lý nội dung blog Media Omni.</p>
+    </div>
+    <button class="btn-primary" onclick="newPost()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Bài viết mới
+    </button>
+  </div>
+
+  <div class="editor-layout" id="editor-section" style="display:none">
+    <div class="editor-main">
+      <label class="ed-label">Tiêu đề *</label>
+      <input class="ed-input" id="ed-title" type="text" placeholder="Tiêu đề bài viết...">
+      <label class="ed-label">Tóm tắt (excerpt)</label>
+      <textarea class="ed-input" id="ed-excerpt" rows="2" placeholder="Một câu mô tả ngắn xuất hiện ở card..."></textarea>
+      <label class="ed-label">Nội dung</label>
+      <div class="ed-toolbar">
+        <button class="tb-btn" onclick="ins('**','**')">B</button>
+        <button class="tb-btn" onclick="ins('*','*')" style="font-style:italic">I</button>
+        <button class="tb-btn" onclick="ins('\n## ','')">H2</button>
+        <button class="tb-btn" onclick="ins('\n### ','')">H3</button>
+        <button class="tb-btn" onclick="ins('\n- ','')">List</button>
+        <button class="tb-btn" onclick="ins('\n> ','')">Quote</button>
+        <button class="tb-btn" onclick="ins('\n---\n','')">Divider</button>
+        <button class="tb-btn" onclick="ins('[text](url)','')">Link</button>
+      </div>
+      <textarea class="ed-content" id="ed-content" placeholder="Viết nội dung (Markdown)..."></textarea>
+    </div>
+    <div class="editor-side">
+      <label class="ed-label">Thumbnail (emoji hoặc URL)</label>
+      <div class="thumb-preview" id="thumb-preview" style="background:linear-gradient(135deg,#050F2C,#0A2A6E)">🎯</div>
+      <input class="ed-input" id="ed-thumb" type="text" placeholder="🎯 hoặc https://..." oninput="updateThumb()">
+      <label class="ed-label" style="margin-top:14px">Màu nền thumbnail</label>
+      <input class="ed-input" id="ed-bg" type="text" placeholder="linear-gradient(135deg,#050F2C,#0A2A6E)" oninput="updateThumb()">
+      <label class="ed-label" style="margin-top:14px">Tags</label>
+      <div class="tags-wrap" id="tags-wrap" onclick="document.getElementById('tag-inp').focus()">
+        <input class="tag-add-inp" id="tag-inp" placeholder="Nhập tag, Enter để thêm" onkeydown="addTag(event)">
+      </div>
+      <label class="ed-label" style="margin-top:14px">Tác giả</label>
+      <input class="ed-input" id="ed-author" type="text" placeholder="Nguyễn Đức Quảng">
+      <label class="ed-label" style="margin-top:14px">Ngày xuất bản</label>
+      <input class="ed-input" id="ed-date" type="date">
+      <label class="ed-label" style="margin-top:14px">Trạng thái</label>
+      <div class="status-btns">
+        <button class="s-btn active-draft" id="s-draft" onclick="setStatus('draft')">📝 Draft</button>
+        <button class="s-btn" id="s-pub" onclick="setStatus('published')">🚀 Published</button>
+      </div>
+      <div class="editor-actions">
+        <button class="btn-discard" onclick="cancelEdit()">Huỷ</button>
+        <button class="btn-save" id="btn-save" onclick="savePost()">Lưu bài →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="posts-section rv">
+    <div class="posts-hdr">
+      <h2>Tất cả bài viết</h2>
+      <span id="post-count" style="font-family:var(--f-mono);font-size:.72rem;color:var(--faint)"></span>
+    </div>
+    <div class="posts-table">
+      <div class="pt-head">
+        <span>Tiêu đề</span><span>Tags</span><span>Ngày</span><span>Trạng thái</span><span>Thao tác</span>
+      </div>
+      <div id="posts-body"><div class="no-posts">⏳ Đang tải...</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
+<script src="/js/shared.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>
