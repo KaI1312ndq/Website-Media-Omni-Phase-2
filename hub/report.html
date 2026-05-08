@@ -110,6 +110,7 @@
 .mt .total-row td{background:rgba(37,99,235,.04);font-weight:700}
 .m-inp{width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:.83rem;text-align:right;background:var(--bg);font-family:var(--f-mono);box-sizing:border-box;color:var(--ink)}
 .m-inp:focus{outline:none;border-color:var(--blue)}
+.m-inp.expr-mode{border-color:#f59e0b;color:#92400e;font-style:italic}
 
 /* ── TOTAL BOX ── */
 .total-box{background:rgba(37,99,235,.04);border:1.5px solid rgba(37,99,235,.18);border-radius:12px;padding:18px;margin-bottom:18px}
@@ -713,7 +714,13 @@ function gv(id) { return parseFloat((document.getElementById(id)?.value||'').rep
 function gvRaw(id) { return (document.getElementById(id)?.value||'').replace(/\./g,'').replace(/,/g,''); }
 function sd(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
 function fmtInpNum(el) {
-  const raw = el.value.replace(/[^\d]/g, '');
+  const v = el.value;
+  if (/[+\-*/]/.test(v.replace(/,/g,''))) {
+    el.classList.add('expr-mode'); // show amber hint while typing expression
+    return;
+  }
+  el.classList.remove('expr-mode');
+  const raw = v.replace(/[^\d]/g, '');
   if (!raw) { el.value = ''; return; }
   el.value = parseInt(raw, 10).toLocaleString('en-US');
 }
@@ -736,6 +743,16 @@ document.addEventListener('DOMContentLoaded', () => {
   populateMonth();
   populateWeeks();
   fetchBrands();
+
+  // Actual inputs: paste → fill column down; blur → evaluate math expression
+  document.addEventListener('paste', e => {
+    if (!e.target.classList.contains('m-inp')) return;
+    handleActualPaste(e, e.target.id);
+  });
+  document.addEventListener('focusout', e => {
+    if (!e.target.classList.contains('m-inp')) return;
+    evalActualExpr(e.target);
+  });
 });
 
 function populateMonth() {
@@ -1806,7 +1823,59 @@ function closePlanModal() {
 }
 
 const PLAN_PERIOD_ORDER = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5'];
-let _planGridKeys = []; // populated by showPlanModal — ordered list of metric keys
+let _planGridKeys = [];
+
+const _actualKeys = [
+  's_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
+  's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
+  's_live_gmv','s_live_chi_phi','s_live_luot_xem',
+  't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
+  't_lgm_doanhthu','t_lgm_chi_phi',
+  't_con_nguoi','t_con_chi_phi',
+  't_brd_view','t_brd_follow','t_brd_chi_phi'
+];
+
+function handleActualPaste(e, fieldId) {
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  const lines = text.split(/\r?\n/).filter(l => l !== '');
+  const grid = lines.map(l => l.split('\t'));
+  if (grid.length === 1 && grid[0].length === 1) return; // single value → browser handles
+
+  e.preventDefault();
+  const startIdx = _actualKeys.indexOf(fieldId);
+  if (startIdx === -1) return;
+
+  let anyFilled = false;
+  grid.forEach((cols, dr) => {
+    const key = _actualKeys[startIdx + dr];
+    if (!key) return;
+    const el = document.getElementById(key);
+    if (!el) return;
+    const raw = (cols[0] || '').trim().replace(/[^\d]/g, '');
+    const v = parseInt(raw, 10) || 0;
+    el.value = v ? v.toLocaleString('en-US') : '';
+    flashInput(el);
+    anyFilled = true;
+  });
+  if (anyFilled) { calcShopee(); calcTikTok(); }
+}
+
+function evalActualExpr(el) {
+  const raw = el.value.trim();
+  if (!raw) { el.classList.remove('expr-mode'); return; }
+  const stripped = raw.replace(/,/g, '');
+  if (!/[+\-*/]/.test(stripped)) { el.classList.remove('expr-mode'); return; }
+  try {
+    if (!/^[\d\s+\-*/().]+$/.test(stripped)) return;
+    const result = Function('"use strict";return(' + stripped + ')')();
+    if (!isFinite(result) || isNaN(result)) return;
+    const rounded = Math.round(result);
+    el.value = rounded ? rounded.toLocaleString('en-US') : '';
+    el.classList.remove('expr-mode');
+    flashInput(el);
+    calcShopee(); calcTikTok();
+  } catch (_) {}
+} // populated by showPlanModal — ordered list of metric keys
 
 function handlePlanPaste(e, key, periodId) {
   const text = (e.clipboardData || window.clipboardData).getData('text');
