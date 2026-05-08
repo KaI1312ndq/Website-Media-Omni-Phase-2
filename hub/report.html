@@ -1406,6 +1406,13 @@ function buildPreview() {
   const tsL = () => `style="padding:3px 5px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:11px;white-space:nowrap;min-width:100px"`;
   const th  = (v='') => `style="padding:4px 5px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:11px;text-align:center;white-space:nowrap;${v}"`;
   const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:11px;margin:4px 0 14px`;
+  // Helper: check if a set of keys has any non-zero plan or actual data
+  const hasSectionData = (keys) => {
+    if (plan && keys.some(k => { const p=plan[k]; return p && Object.values(p).some(v=>parseFloat(v)>0); })) return true;
+    if (keys.some(k => { const el=document.getElementById(k); return el && parseFloat(el.value.replace(/,/g,''))>0; })) return true;
+    if (history.length && keys.some(k => history.some(h => parseFloat(h[k]||0)>0))) return true;
+    return false;
+  };
   // Abbreviated formatter for mail — keeps numbers short enough to not wrap in email clients
   const fmtMail = v => {
     if (v === null || v === undefined || isNaN(v)) return '—';
@@ -1512,25 +1519,29 @@ function buildPreview() {
     body += wRow('Số đơn hàng', pM('s_cpc_don_hang')||null, getMTD(w=>hRow('s_cpc_don_hang',w)||0), w=>hRow('s_cpc_don_hang',w), w=>pW('s_cpc_don_hang',w)||null, fmtN);
     body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('s_cpc_doanh_so','s_cpc_don_hang'), ratioMTD('s_cpc_doanh_so','s_cpc_don_hang'), w=>ratioW('s_cpc_doanh_so','s_cpc_don_hang',w), w=>ratioPW('s_cpc_doanh_so','s_cpc_don_hang',w), fmtMoney);
     body += `</tbody></table>`;
-    // Ads ND
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
-    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
-    body += wRow('Doanh thu Ads (GMV)', pM('s_nd_gmv')||null, getMTD(w=>hRow('s_nd_gmv',w)||0), w=>hRow('s_nd_gmv',w), w=>pW('s_nd_gmv',w)||null);
-    body += wRow('Chi phí ads', pM('s_nd_chi_phi')||null, getMTD(w=>hRow('s_nd_chi_phi',w)||0), w=>hRow('s_nd_chi_phi',w), w=>pW('s_nd_chi_phi',w)||null);
-    body += dRow('ROAS ads', ratioPM('s_nd_gmv','s_nd_chi_phi'), ratioMTD('s_nd_gmv','s_nd_chi_phi'), w=>ratioW('s_nd_gmv','s_nd_chi_phi',w), w=>ratioPW('s_nd_gmv','s_nd_chi_phi',w), fmtX);
-    body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_nd_chi_phi','s_nd_luot_click'), ratioMTD('s_nd_chi_phi','s_nd_luot_click'), w=>ratioW('s_nd_chi_phi','s_nd_luot_click',w), w=>ratioPW('s_nd_chi_phi','s_nd_luot_click',w), fmtCPC);
-    body += dRow('CTR', ratioPM('s_nd_luot_click','s_nd_luot_xem')?ratioPM('s_nd_luot_click','s_nd_luot_xem')*100:null, ratioMTD('s_nd_luot_click','s_nd_luot_xem')?ratioMTD('s_nd_luot_click','s_nd_luot_xem')*100:null, w=>{ const v=ratioW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
-    body += wRow('Số lượt xem', pM('s_nd_luot_xem')||null, getMTD(w=>hRow('s_nd_luot_xem',w)||0), w=>hRow('s_nd_luot_xem',w), w=>pW('s_nd_luot_xem',w)||null, fmtN);
-    body += wRow('Số lượt click', pM('s_nd_luot_click')||null, getMTD(w=>hRow('s_nd_luot_click',w)||0), w=>hRow('s_nd_luot_click',w), w=>pW('s_nd_luot_click',w)||null, fmtN);
-    body += `</tbody></table>`;
-    // Ads Live
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
-    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
-    body += wRow('Doanh thu Ads (GMV)', pM('s_live_gmv')||null, getMTD(w=>hRow('s_live_gmv',w)||0), w=>hRow('s_live_gmv',w), w=>pW('s_live_gmv',w)||null);
-    body += wRow('Chi phí ads', pM('s_live_chi_phi')||null, getMTD(w=>hRow('s_live_chi_phi',w)||0), w=>hRow('s_live_chi_phi',w), w=>pW('s_live_chi_phi',w)||null);
-    body += dRow('ROAS ads', ratioPM('s_live_gmv','s_live_chi_phi'), ratioMTD('s_live_gmv','s_live_chi_phi'), w=>ratioW('s_live_gmv','s_live_chi_phi',w), w=>ratioPW('s_live_gmv','s_live_chi_phi',w), fmtX);
-    body += wRow('Lượt xem', pM('s_live_luot_xem')||null, getMTD(w=>hRow('s_live_luot_xem',w)||0), w=>hRow('s_live_luot_xem',w), w=>pW('s_live_luot_xem',w)||null, fmtN);
-    body += `</tbody></table>`;
+    // Ads ND — only if has data
+    if (hasSectionData(['s_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click'])) {
+      body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`;
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+      body += wRow('Doanh thu Ads (GMV)', pM('s_nd_gmv')||null, getMTD(w=>hRow('s_nd_gmv',w)||0), w=>hRow('s_nd_gmv',w), w=>pW('s_nd_gmv',w)||null);
+      body += wRow('Chi phí ads', pM('s_nd_chi_phi')||null, getMTD(w=>hRow('s_nd_chi_phi',w)||0), w=>hRow('s_nd_chi_phi',w), w=>pW('s_nd_chi_phi',w)||null);
+      body += dRow('ROAS ads', ratioPM('s_nd_gmv','s_nd_chi_phi'), ratioMTD('s_nd_gmv','s_nd_chi_phi'), w=>ratioW('s_nd_gmv','s_nd_chi_phi',w), w=>ratioPW('s_nd_gmv','s_nd_chi_phi',w), fmtX);
+      body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_nd_chi_phi','s_nd_luot_click'), ratioMTD('s_nd_chi_phi','s_nd_luot_click'), w=>ratioW('s_nd_chi_phi','s_nd_luot_click',w), w=>ratioPW('s_nd_chi_phi','s_nd_luot_click',w), fmtCPC);
+      body += dRow('CTR', ratioPM('s_nd_luot_click','s_nd_luot_xem')?ratioPM('s_nd_luot_click','s_nd_luot_xem')*100:null, ratioMTD('s_nd_luot_click','s_nd_luot_xem')?ratioMTD('s_nd_luot_click','s_nd_luot_xem')*100:null, w=>{ const v=ratioW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, w=>{ const v=ratioPW('s_nd_luot_click','s_nd_luot_xem',w); return v!==null?v*100:null; }, fmtPct);
+      body += wRow('Số lượt xem', pM('s_nd_luot_xem')||null, getMTD(w=>hRow('s_nd_luot_xem',w)||0), w=>hRow('s_nd_luot_xem',w), w=>pW('s_nd_luot_xem',w)||null, fmtN);
+      body += wRow('Số lượt click', pM('s_nd_luot_click')||null, getMTD(w=>hRow('s_nd_luot_click',w)||0), w=>hRow('s_nd_luot_click',w), w=>pW('s_nd_luot_click',w)||null, fmtN);
+      body += `</tbody></table>`;
+    }
+    // Ads Live — only if has data
+    if (hasSectionData(['s_live_gmv','s_live_chi_phi','s_live_luot_xem'])) {
+      body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`;
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+      body += wRow('Doanh thu Ads (GMV)', pM('s_live_gmv')||null, getMTD(w=>hRow('s_live_gmv',w)||0), w=>hRow('s_live_gmv',w), w=>pW('s_live_gmv',w)||null);
+      body += wRow('Chi phí ads', pM('s_live_chi_phi')||null, getMTD(w=>hRow('s_live_chi_phi',w)||0), w=>hRow('s_live_chi_phi',w), w=>pW('s_live_chi_phi',w)||null);
+      body += dRow('ROAS ads', ratioPM('s_live_gmv','s_live_chi_phi'), ratioMTD('s_live_gmv','s_live_chi_phi'), w=>ratioW('s_live_gmv','s_live_chi_phi',w), w=>ratioPW('s_live_gmv','s_live_chi_phi',w), fmtX);
+      body += wRow('Lượt xem', pM('s_live_luot_xem')||null, getMTD(w=>hRow('s_live_luot_xem',w)||0), w=>hRow('s_live_luot_xem',w), w=>pW('s_live_luot_xem',w)||null, fmtN);
+      body += `</tbody></table>`;
+    }
   }
 
   // ─── TIKTOK SHOP ───
@@ -1568,20 +1579,25 @@ function buildPreview() {
     body += dRow('ROI', ratioPM('t_lgm_doanhthu','t_lgm_chi_phi'), ratioMTD('t_lgm_doanhthu','t_lgm_chi_phi'), w=>ratioW('t_lgm_doanhthu','t_lgm_chi_phi',w), w=>ratioPW('t_lgm_doanhthu','t_lgm_chi_phi',w), fmtX);
     body += `</tbody></table>`;
     // Consideration
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
-    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
-    body += wRow('Consider (Số người nhận biết thương hiệu)', pM('t_con_nguoi')||null, getMTD(w=>hRow('t_con_nguoi',w)||0), w=>hRow('t_con_nguoi',w), w=>pW('t_con_nguoi',w)||null, fmtN);
-    body += wRow('Chi phí', pM('t_con_chi_phi')||null, getMTD(w=>hRow('t_con_chi_phi',w)||0), w=>hRow('t_con_chi_phi',w), w=>pW('t_con_chi_phi',w)||null);
-    body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), fmtMoney);
-    body += `</tbody></table>`;
-    // Branding
-    body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
-    body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
-    body += wRow('View', pM('t_brd_view')||null, getMTD(w=>hRow('t_brd_view',w)||0), w=>hRow('t_brd_view',w), w=>pW('t_brd_view',w)||null, fmtN);
-    body += wRow('Follow', pM('t_brd_follow')||null, getMTD(w=>hRow('t_brd_follow',w)||0), w=>hRow('t_brd_follow',w), w=>pW('t_brd_follow',w)||null, fmtN);
-    body += wRow('Chi phí', pM('t_brd_chi_phi')||null, getMTD(w=>hRow('t_brd_chi_phi',w)||0), w=>hRow('t_brd_chi_phi',w), w=>pW('t_brd_chi_phi',w)||null);
-    body += dRow('CPA', ratioPM('t_brd_chi_phi','t_brd_follow'), ratioMTD('t_brd_chi_phi','t_brd_follow'), w=>ratioW('t_brd_chi_phi','t_brd_follow',w), w=>ratioPW('t_brd_chi_phi','t_brd_follow',w), fmtMoney);
-    body += `</tbody></table>`;
+    // Consideration — only if has data
+    if (hasSectionData(['t_con_nguoi','t_con_chi_phi'])) {
+      body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`;
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+      body += wRow('Consider (Số người nhận biết thương hiệu)', pM('t_con_nguoi')||null, getMTD(w=>hRow('t_con_nguoi',w)||0), w=>hRow('t_con_nguoi',w), w=>pW('t_con_nguoi',w)||null, fmtN);
+      body += wRow('Chi phí', pM('t_con_chi_phi')||null, getMTD(w=>hRow('t_con_chi_phi',w)||0), w=>hRow('t_con_chi_phi',w), w=>pW('t_con_chi_phi',w)||null);
+      body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w=>ratioW('t_con_chi_phi','t_con_nguoi',w), w=>ratioPW('t_con_chi_phi','t_con_nguoi',w), fmtMoney);
+      body += `</tbody></table>`;
+    }
+    // Branding — only if has data
+    if (hasSectionData(['t_brd_view','t_brd_follow','t_brd_chi_phi'])) {
+      body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`;
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`;
+      body += wRow('View', pM('t_brd_view')||null, getMTD(w=>hRow('t_brd_view',w)||0), w=>hRow('t_brd_view',w), w=>pW('t_brd_view',w)||null, fmtN);
+      body += wRow('Follow', pM('t_brd_follow')||null, getMTD(w=>hRow('t_brd_follow',w)||0), w=>hRow('t_brd_follow',w), w=>pW('t_brd_follow',w)||null, fmtN);
+      body += wRow('Chi phí', pM('t_brd_chi_phi')||null, getMTD(w=>hRow('t_brd_chi_phi',w)||0), w=>hRow('t_brd_chi_phi',w), w=>pW('t_brd_chi_phi',w)||null);
+      body += dRow('CPA', ratioPM('t_brd_chi_phi','t_brd_follow'), ratioMTD('t_brd_chi_phi','t_brd_follow'), w=>ratioW('t_brd_chi_phi','t_brd_follow',w), w=>ratioPW('t_brd_chi_phi','t_brd_follow',w), fmtMoney);
+      body += `</tbody></table>`;
+    }
   }
 
   // ─── HIGHLIGHT / LOWLIGHT ───
