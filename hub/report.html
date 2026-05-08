@@ -1804,6 +1804,7 @@ function handlePlanPaste(e, key, periodId) {
 }
 
 function handleModalPaste(e) {
+  if (e.target.tagName === 'INPUT') return; // cell paste handled by handlePlanPaste
   const text = (e.clipboardData || window.clipboardData).getData('text');
   const lines = text.split(/\r?\n/).map(l => l.trimEnd()).filter(l => l.trim());
   if (lines.length < 2) return; // single line → let individual cell handler work
