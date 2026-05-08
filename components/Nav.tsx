@@ -18,7 +18,10 @@ export default function Nav() {
     const onScroll = () => {
       const y = window.scrollY
       nav.classList.toggle('scrolled', y > 10)
-      if (sp) sp.style.height = nav.offsetHeight + 'px'
+      if (sp) {
+        const max = document.documentElement.scrollHeight - window.innerHeight
+        sp.style.width = max > 0 ? (y / max * 100) + '%' : '0%'
+      }
     }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })

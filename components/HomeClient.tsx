@@ -87,11 +87,28 @@ export default function HomeClient({ settings, team, posts }: Props) {
     // Team carousel
     buildTeamCarousel(team)
 
+    // Team carousel drag-scroll
+    const wrap = document.getElementById('team-scroll-wrap') as HTMLElement | null
+    if (wrap) {
+      let isDragging = false, startX = 0, scrollLeft = 0
+      const onDown = (e: MouseEvent) => { isDragging = true; startX = e.pageX - wrap.offsetLeft; scrollLeft = wrap.scrollLeft }
+      const onUp = () => { isDragging = false }
+      const onMove = (e: MouseEvent) => { if (!isDragging) return; e.preventDefault(); wrap.scrollLeft = scrollLeft - (e.pageX - wrap.offsetLeft - startX) }
+      wrap.addEventListener('mousedown', onDown)
+      wrap.addEventListener('mouseup', onUp)
+      wrap.addEventListener('mouseleave', onUp)
+      wrap.addEventListener('mousemove', onMove)
+    }
+
     // Login modal
     const modal = document.getElementById('login-modal')
     const closeBtn = document.getElementById('modal-close')
     closeBtn?.addEventListener('click', () => modal?.classList.remove('open'))
     modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open') })
+    // Enter key on password field
+    document.getElementById('login-pass')?.addEventListener('keydown', (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') doLogin()
+    })
 
     return () => io.disconnect()
   }, [tickerItems, team])
@@ -427,11 +444,31 @@ export default function HomeClient({ settings, team, posts }: Props) {
   )
 }
 
+const MO_USERS: Record<string, { pass: string; role: string; name: string }> = {
+  quangnd:  { pass:'omni2026lead', role:'admin',  name:'Nguyễn Đức Quảng' },
+  linhntkh: { pass:'omni2026',     role:'member', name:'Nguyễn Trần Khánh Linh' },
+  duychk:   { pass:'omni2026',     role:'member', name:'Chu Khánh Duy' },
+  ductanh:  { pass:'omni2026',     role:'member', name:'Thiều Anh Đức' },
+  linhdkh:  { pass:'omni2026',     role:'member', name:'Đoàn Khánh Linh' },
+  thaodph:  { pass:'omni2026',     role:'member', name:'Đỗ Phương Thảo' },
+  hangdth:  { pass:'omni2026',     role:'member', name:'Đỗ Thị Hằng' },
+  trungdhu: { pass:'omni2026',     role:'member', name:'Đặng Hữu Trung' },
+  anhpq:    { pass:'omni2026',     role:'member', name:'Phạm Quyền Anh' },
+  khanhnm:  { pass:'omni2026',     role:'member', name:'Nguyễn Minh Khánh' },
+  ngochb:   { pass:'omni2026',     role:'member', name:'Hoàng Bảo Ngọc' },
+  phuongnm: { pass:'omni2026',     role:'member', name:'Nguyễn Mai Phương' },
+  upbase:   { pass:'upbase2026',   role:'upbase', name:'UpBase Staff' },
+}
+
 function doLogin() {
-  const user = (document.getElementById('login-user') as HTMLInputElement)?.value.trim()
-  const pass = (document.getElementById('login-pass') as HTMLInputElement)?.value
+  const userEl = document.getElementById('login-user') as HTMLInputElement
+  const passEl = document.getElementById('login-pass') as HTMLInputElement
   const err = document.getElementById('login-error')
-  if (user === 'mediaomni' && pass === 'upbase2025') {
+  const u = userEl?.value.trim().toLowerCase()
+  const p = passEl?.value
+  const found = u ? MO_USERS[u] : undefined
+  if (found && found.pass === p) {
+    localStorage.setItem('mo_user', JSON.stringify({ username: u, name: found.name, role: found.role }))
     document.getElementById('login-modal')?.classList.remove('open')
     window.location.href = '/dashboard'
   } else {
@@ -459,10 +496,18 @@ function buildTeamCarousel(team: TeamMember[]) {
 }
 
 const PLACEHOLDER_TEAM: TeamMember[] = [
-  { _id: '1', name: 'Quang Nguyen', role: 'Team Lead · Performance', isLead: true },
-  { _id: '2', name: 'Operator 2', role: 'TikTok Specialist' },
-  { _id: '3', name: 'Operator 3', role: 'Shopee Ads' },
-  { _id: '4', name: 'Operator 4', role: 'Meta Ads' },
+  { _id: '1',  name: 'Nguyễn Đức Quảng',       role: 'Team Leader',                isLead: true },
+  { _id: '2',  name: 'Nguyễn Trần Khánh Linh', role: 'Digital Marketing Executive' },
+  { _id: '3',  name: 'Chu Khánh Duy',           role: 'Digital Marketing Executive' },
+  { _id: '4',  name: 'Thiều Anh Đức',           role: 'Digital Marketing Executive' },
+  { _id: '5',  name: 'Đoàn Khánh Linh',         role: 'Digital Marketing Executive' },
+  { _id: '6',  name: 'Đỗ Phương Thảo',          role: 'Digital Marketing Executive' },
+  { _id: '7',  name: 'Đỗ Thị Hằng',             role: 'Digital Marketing Executive' },
+  { _id: '8',  name: 'Đặng Hữu Trung',          role: 'Digital Marketing Executive' },
+  { _id: '9',  name: 'Phạm Quyền Anh',          role: 'Digital Marketing Executive' },
+  { _id: '10', name: 'Nguyễn Minh Khánh',       role: 'Digital Marketing Executive' },
+  { _id: '11', name: 'Hoàng Bảo Ngọc',          role: 'Digital Marketing Executive' },
+  { _id: '12', name: 'Nguyễn Mai Phương',        role: 'Digital Marketing Executive' },
 ]
 
 interface ServiceCardProps {
