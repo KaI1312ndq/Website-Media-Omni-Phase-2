@@ -860,7 +860,14 @@ function initStep2() {
       <span>Bấm Set Plan để nhập kế hoạch tháng, hoặc bỏ qua để chỉ nhập Actual.</span></div>
       <button class="btn-set-plan" onclick="showPlanModal()">Set Plan</button>
     </div>`;
-  } else { wb.innerHTML = ''; }
+  } else {
+    wb.innerHTML = `<div class="plan-warn" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)">
+      <div><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div><strong style="color:var(--ink)">Đã có Plan tháng ${STATE.month}/${STATE.year}</strong>
+      <span>Plan đã được load. Bấm Sửa Plan để cập nhật.</span></div>
+      <button class="btn-set-plan" onclick="showPlanModal()">Sửa Plan</button>
+    </div>`;
+  }
 
   // Pre-fill from history if this week exists
   const thisWeek = STATE.history.find(h => parseInt(h.week_num) === STATE.weekNum);
@@ -1224,8 +1231,8 @@ function handlePlanUpload(file) {
         PLAN_PERIODS.forEach((p, i) => {
           const el = document.getElementById(`pm_${key}_${p}`);
           if (!el) return;
-          const v = parseFloat((row[i + 1] || '').toString().replace(/[^\d.]/g, '')) || 0;
-          el.value = v ? v.toLocaleString('vi-VN') : '';
+          const v = parseInt((row[i + 1] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
+          el.value = v || '';
           filled++;
         });
       });
@@ -1857,7 +1864,7 @@ function handleActualUpload(file) {
         if (!key || key === '_key_' || key.startsWith('===')) return;
         const el = document.getElementById(key);
         if (!el) return;
-        const v = parseFloat((row[1] || '').toString().replace(/[^\d.]/g,'')) || 0;
+        const v = parseInt((row[1] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
         el.value = v ? v.toLocaleString('vi-VN') : '';
         filled++;
       });
