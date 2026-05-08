@@ -206,18 +206,15 @@ let CHART_GMV = null, CHART_CP = null;
 let CU = null;
 
 // ── FETCH WITH TIMEOUT ──
-async function apiFetch(url, timeoutMs = 15000) {
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const r = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(tid);
-    return await r.json();
-  } catch(e) {
-    clearTimeout(tid);
-    if (e.name === 'AbortError') throw new Error('Timeout');
-    throw e;
-  }
+// AbortController không hoạt động qua GAS redirect chain → dùng Promise.race
+function apiFetch(url, timeoutMs = 20000) {
+  const timeoutP = new Promise((_, rej) =>
+    setTimeout(() => rej(new Error(`Timeout sau ${timeoutMs/1000}s — GAS chưa phản hồi`)), timeoutMs)
+  );
+  return Promise.race([
+    fetch(url).then(r => r.json()),
+    timeoutP
+  ]);
 }
 
 // ── INIT ──
