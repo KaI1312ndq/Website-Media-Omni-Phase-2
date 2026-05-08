@@ -477,6 +477,7 @@
         <span class="pv-bar-lbl" style="display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Preview — Click vào nội dung để sửa trực tiếp</span>
         <div class="pv-acts">
           <button class="btn-s" onclick="goStep(2)">← Sửa data</button>
+          <button class="btn-s" onclick="exportPreviewXlsx()" style="display:inline-flex;align-items:center;gap:7px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export XLSX</button>
           <button class="btn-copy" id="copy-btn" onclick="copyMail()" style="display:inline-flex;align-items:center;gap:7px"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Copy → Lark</button>
         </div>
       </div>
@@ -1705,7 +1706,70 @@ async function copyMail() {
   }
   setTimeout(() => { btn.textContent = '📋 Copy → Lark'; }, 3000);
 }
+function exportPreviewXlsx() {
+  if (typeof XLSX === 'undefined') { showToast('SheetJS chưa load', 'error'); return; }
 
+  const { brand, month, year, weekInfo, platforms, ai, user } = STATE;
+  const subject = (document.getElementById('mail-subject')?.textContent || '').trim();
+  const intro = (document.getElementById('mail-intro')?.innerText || '').trim();
+
+  const wb = XLSX.utils.book_new();
+
+  const metaRows = [
+    ['Field', 'Value'],
+    ['Subject', subject],
+    ['Brand', brand || ''],
+    ['Month/Year', `${month || ''}/${year || ''}`],
+    ['Week', weekInfo?.label || ''],
+    ['Week Range', weekInfo ? `${fmtD(weekInfo.start)} → ${fmtD(weekInfo.end)}` : ''],
+    ['Platforms', [platforms?.shopee ? 'Shopee' : '', platforms?.tiktok ? 'TikTok' : ''].filter(Boolean).join(' + ')],
+    ['Reported by', user?.name || ''],
+    ['Export at', fmtD(new Date())],
+    ['Intro', intro],
+  ];
+  const wsMeta = XLSX.utils.aoa_to_sheet(metaRows);
+  wsMeta['!cols'] = [{ wch:20 }, { wch:90 }];
+  XLSX.utils.book_append_sheet(wb, wsMeta, 'Summary');
+
+  const metricRows = [['Platform', 'Group', 'Metric Key', 'Actual']];
+  const pushMetricGroup = (platformLabel, groupLabel, keys) => {
+    keys.forEach(k => metricRows.push([platformLabel, groupLabel, k, gv(k)]));
+  };
+  if (platforms?.shopee) {
+    pushMetricGroup('Shopee', 'CPC', ['s_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang']);
+    pushMetricGroup('Shopee', 'ND', ['s_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click']);
+    pushMetricGroup('Shopee', 'Live', ['s_live_gmv','s_live_chi_phi','s_live_luot_xem']);
+  }
+  if (platforms?.tiktok) {
+    pushMetricGroup('TikTok', 'PGM', ['t_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang']);
+    pushMetricGroup('TikTok', 'LGM', ['t_lgm_doanhthu','t_lgm_chi_phi']);
+    pushMetricGroup('TikTok', 'Consideration', ['t_con_nguoi','t_con_chi_phi']);
+    pushMetricGroup('TikTok', 'Branding', ['t_brd_view','t_brd_follow','t_brd_chi_phi']);
+  }
+  const wsMetrics = XLSX.utils.aoa_to_sheet(metricRows);
+  wsMetrics['!cols'] = [{ wch:12 }, { wch:14 }, { wch:26 }, { wch:16 }];
+  XLSX.utils.book_append_sheet(wb, wsMetrics, 'Actual Metrics');
+
+  const insightRows = [
+    ['Section', 'Content'],
+    ['Highlight', ai?.highlight || ''],
+    ['Lowlight', ai?.lowlight || ''],
+    ['Shopee - Thực trạng', ai?.shopee_thuc_trang || ''],
+    ['Shopee - Vấn đề', ai?.shopee_van_de || ''],
+    ['Shopee - Giải pháp', ai?.shopee_giai_phap || ''],
+    ['TikTok - Thực trạng', ai?.tiktok_thuc_trang || ''],
+    ['TikTok - Vấn đề', ai?.tiktok_van_de || ''],
+    ['TikTok - Giải pháp', ai?.tiktok_giai_phap || ''],
+  ];
+  const wsInsights = XLSX.utils.aoa_to_sheet(insightRows);
+  wsInsights['!cols'] = [{ wch:24 }, { wch:110 }];
+  XLSX.utils.book_append_sheet(wb, wsInsights, 'Insights');
+
+  const fn = `Preview_${brand || 'Brand'}_T${month || ''}_W${STATE.weekNum || ''}_${year || ''}.xlsx`;
+  XLSX.writeFile(wb, fn);
+  showToast('Đã export Preview XLSX!');
+}
+  
 /* ── SAVE ── */
 async function saveReport() {
   const btn = document.getElementById('save-btn');
