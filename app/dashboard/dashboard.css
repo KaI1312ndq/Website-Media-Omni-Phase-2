@@ -592,6 +592,102 @@
 }
 .il-paper a { color: var(--blue, #2563eb); }
 
+/* ========== Dark theme overrides for legacy hub pages inside InternalLayout ========== */
+.il-main { background: #0a1628; color: #e2e8f0; }
+.il-main .rc,
+.il-main .rw,
+.il-main .um-layout,
+.il-main .timeline-card,
+.il-main .task-card,
+.il-main .t-scard,
+.il-main .um-left,
+.il-main .um-right,
+.il-main .perm-section,
+.il-main .pass-section,
+.il-main .save-bar,
+.il-main .um-modal,
+.il-main .popup-card,
+.il-main .pv-wrap,
+.il-main .ai-body,
+.il-main .plat-sec,
+.il-main .calc,
+.il-main .plan-v,
+.il-main .mt {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(96,165,250,0.10);
+  color: #e2e8f0;
+}
+.il-main .rw,
+.il-main .users-wrap { background: transparent; border: 0; }
+.il-main h1, .il-main h2, .il-main h3, .il-main h4 { color: #fff; }
+.il-main p,
+.il-main label,
+.il-main .rl,
+.il-main .fp-label,
+.il-main .perm-desc,
+.il-main .perm-section-title,
+.il-main .um-detail-meta,
+.il-main .ue-sub,
+.il-main .ue-title,
+.il-main .stat-l,
+.il-main .pr-lbl,
+.il-main .tl-empty,
+.il-main .t-empty-sb,
+.il-main .t-empty-tt,
+.il-main .um-loading,
+.il-main .tc-by { color: #94a3b8; }
+.il-main input,
+.il-main select,
+.il-main textarea,
+.il-main .ri,
+.il-main .fp-input,
+.il-main .um-search,
+.il-main .pg-inp,
+.il-main .m-inp {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(96,165,250,0.18) !important;
+  color: #e2e8f0 !important;
+}
+.il-main input::placeholder,
+.il-main textarea::placeholder { color: #475569 !important; }
+.il-main table th { background: rgba(37,99,235,0.15); color: #cbd5e1; }
+.il-main table td { border-color: rgba(255,255,255,0.06); color: #e2e8f0; }
+.il-main .btn-s {
+  background: rgba(255,255,255,0.05);
+  color: #cbd5e1;
+  border-color: rgba(96,165,250,0.18);
+}
+.il-main .btn-s:hover { background: rgba(255,255,255,0.10); }
+.il-main .tc-time,
+.il-main .tl-time,
+.il-main .um-ui-user,
+.il-main .um-detail-username,
+.il-main .pr-pct,
+.il-main .stat-v,
+.il-main .tc-name,
+.il-main .um-ui-name,
+.il-main .um-detail-name { color: #e2e8f0; }
+.il-main .tl-line { background: rgba(96,165,250,0.10); }
+.il-main .tc-check { border-color: rgba(96,165,250,0.30); }
+.il-main .um-user-item { background: rgba(255,255,255,0.02); border-color: rgba(96,165,250,0.08); }
+.il-main .um-user-item.active { background: rgba(37,99,235,0.16); }
+.il-main .perm-item { background: rgba(255,255,255,0.03); border-color: rgba(96,165,250,0.10); }
+.il-main .perm-item.checked { background: rgba(37,99,235,0.16); border-color: rgba(96,165,250,0.35); }
+.il-main .role-opt { background: rgba(255,255,255,0.03); border-color: rgba(96,165,250,0.10); color: #e2e8f0; }
+.il-main .ro-desc { color: #94a3b8; }
+.il-main .um-modal-overlay,
+.il-main .popup-overlay { background: rgba(2,8,23,0.70); }
+.il-main .um-modal,
+.il-main .popup-card { background: #0f1e3d; border: 1px solid rgba(96,165,250,0.18); }
+.il-main .date-bar { color: #e2e8f0; }
+.il-main .date-label { color: #cbd5e1; }
+.il-main .date-btn,
+.il-main .date-today-btn { background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(96,165,250,0.18); }
+.il-main .cal-hdr-cell { background: rgba(37,99,235,0.15); color: #cbd5e1; }
+.il-main .cal-row { background: rgba(255,255,255,0.02); }
+.il-main .cal-cell,
+.il-main .cal-member { background: rgba(255,255,255,0.02); border-color: rgba(96,165,250,0.08); }
+
 /* ========== Loader ========== */
 .loadingScreen {
   min-height: 100vh;

@@ -358,10 +358,7 @@ export default function AnalyticsPage() {
     <InternalLayout user={user} onLogout={logout} greeting="Analytics — Operations" subline="Plan completeness, report coverage, data consistency & report timing.">
       <div className="an2">
         <div className="an2-pageHdr">
-          <div>
-            <h1>Analytics — Operations</h1>
-            <p>Plan completeness, report coverage, data consistency &amp; report timing.</p>
-          </div>
+          <div />
           <button className="an2-export" onClick={exportCSV}>⬇ Xuất dữ liệu</button>
         </div>
 

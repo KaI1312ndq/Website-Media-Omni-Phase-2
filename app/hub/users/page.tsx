@@ -173,10 +173,8 @@ export default function UsersPage() {
         </div>
       )}
 
-      <div className="il-paper">
       <div className="users-wrap" style={{ paddingTop: 0 }}>
-        <div className="users-hdr">
-          <div><h1>Quản lý tài khoản</h1><p>Phân quyền tính năng cho từng thành viên Media Omni.</p></div>
+        <div className="users-hdr" style={{ justifyContent: 'flex-end' }}>
           <button className="btn-primary" onClick={openCreate}>＋ Tạo tài khoản</button>
         </div>
 
@@ -271,7 +269,6 @@ export default function UsersPage() {
             )}
           </div>
         </div>
-      </div>
       </div>
     </InternalLayout>
   )

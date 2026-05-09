@@ -209,14 +209,8 @@ export default function ScoresPage() {
   const isAdmin = user.role === 'admin'
 
   return (
-    <InternalLayout user={user} onLogout={logout} greeting="Bảng điểm Team" subline="Tổng hợp điểm quiz toàn team.">
+    <InternalLayout user={user} onLogout={logout} greeting="Bảng điểm Team" subline={isAdmin ? 'Tổng hợp điểm quiz toàn team. Filter theo quiz, ngày, user.' : 'Lịch sử điểm quiz của bạn.'}>
       <div className="an2">
-        <div className="an2-pageHdr">
-          <div>
-            <h1>Bảng điểm Team</h1>
-            <p>{isAdmin ? 'Tổng hợp điểm quiz toàn team. Filter theo quiz, ngày, user.' : 'Lịch sử điểm quiz của bạn.'}</p>
-          </div>
-        </div>
 
         {/* Filters */}
         <div className="an2-filters">

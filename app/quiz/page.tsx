@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession, setSession, SessionUser } from '@/lib/auth'
+import { getSession, setSession, clearSession, SessionUser } from '@/lib/auth'
+import InternalLayout from '@/components/InternalLayout'
+import '@/app/dashboard/dashboard.css'
 
 // ── D1 Benchmark Data ──
 const D1_DATA = [
@@ -128,24 +130,19 @@ export default function QuizPage() {
     showToast('✅ Đã lưu điểm!')
   }
 
+  async function logout() {
+    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
+    clearSession()
+    router.push('/')
+  }
+
   if (!user) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--f-mono)', color: 'var(--faint)' }}>Đang tải...</div>
 
   return (
-    <>
+    <InternalLayout user={user} onLogout={logout} greeting="Quiz Hub" subline="Kiểm tra kiến thức benchmark Ads & chỉ số.">
       {toast && <div className="toast show success" style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}><div className="toast-dot" /><span>{toast}</span></div>}
 
-      <nav id="main-nav" className="scrolled" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100 }}>
-        <div className="nav-inner">
-          <a href="/" className="nav-logo"><span className="nav-logo-mark">MO</span>MediaOmni</a>
-          <div className="nav-links">
-            <a href="/" className="nav-link">← Home</a>
-            <a href="/dashboard" className="nav-link">Dashboard</a>
-            <span style={{ fontSize: '.84rem', color: 'rgba(255,255,255,.7)' }}>{user.name}</span>
-          </div>
-        </div>
-      </nav>
-
-      <div style={{ padding: '88px 20px 80px', maxWidth: 760, margin: '0 auto' }}>
+      <div style={{ padding: '16px 0 40px', maxWidth: 760, margin: '0 auto' }}>
 
         {/* HUB */}
         {screen === 'hub' && (
@@ -235,7 +232,7 @@ export default function QuizPage() {
           </div>
         )}
       </div>
-    </>
+    </InternalLayout>
   )
 }
 

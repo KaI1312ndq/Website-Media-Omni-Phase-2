@@ -1728,30 +1728,6 @@ function ReportPageInner() {
     })
     return s
   }
-  /* Distribute month value evenly across actual weeks of the month */
-  function distributeMonthEven(plat: string, mk: string) {
-    if (!weekInfo) return
-    const monthKey = planKeyCell(plat, mk, 'month')
-    const monthV = parseVN(planRawInputs[monthKey] ?? planInputs[monthKey] ?? '')
-    if (!monthV) { showToast('Nhập tháng trước', 'error'); return }
-    const totalWeeks = getWeeksInMonth(weekInfo.month, weekInfo.year)
-    const per = Math.round(monthV / totalWeeks)
-    const newRaw = { ...planRawInputs }
-    const newInp = { ...planInputs }
-    for (let i = 1; i <= 5; i++) {
-      const key = planKeyCell(plat, mk, `w${i}`)
-      if (i <= totalWeeks) {
-        newRaw[key] = per ? per.toLocaleString('vi-VN') : ''
-        newInp[key] = String(per)
-      } else {
-        newRaw[key] = ''
-        newInp[key] = '0'
-      }
-    }
-    setPlanRawInputs(newRaw)
-    setPlanInputs(newInp)
-  }
-
   async function logout() {
     try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
     clearSession()
@@ -1764,9 +1740,8 @@ function ReportPageInner() {
      RENDER
   ════════════════════════ */
   return (
-    <InternalLayout user={user} onLogout={logout} greeting="Weekly Report" subline="Nhập data, AI generate nhận xét, copy mail Lark.">
-    <div className="il-paper">
-    <div className="rw">
+    <InternalLayout user={user} onLogout={logout} greeting="Weekly Report Tool" subline="Nhập data → AI nhận xét → Copy Lark.">
+    <div className="rw" style={{ paddingTop: 16 }}>
       {/* Toast */}
       <div id="toast" className={toast ? 'show' : ''}>
         <span className="toast-dot" style={{ background: toast?.type === 'error' ? '#EF4444' : '#10B981' }} />
@@ -2502,13 +2477,16 @@ function ReportPageInner() {
                               onBlur={() => blurPlanRaw(plat, mk, w)} />
                           ))}
                         </div>
-                        {(monthV > 0 || sumW > 0) && (
-                          <div style={{ display:'flex', gap:8, alignItems:'center', fontSize:'.72rem', color: Math.abs(diff) < monthV * 0.02 ? '#059669' : '#D97706', paddingLeft: 4, marginTop: 2 }}>
-                            <span>Tổng W: <strong>{sumW.toLocaleString('vi-VN')}</strong> / Tháng: <strong>{monthV.toLocaleString('vi-VN')}</strong></span>
-                            {diff !== 0 && monthV > 0 && <span style={{ color:'#9CA3AF' }}>(lệch {diff.toLocaleString('vi-VN')})</span>}
-                            <button type="button" className="btn-s" style={{ padding:'2px 8px', fontSize:'.7rem' }} onClick={() => distributeMonthEven(plat, mk)}>Chia đều theo W</button>
-                          </div>
-                        )}
+                        {(monthV > 0 || sumW > 0) && monthV > 0 && (() => {
+                          const isMatch = diff === 0
+                          const color = isMatch ? '#10B981' : (diff > 0 ? '#F59E0B' : '#EF4444')
+                          const label = isMatch ? 'khớp' : `lệch ${diff > 0 ? '+' : ''}${diff.toLocaleString('vi-VN')}`
+                          return (
+                            <div style={{ display:'flex', gap:8, alignItems:'center', fontSize:'.72rem', color, paddingLeft: 4, marginTop: 2, fontWeight: 600 }}>
+                              <span>{label}</span>
+                            </div>
+                          )
+                        })()}
                       </div>
                     )
                   })}
@@ -2522,7 +2500,6 @@ function ReportPageInner() {
           </div>
         </div>
       </div>
-    </div>
     </div>
     </InternalLayout>
   )

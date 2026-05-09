@@ -148,8 +148,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      <div className="il-paper">
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap', paddingTop: 16 }}>
         <button className={`btn-${tab === 'myday' ? 'p' : 's'}`} onClick={() => setTab('myday')}>📅 My Day</button>
         <button className={`btn-${tab === 'team' ? 'p' : 's'}`} onClick={() => setTab('team')}>👥 Team</button>
         {(user?.role === 'admin' || user?.perms?.tasks_create) && (
@@ -343,7 +342,6 @@ export default function TasksPage() {
           </div>
         </div>
       )}
-      </div>
     </InternalLayout>
   )
 }
