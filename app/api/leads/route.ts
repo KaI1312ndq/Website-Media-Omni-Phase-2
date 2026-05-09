@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getSessionFromCookie } from '@/lib/session-server'
+import { notifyAdmins } from '@/lib/notify'
 
 /* ── Validation helpers ── */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -83,6 +84,16 @@ export async function POST(req: NextRequest) {
       console.error('Insert lead failed:', error)
       return NextResponse.json({ error: 'Không thể lưu lead' }, { status: 500 })
     }
+
+    // Fire notifications to admins (non-blocking on failure)
+    await notifyAdmins({
+      type: 'lead_new',
+      title: `Lead mới — ${name}`,
+      body: `${email}${brand ? ' · ' + brand : ''}${monthly_budget ? ' · ' + monthly_budget : ''}`,
+      link: '/admin/leads',
+      icon: 'send',
+      priority: 'high',
+    })
 
     return NextResponse.json({ ok: true, lead_id: data.id })
   } catch (err) {

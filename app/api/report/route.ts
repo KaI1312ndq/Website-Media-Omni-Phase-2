@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { notifyAdmins } from '@/lib/notify'
 
 /* ── Plan metric keys (full 25 keys = same as actual) ── */
 const SHOPEE_PLAN_KEYS = [
@@ -190,6 +191,17 @@ export async function POST(req: NextRequest) {
         nhan_xet_giai_phap:  nhan_xet_giai_phap  || '',
       }, { onConflict: 'username,brand_name,year,month,week_num' })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Notify admins about new/updated weekly report
+    await notifyAdmins({
+      type: 'report_new',
+      title: `Report mới — ${brand_name} W${week_num}`,
+      body: `Tháng ${month}/${year} · by ${username || 'unknown'}`,
+      link: `/hub/report?brand=${encodeURIComponent(brand_name || '')}`,
+      icon: 'save',
+      priority: 'normal',
+    })
+
     return NextResponse.json({ ok: true })
   }
 
