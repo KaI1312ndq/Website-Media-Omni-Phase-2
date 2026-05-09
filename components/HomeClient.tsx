@@ -1,15 +1,35 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
+interface TickerItem { val?: string; lbl?: string; sub?: string }
+interface ServiceItem { name?: string; desc?: string; icon?: string }
+interface FaqItem { q?: string; a?: string }
+interface CtaConfig { title?: string; body?: string; buttonText?: string; buttonUrl?: string }
+interface SocialLink { platform?: string; url?: string }
+interface ImageRef { asset?: { url?: string }; alt?: string }
+
 interface SiteSettings {
-  ticker?: string[]
+  ticker?: TickerItem[]
+  heroBadge?: string
   heroTitle?: string
   heroSub?: string
+  heroImage?: ImageRef
   operatorCount?: number
-  brandCount?: number
+  growthOpsCount?: string
+  brandCount?: string | number
   nmv?: string
+  aboutTitle?: string
+  aboutBody?: string
+  aboutImage?: ImageRef
+  servicesIntro?: string
+  services?: ServiceItem[]
+  faqIntro?: string
+  faq?: FaqItem[]
+  cta?: CtaConfig
+  footerText?: string
+  socialLinks?: SocialLink[]
 }
 
 interface TeamMember {
@@ -54,10 +74,13 @@ const TICKER_DEFAULT = [
 
 export default function HomeClient({ settings, team, brands, posts = [] }: Props) {
   useEffect(() => {
-    // Build ticker
+    // Build ticker — use Sanity ticker if provided, else fallback
     const track = document.getElementById('ticker-track')
     if (track) {
-      const items = [...TICKER_DEFAULT, ...TICKER_DEFAULT]
+      const source = (settings?.ticker && settings.ticker.length > 0)
+        ? settings.ticker.map(t => ({ val: t.val ?? '', lbl: t.lbl ?? '', sub: t.sub ?? '' }))
+        : TICKER_DEFAULT
+      const items = [...source, ...source]
       track.innerHTML = items.map(d => `
         <div class="ticker-item">
           <div class="ticker-val"><span class="blue-grad">${d.val}</span></div>
@@ -101,7 +124,7 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
     })
 
     return () => io.disconnect()
-  }, [team])
+  }, [team, settings])
 
   return (
     <>
@@ -115,7 +138,7 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
             <div className="hero-eyebrow">
               <span className="tag tag--white">
                 <span className="live-dot" />
-                UpBase Vietnam · Ecommerce Enabler
+                {settings?.heroBadge ?? 'UpBase Vietnam · Ecommerce Enabler'}
               </span>
             </div>
             <h1 className="hero-title">
@@ -139,8 +162,8 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
             <div className="hero-stats">
               <div className="hs-item"><div className="hs-val"><span className="blue-grad">{settings?.nmv ?? '356B'}</span></div><div className="hs-lbl">NMV 2025</div></div>
               <div className="hs-item"><div className="hs-val"><span className="blue-grad">&gt;7x</span></div><div className="hs-lbl">ROAS TB</div></div>
-              <div className="hs-item"><div className="hs-val"><span className="blue-grad">{settings?.brandCount ? `${settings.brandCount}+` : '100+'}</span></div><div className="hs-lbl">Brands</div></div>
-              <div className="hs-item"><div className="hs-val"><span className="blue-grad">{settings?.operatorCount ?? 12}</span></div><div className="hs-lbl">Operators</div></div>
+              <div className="hs-item"><div className="hs-val"><span className="blue-grad">{settings?.brandCount ? String(settings.brandCount) : '100+'}</span></div><div className="hs-lbl">Brands</div></div>
+              <div className="hs-item"><div className="hs-val"><span className="blue-grad">{settings?.growthOpsCount ?? settings?.operatorCount ?? 12}</span></div><div className="hs-lbl">Operators</div></div>
             </div>
           </div>
           <div className="hero-dash" style={{ position: 'relative' }}>
@@ -208,13 +231,31 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
         <div className="ticker-track" id="ticker-track" />
       </section>
 
+      {/* ABOUT — only renders when Sanity has aboutTitle / aboutBody */}
+      {(settings?.aboutTitle || settings?.aboutBody) && (
+        <section id="about" style={{ padding: '80px 0', background: 'var(--paper)' }}>
+          <div className="container">
+            <div className="rv" style={{ display: 'grid', gridTemplateColumns: settings?.aboutImage?.asset?.url ? '1.2fr 1fr' : '1fr', gap: 48, alignItems: 'center' }}>
+              <div>
+                {settings?.aboutTitle && <h2 className="sec-title" style={{ marginBottom: 16 }}>{settings.aboutTitle}</h2>}
+                {settings?.aboutBody && <p className="sec-sub" style={{ whiteSpace: 'pre-wrap' }}>{settings.aboutBody}</p>}
+              </div>
+              {settings?.aboutImage?.asset?.url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={settings.aboutImage.asset.url} alt={settings.aboutImage.alt ?? 'About Media Omni'} style={{ width: '100%', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }} />
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* SERVICES — kept as static HTML for fidelity */}
       <section id="services">
         <div className="container">
           <div className="sec-hd rv">
             <div className="sec-label">Scope of Work</div>
             <h2 className="sec-title">Vận hành đa kênh.<br />Mỗi platform, một playbook riêng.</h2>
-            <p className="sec-sub">Media Omni không chỉ chạy ads — chúng tôi vận hành toàn bộ hệ thống performance marketing từ strategy đến execution.</p>
+            <p className="sec-sub">{settings?.servicesIntro ?? 'Media Omni không chỉ chạy ads — chúng tôi vận hành toàn bộ hệ thống performance marketing từ strategy đến execution.'}</p>
           </div>
           <ServiceCard
             icon={<svg width="28" height="28" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" fill="white" /></svg>}
@@ -315,8 +356,13 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
         </div>
       </section>
 
-      {/* LATEST BLOG */}
-      <section id="blog" className="home-blog-section">
+      {/* FAQ — render only when Sanity has FAQ items */}
+      {settings?.faq && settings.faq.length > 0 && (
+        <FaqSection intro={settings.faqIntro} faq={settings.faq} />
+      )}
+
+      {/* BLOG CTA */}
+      <section id="blog" className="blog-cta-section">
         <div className="container">
           <div className="sec-hd rv" style={{ textAlign: 'center', alignItems: 'center' }}>
             <div className="sec-label" style={{ justifyContent: 'center' }}>Insights & Resources</div>
@@ -365,12 +411,12 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
         <div className="container">
           <div className="contact-inner rv">
             <div className="sec-label sec-label--white" style={{ justifyContent: 'center', marginBottom: 16 }}>Liên hệ</div>
-            <h2 className="sec-title sec-title--white" style={{ fontSize: 'clamp(2rem,4vw,3.2rem)', marginBottom: 16, textAlign: 'center' }}>Làm việc cùng<br />Media Omni.</h2>
-            <p className="sec-sub sec-sub--white" style={{ margin: '0 auto 36px', textAlign: 'center' }}>Thương hiệu cần tăng trưởng đa kênh? Data-driven, performance-focused, results-guaranteed.</p>
+            <h2 className="sec-title sec-title--white" style={{ fontSize: 'clamp(2rem,4vw,3.2rem)', marginBottom: 16, textAlign: 'center' }}>{settings?.cta?.title ?? 'Làm việc cùng Media Omni.'}</h2>
+            <p className="sec-sub sec-sub--white" style={{ margin: '0 auto 36px', textAlign: 'center' }}>{settings?.cta?.body ?? 'Thương hiệu cần tăng trưởng đa kênh? Data-driven, performance-focused, results-guaranteed.'}</p>
             <div className="contact-actions">
-              <a href="mailto:quangnd@upbase.asia" className="btn-primary" style={{ fontSize: '1rem', padding: '16px 36px' }}>
+              <a href={settings?.cta?.buttonUrl ?? 'mailto:quangnd@upbase.asia'} className="btn-primary" style={{ fontSize: '1rem', padding: '16px 36px' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-                quangnd@upbase.asia
+                {settings?.cta?.buttonText ?? 'quangnd@upbase.asia'}
               </a>
               <button className="btn-ghost" style={{ fontSize: '1rem', padding: '16px 36px' }} onClick={() => document.getElementById('login-modal')?.classList.add('open')}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
@@ -413,10 +459,20 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
             </div>
           </div>
           <div className="footer-bottom">
-            <span className="footer-copy">© 2026 UpBase Media Omni. All rights reserved.</span>
+            <span className="footer-copy">{settings?.footerText ?? '© 2026 UpBase Media Omni. All rights reserved.'}</span>
             <div className="footer-soc">
-              <a href="#"><svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg></a>
-              <a href="#"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" /></svg></a>
+              {settings?.socialLinks && settings.socialLinks.length > 0 ? (
+                settings.socialLinks.map((s, i) => (
+                  <a key={i} href={s.url ?? '#'} target="_blank" rel="noopener noreferrer" aria-label={s.platform ?? 'social'}>
+                    <SocialIcon platform={s.platform} />
+                  </a>
+                ))
+              ) : (
+                <>
+                  <a href="#"><svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg></a>
+                  <a href="#"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" /></svg></a>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -543,12 +599,13 @@ function ServiceCard({ icon, iconBg, name, sub, chips, delay, scopes }: ServiceC
 }
 
 /* ── Brand row config: category → row order, duration, direction ── */
-const CATEGORY_ROWS: Record<string, { dur: string; rev: boolean }> = {
-  skincare:    { dur: '55s', rev: false },
-  fashion:     { dur: '65s', rev: true  },
-  baby:        { dur: '50s', rev: false },
-  fmcg:        { dur: '70s', rev: true  },
-  electronics: { dur: '60s', rev: false },
+/* Duration is "per item" — total = perItem * itemCount, so each row scrolls at the same visual pace regardless of brand count. */
+const CATEGORY_ROWS: Record<string, { perItem: number; rev: boolean }> = {
+  skincare:    { perItem: 1.6, rev: false },
+  fashion:     { perItem: 1.7, rev: true  },
+  baby:        { perItem: 1.6, rev: false },
+  fmcg:        { perItem: 1.7, rev: true  },
+  electronics: { perItem: 1.6, rev: false },
 }
 
 /* Fallback brands if Sanity is not set up yet */
@@ -588,11 +645,13 @@ function BrandsSection({ brands }: { brands: SanityBrand[] }) {
   /* Group brands by category in defined row order */
   const rowOrder: SanityBrand['category'][] = ['skincare', 'fashion', 'baby', 'fmcg', 'electronics']
   const rows = rowOrder
-    .map(cat => ({
-      cat,
-      names: source.filter(b => b.category === cat).map(b => b.name),
-      ...CATEGORY_ROWS[cat],
-    }))
+    .map(cat => {
+      const names = source.filter(b => b.category === cat).map(b => b.name)
+      const cfg = CATEGORY_ROWS[cat]
+      // Pace consistent across rows: total seconds proportional to item count.
+      const dur = `${Math.max(14, Math.round(names.length * cfg.perItem))}s`
+      return { cat, names, dur, rev: cfg.rev }
+    })
     .filter(r => r.names.length > 0)
 
   return (
@@ -609,9 +668,10 @@ function BrandsSection({ brands }: { brands: SanityBrand[] }) {
           <div
             key={i}
             className={`brands-track${row.rev ? ' brands-track-reverse' : ''}`}
-            style={{ animationDuration: row.dur }}
+            style={{ ['--marquee-speed' as string]: row.dur }}
           >
-            {[...row.names, ...row.names].map((name, j) => (
+            {/* Triplicate to keep the row fully populated as it loops; keyframe wraps every 1/3. */}
+            {[...row.names, ...row.names, ...row.names].map((name, j) => (
               <div key={j} className="brand-pill">{name}</div>
             ))}
           </div>
@@ -674,4 +734,58 @@ function PartnersSection() {
       </div>
     </section>
   )
+}
+
+/* ── FAQ accordion ── */
+function FaqSection({ intro, faq }: { intro?: string; faq: FaqItem[] }) {
+  const [open, setOpen] = useState<number | null>(0)
+  return (
+    <section id="faq" style={{ padding: '90px 0', background: 'var(--paper2)' }}>
+      <div className="container" style={{ maxWidth: 880 }}>
+        <div className="sec-hd rv" style={{ textAlign: 'center', alignItems: 'center', marginBottom: 32 }}>
+          <div className="sec-label" style={{ justifyContent: 'center' }}>FAQ</div>
+          <h2 className="sec-title">Câu hỏi thường gặp.</h2>
+          {intro && <p className="sec-sub" style={{ margin: '0 auto' }}>{intro}</p>}
+        </div>
+        <div className="rv" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {faq.map((item, i) => {
+            const isOpen = open === i
+            return (
+              <div key={i} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', transition: 'border-color .2s' }}>
+                <button
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  style={{ width: '100%', textAlign: 'left', padding: '18px 22px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}
+                  aria-expanded={isOpen}
+                >
+                  <span>{item.q}</span>
+                  <span style={{ flexShrink: 0, transform: isOpen ? 'rotate(45deg)' : 'rotate(0)', transition: 'transform .25s var(--ease,ease)', color: 'var(--blue)', fontSize: '1.4rem', lineHeight: 1, fontWeight: 300 }}>+</span>
+                </button>
+                <div style={{ maxHeight: isOpen ? 400 : 0, transition: 'max-height .3s ease', overflow: 'hidden' }}>
+                  <div style={{ padding: '0 22px 18px', color: 'var(--muted)', fontSize: '.95rem', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{item.a}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ── Social icon mapper ── */
+function SocialIcon({ platform }: { platform?: string }) {
+  switch ((platform ?? '').toLowerCase()) {
+    case 'facebook':
+      return <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
+    case 'tiktok':
+      return <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-6.13 6.33 6.34 6.34 0 0 0 12.67 0V8.69a8.28 8.28 0 0 0 4.83 1.54V6.77a4.85 4.85 0 0 1-1.07-.08z" /></svg>
+    case 'linkedin':
+      return <svg viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg>
+    case 'youtube':
+      return <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
+    case 'instagram':
+      return <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" /></svg>
+    default:
+      return <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></svg>
+  }
 }

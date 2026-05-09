@@ -29,10 +29,15 @@ export const blogSlugsQuery = groq`
 
 export const siteSettingsQuery = groq`
   *[_type == "siteSettings"][0] {
-    ticker, heroTitle, heroSub, heroBadge,
-    operatorCount, brandCount, nmv,
+    ticker, heroBadge, heroTitle, heroSub,
+    heroImage { asset->{ url }, alt },
+    operatorCount, growthOpsCount, brandCount, nmv,
     aboutTitle, aboutBody,
-    services, faq, cta, footerText, socialLinks
+    aboutImage { asset->{ url }, alt },
+    servicesIntro, services,
+    faqIntro, faq,
+    cta,
+    footerText, socialLinks
   }
 `
 

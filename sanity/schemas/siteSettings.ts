@@ -5,7 +5,7 @@ export const siteSettings = defineType({
   title: 'Site Settings',
   type: 'document',
   groups: [
-    { name: 'hero', title: 'Hero', default: true },
+    { name: 'hero', title: 'Hero' },
     { name: 'about', title: 'About' },
     { name: 'services', title: 'Services' },
     { name: 'faq', title: 'FAQ' },
@@ -13,6 +13,18 @@ export const siteSettings = defineType({
     { name: 'footer', title: 'Footer' },
   ],
   fields: [
+    // Hero
+    defineField({ name: 'heroBadge', title: 'Hero Badge', type: 'string', group: 'hero' }),
+    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'string', group: 'hero', initialValue: 'Vận hành performance marketing đa kênh.' }),
+    defineField({ name: 'heroSub', title: 'Hero Subtitle', type: 'text', rows: 3, group: 'hero' }),
+    defineField({ name: 'heroImage', title: 'Hero Background Image', type: 'image', options: { hotspot: true }, group: 'hero', fields: [{ name: 'alt', type: 'string', title: 'Alt' }] }),
+
+    // Stats
+    defineField({ name: 'operatorCount', title: 'Số Growth Operators (number)', type: 'number', initialValue: 12 }),
+    defineField({ name: 'growthOpsCount', title: 'Growth Ops Display (string, "12+")', type: 'string', initialValue: '12' }),
+    defineField({ name: 'brandCount', title: 'Số Brands', type: 'string', initialValue: '100+' }),
+    defineField({ name: 'nmv', title: 'NMV', type: 'string', initialValue: '356B' }),
+
     // Hero ticker stats
     defineField({
       name: 'ticker', title: 'Ticker Stats', type: 'array',
@@ -27,51 +39,44 @@ export const siteSettings = defineType({
         preview: { select: { title: 'val', subtitle: 'lbl' } },
       })],
     }),
-    // Hero section
-    defineField({ name: 'heroBadge', title: 'Hero Badge', type: 'string', group: 'hero', initialValue: 'UpBase Vietnam · Ecommerce Enabler' }),
-    defineField({ name: 'heroTitle', title: 'Hero Title', type: 'string', group: 'hero', initialValue: 'Media Omni Dream Team 2025.' }),
-    defineField({ name: 'heroSub', title: 'Hero Subtitle', type: 'text', rows: 2, group: 'hero' }),
-    // Key metrics (displayed in hero)
-    defineField({ name: 'operatorCount', title: 'Số Growth Operators', type: 'number', group: 'hero', initialValue: 12 }),
-    defineField({ name: 'brandCount', title: 'Số Brands', type: 'string', group: 'hero', initialValue: '100+' }),
-    defineField({ name: 'nmv', title: 'NMV', type: 'string', group: 'hero', initialValue: '356B' }),
 
     // About
     defineField({ name: 'aboutTitle', title: 'About Title', type: 'string', group: 'about' }),
     defineField({ name: 'aboutBody', title: 'About Body', type: 'text', rows: 4, group: 'about' }),
+    defineField({ name: 'aboutImage', title: 'About Image', type: 'image', options: { hotspot: true }, group: 'about', fields: [{ name: 'alt', type: 'string', title: 'Alt' }] }),
 
     // Services
+    defineField({ name: 'servicesIntro', title: 'Services Intro', type: 'text', rows: 2, group: 'services' }),
     defineField({
       name: 'services', title: 'Services', type: 'array', group: 'services',
       of: [defineArrayMember({
         type: 'object',
         fields: [
-          { name: 'name', title: 'Name', type: 'string' },
-          { name: 'desc', title: 'Description', type: 'text', rows: 2 },
-          { name: 'icon', title: 'Icon (emoji or lucide name)', type: 'string' },
-          { name: 'platform', title: 'Platform', type: 'string',
-            options: { list: ['tiktok', 'shopee', 'meta', 'google', 'other'] } },
+          { name: 'name', title: 'Tên', type: 'string' },
+          { name: 'desc', title: 'Mô tả', type: 'text', rows: 2 },
+          { name: 'icon', title: 'Icon (emoji or short)', type: 'string' },
         ],
-        preview: { select: { title: 'name', subtitle: 'platform' } },
+        preview: { select: { title: 'name', subtitle: 'desc', media: 'icon' } },
       })],
     }),
 
     // FAQ
+    defineField({ name: 'faqIntro', title: 'FAQ Intro', type: 'text', rows: 2, group: 'faq' }),
     defineField({
       name: 'faq', title: 'FAQ', type: 'array', group: 'faq',
       of: [defineArrayMember({
         type: 'object',
         fields: [
-          { name: 'question', title: 'Question', type: 'string' },
-          { name: 'answer', title: 'Answer', type: 'text', rows: 3 },
+          { name: 'q', title: 'Question', type: 'string' },
+          { name: 'a', title: 'Answer', type: 'text', rows: 3 },
         ],
-        preview: { select: { title: 'question' } },
+        preview: { select: { title: 'q', subtitle: 'a' } },
       })],
     }),
 
     // CTA
     defineField({
-      name: 'cta', title: 'CTA Block', type: 'object', group: 'cta',
+      name: 'cta', title: 'CTA Section', type: 'object', group: 'cta',
       fields: [
         { name: 'title', title: 'Title', type: 'string' },
         { name: 'body', title: 'Body', type: 'text', rows: 2 },
@@ -81,13 +86,13 @@ export const siteSettings = defineType({
     }),
 
     // Footer
-    defineField({ name: 'footerText', title: 'Footer Text', type: 'text', rows: 2, group: 'footer' }),
+    defineField({ name: 'footerText', title: 'Footer Copyright', type: 'string', group: 'footer' }),
     defineField({
       name: 'socialLinks', title: 'Social Links', type: 'array', group: 'footer',
       of: [defineArrayMember({
         type: 'object',
         fields: [
-          { name: 'platform', title: 'Platform', type: 'string' },
+          { name: 'platform', title: 'Platform', type: 'string', options: { list: ['facebook', 'linkedin', 'youtube', 'instagram', 'tiktok'] } },
           { name: 'url', title: 'URL', type: 'url' },
         ],
         preview: { select: { title: 'platform', subtitle: 'url' } },
