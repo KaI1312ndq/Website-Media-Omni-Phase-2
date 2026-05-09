@@ -401,36 +401,30 @@ export default function HomeClient({ settings, team, brands }: Props) {
   )
 }
 
-const MO_USERS: Record<string, { pass: string; role: string; name: string }> = {
-  quangnd:  { pass:'omni2026lead', role:'admin',  name:'Nguyễn Đức Quảng' },
-  linhntkh: { pass:'omni2026',     role:'member', name:'Nguyễn Trần Khánh Linh' },
-  duychk:   { pass:'omni2026',     role:'member', name:'Chu Khánh Duy' },
-  ductanh:  { pass:'omni2026',     role:'member', name:'Thiều Anh Đức' },
-  linhdkh:  { pass:'omni2026',     role:'member', name:'Đoàn Khánh Linh' },
-  thaodph:  { pass:'omni2026',     role:'member', name:'Đỗ Phương Thảo' },
-  hangdth:  { pass:'omni2026',     role:'member', name:'Đỗ Thị Hằng' },
-  trungdhu: { pass:'omni2026',     role:'member', name:'Đặng Hữu Trung' },
-  anhpq:    { pass:'omni2026',     role:'member', name:'Phạm Quyền Anh' },
-  khanhnm:  { pass:'omni2026',     role:'member', name:'Nguyễn Minh Khánh' },
-  ngochb:   { pass:'omni2026',     role:'member', name:'Hoàng Bảo Ngọc' },
-  phuongnm: { pass:'omni2026',     role:'member', name:'Nguyễn Mai Phương' },
-  upbase:   { pass:'upbase2026',   role:'upbase', name:'UpBase Staff' },
-}
-
-function doLogin() {
+async function doLogin() {
   const userEl = document.getElementById('login-user') as HTMLInputElement
   const passEl = document.getElementById('login-pass') as HTMLInputElement
+  const btn = document.querySelector('.modal-btn') as HTMLButtonElement
   const err = document.getElementById('login-error')
   const u = userEl?.value.trim().toLowerCase()
   const p = passEl?.value
-  const found = u ? MO_USERS[u] : undefined
-  if (found && found.pass === p) {
-    localStorage.setItem('mo_user', JSON.stringify({ username: u, name: found.name, role: found.role }))
-    document.getElementById('login-modal')?.classList.remove('open')
-    window.location.href = '/dashboard'
-  } else {
-    if (err) err.style.display = 'block'
-    setTimeout(() => { if (err) err.style.display = 'none' }, 3000)
+  if (!u || !p) return
+  if (btn) { btn.disabled = true; btn.textContent = 'Đang đăng nhập...' }
+  try {
+    const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) })
+    const j = await res.json()
+    if (res.ok && j.user) {
+      localStorage.setItem('mo_user', JSON.stringify(j.user))
+      sessionStorage.setItem('mo_user', JSON.stringify(j.user))
+      document.getElementById('login-modal')?.classList.remove('open')
+      window.location.href = '/dashboard'
+    } else {
+      if (err) { err.style.display = 'block'; err.textContent = j.error || 'Sai username hoặc password.' }
+      setTimeout(() => { if (err) err.style.display = 'none' }, 3000)
+      passEl.value = ''
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Đăng nhập →' }
   }
 }
 

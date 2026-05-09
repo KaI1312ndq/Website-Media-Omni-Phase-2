@@ -43,7 +43,8 @@ export const brand = defineType({
   ],
   preview: {
     select: { title: 'name', subtitle: 'category', active: 'active' },
-    prepare({ title, subtitle, active }: { title: string; subtitle: string; active: boolean }) {
+    prepare(selection: Record<string, unknown>) {
+      const { title, subtitle, active } = selection as { title: string; subtitle: string; active: boolean }
       const icons: Record<string, string> = {
         skincare: '🧴', fashion: '👗', baby: '🍼', fmcg: '🛒', electronics: '🔌',
       }
