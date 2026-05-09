@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation'
 
 export default function Nav() {
   const pathname = usePathname()
-  // Hide Nav on Sanity Studio routes so it doesn't overlap the Studio UI
-  if (pathname?.startsWith('/studio')) return null
+  // Hide public Nav on internal routes (Studio, Dashboard, Hub, Quiz)
+  const internalRoutes = ['/studio', '/dashboard', '/hub', '/quiz']
+  if (pathname && internalRoutes.some(p => pathname.startsWith(p))) return null
   const isHome = pathname === '/'
   const [menuOpen, setMenuOpen] = useState(false)
   const navRef = useRef<HTMLElement>(null)
