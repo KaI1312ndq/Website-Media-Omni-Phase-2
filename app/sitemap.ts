@@ -10,7 +10,7 @@ async function getBlogSlugs(): Promise<string[]> {
   try {
     const { client } = await import('@/lib/sanity')
     const slugs = await client.fetch<{ slug: { current: string }; _updatedAt: string }[]>(
-      `*[_type == "post" && defined(slug.current)]{ slug, _updatedAt }`
+      `*[_type == "blogPost" && defined(slug.current)]{ slug, _updatedAt }`
     )
     return slugs.map(s => s.slug.current)
   } catch {

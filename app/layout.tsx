@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Sora, Be_Vietnam_Pro, Roboto_Mono } from 'next/font/google'
 import './globals.css'
 import Nav from '@/components/Nav'
@@ -25,6 +25,14 @@ const robotoMono = Roboto_Mono({
   display: 'swap',
 })
 
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#0a1628',
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.mediaomni.site'),
   title: {
@@ -47,15 +55,7 @@ export const metadata: Metadata = {
     title: 'Media Omni — Performance Marketing Team | UpBase Vietnam',
     description:
       'Vận hành performance marketing đa kênh cho 100+ brands ecommerce hàng đầu Việt Nam. 356B NMV · >7x ROAS · 12 Growth Operators.',
-    images: [{ url: 'https://www.mediaomni.site/og-image.png', width: 1200, height: 630, alt: 'Media Omni — Performance Marketing Team' }],
     locale: 'vi_VN',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    site: '@mediaomni',
-    title: 'Media Omni — Performance Marketing Team',
-    description: 'Vận hành performance marketing đa kênh cho 100+ brands ecommerce hàng đầu Việt Nam.',
-    images: ['https://www.mediaomni.site/og-image.png'],
   },
   icons: {
     icon: [
@@ -79,8 +79,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               '@type': 'Organization',
               name: 'Media Omni',
               alternateName: 'MediaOmni',
-              url: 'https://mediaomni.site',
-              logo: 'https://mediaomni.site/favicon.svg',
+              url: 'https://www.mediaomni.site',
+              logo: 'https://www.mediaomni.site/favicon.svg',
               description:
                 'Performance marketing agency vận hành đa kênh cho 100+ brands ecommerce tại Việt Nam.',
               parentOrganization: { '@type': 'Organization', name: 'UpBase Vietnam' },
@@ -91,13 +91,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }),
           }}
         />
-        {/* Google Analytics 4 */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-TYTP82G06N" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-TYTP82G06N');`,
-          }}
-        />
+        {/* Google Analytics 4 — only when GA ID is configured */}
+        {GA_ID && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');`,
+              }}
+            />
+          </>
+        )}
       </head>
       <body>
         <div id="sp" />

@@ -7,9 +7,16 @@ export const blogListQuery = groq`
   }
 `
 
+export const latestPostsQuery = groq`
+  *[_type == "blogPost"] | order(publishedAt desc) [0...3] {
+    _id, title, slug, excerpt, tags, author, publishedAt, bgGradient,
+    coverImage { asset->{ url }, alt }
+  }
+`
+
 export const blogPostQuery = groq`
   *[_type == "blogPost" && slug.current == $slug][0] {
-    _id, title, slug, excerpt, content, tags, author, publishedAt, bgGradient,
+    _id, _updatedAt, title, slug, excerpt, content, tags, author, publishedAt, bgGradient,
     coverImage { asset->{ url }, alt },
     seoTitle, seoDescription,
     ogImage { asset->{ url } }
@@ -22,7 +29,10 @@ export const blogSlugsQuery = groq`
 
 export const siteSettingsQuery = groq`
   *[_type == "siteSettings"][0] {
-    ticker, heroTitle, heroSub, operatorCount, brandCount, nmv
+    ticker, heroTitle, heroSub, heroBadge,
+    operatorCount, brandCount, nmv,
+    aboutTitle, aboutBody,
+    services, faq, cta, footerText, socialLinks
   }
 `
 

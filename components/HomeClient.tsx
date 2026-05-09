@@ -26,10 +26,21 @@ export interface SanityBrand {
   category: 'skincare' | 'fashion' | 'baby' | 'fmcg' | 'electronics'
 }
 
+export interface LatestPost {
+  _id: string
+  title: string
+  slug: { current: string }
+  excerpt?: string
+  publishedAt?: string
+  coverImage?: { asset: { url: string }; alt?: string }
+  bgGradient?: string
+}
+
 interface Props {
   settings: SiteSettings | null
   team: TeamMember[]
   brands: SanityBrand[]
+  posts?: LatestPost[]
 }
 
 const TICKER_DEFAULT = [
@@ -41,7 +52,7 @@ const TICKER_DEFAULT = [
   { val: '100+',  lbl: 'BRANDS & SHOPS',    sub: 'Đang vận hành' },
 ]
 
-export default function HomeClient({ settings, team, brands }: Props) {
+export default function HomeClient({ settings, team, brands, posts = [] }: Props) {
   useEffect(() => {
     // Build ticker
     const track = document.getElementById('ticker-track')
@@ -304,18 +315,45 @@ export default function HomeClient({ settings, team, brands }: Props) {
         </div>
       </section>
 
-      {/* BLOG CTA */}
-      <section id="blog" className="blog-cta-section">
+      {/* LATEST BLOG */}
+      <section id="blog" className="home-blog-section">
         <div className="container">
-          <div className="blog-cta-inner rv">
-            <div className="blog-cta-left">
-              <div className="sec-label">Insights & Blog</div>
-              <h2 className="sec-title">Kiến thức thực chiến<br />từ Media Omni.</h2>
-              <p className="sec-sub">Case study, framework và playbook — chia sẻ để cùng grow với ecommerce đa kênh.</p>
+          <div className="sec-hd rv" style={{ textAlign: 'center', alignItems: 'center' }}>
+            <div className="sec-label" style={{ justifyContent: 'center' }}>Insights & Resources</div>
+            <h2 className="sec-title">Bài viết mới nhất<br />từ Media Omni.</h2>
+            <p className="sec-sub" style={{ margin: '0 auto' }}>Case study, framework và playbook — cập nhật liên tục từ đội ngũ Growth Operators.</p>
+          </div>
+          {posts.length > 0 && (
+            <div className="home-blog-grid rv">
+              {posts.map(p => (
+                <Link key={p._id} href={`/blog/${p.slug.current}`} className="home-blog-card">
+                  <div className="home-blog-cover">
+                    {p.coverImage?.asset?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.coverImage.asset.url} alt={p.coverImage.alt ?? p.title} loading="lazy" decoding="async" />
+                    ) : null}
+                  </div>
+                  <div className="home-blog-body">
+                    <h3 className="home-blog-title">{p.title}</h3>
+                    {p.excerpt && <p className="home-blog-excerpt">{p.excerpt}</p>}
+                    <div className="home-blog-meta">
+                      {p.publishedAt && (
+                        <span>{new Date(p.publishedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                      )}
+                      <span className="home-blog-readmore">
+                        Đọc thêm
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
-            <Link href="/blog" className="blog-cta-btn">
-              <span>Xem tất cả bài viết</span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+          )}
+          <div className="home-blog-foot">
+            <Link href="/blog" className="btn-outline" style={{ fontSize: '.92rem', padding: '12px 26px' }}>
+              Xem tất cả bài viết
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
           </div>
         </div>

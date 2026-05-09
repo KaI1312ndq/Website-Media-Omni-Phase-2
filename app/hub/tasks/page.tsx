@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, setSession, SessionUser, initials } from '@/lib/auth'
+import { HubPageSkeleton } from '@/components/Skeleton'
 
 type Task = {
   id: string; task_name: string; description?: string
@@ -113,6 +114,10 @@ export default function TasksPage() {
   const circleOffset = 251 - (251 * pct / 100)
 
   const weekDates = getWeekDates(weekOff)
+
+  if (!user) {
+    return <HubPageSkeleton title="Đang tải tasks..." />
+  }
 
   return (
     <>

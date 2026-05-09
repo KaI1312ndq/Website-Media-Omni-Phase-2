@@ -4,6 +4,7 @@ export const teamMember = defineType({
   name: 'teamMember',
   title: 'Team Member',
   type: 'document',
+  icon: () => '👤',
   fields: [
     defineField({ name: 'name', title: 'Họ và tên', type: 'string', validation: R => R.required() }),
     defineField({ name: 'role', title: 'Vai trò', type: 'string', validation: R => R.required() }),

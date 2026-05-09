@@ -4,6 +4,7 @@ export const brand = defineType({
   name: 'brand',
   title: 'Brand Portfolio',
   type: 'document',
+  icon: () => '🏷️',
   fields: [
     defineField({
       name: 'name',

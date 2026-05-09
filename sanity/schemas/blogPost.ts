@@ -4,6 +4,7 @@ export const blogPost = defineType({
   name: 'blogPost',
   title: 'Blog Post',
   type: 'document',
+  icon: () => '📝',
   fields: [
     defineField({ name: 'title', title: 'Tiêu đề', type: 'string', validation: R => R.required() }),
     defineField({

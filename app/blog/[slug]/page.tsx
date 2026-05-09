@@ -106,15 +106,20 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
+    '@type': 'Article',
     headline: post.title,
     description: post.excerpt,
     datePublished: post.publishedAt,
+    dateModified: post._updatedAt ?? post.publishedAt,
     author: { '@type': 'Person', name: post.author ?? 'Media Omni' },
     publisher: {
       '@type': 'Organization',
       name: 'Media Omni',
       logo: { '@type': 'ImageObject', url: 'https://www.mediaomni.site/favicon.svg' },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://www.mediaomni.site/blog/${params.slug}`,
     },
     url: `https://www.mediaomni.site/blog/${params.slug}`,
     ...(post.coverImage?.asset && {

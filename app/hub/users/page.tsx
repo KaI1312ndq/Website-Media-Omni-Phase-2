@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, setSession, SessionUser, initials, ROLE_DEFAULTS } from '@/lib/auth'
+import { HubPageSkeleton } from '@/components/Skeleton'
 
 type UserRow = { id: string; username: string; name: string; role: string; status: string; perms: Record<string, number> }
 
@@ -125,6 +126,10 @@ export default function UsersPage() {
   }
 
   const avCls = (role: string) => role === 'admin' ? 'av-admin' : role === 'upbase' ? 'av-upbase' : 'av-member'
+
+  if (!me) {
+    return <HubPageSkeleton title="Đang tải users..." />
+  }
 
   return (
     <>
