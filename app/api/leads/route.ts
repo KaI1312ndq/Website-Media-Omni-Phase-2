@@ -39,52 +39,6 @@ function rateLimit(ip: string): boolean {
   return true
 }
 
-/* ── Lark webhook notify ── */
-async function notifyLark(lead: Record<string, unknown>) {
-  const url = process.env.LARK_WEBHOOK_URL
-  if (!url) return
-  const channels = Array.isArray(lead.channels) ? (lead.channels as string[]).join(', ') : '-'
-  const card = {
-    msg_type: 'interactive',
-    card: {
-      header: {
-        title: { tag: 'plain_text', content: `🎯 Lead mới — ${lead.name}` },
-        template: 'blue',
-      },
-      elements: [
-        {
-          tag: 'div',
-          fields: [
-            { is_short: true, text: { tag: 'lark_md', content: `**Email**\n${lead.email || '-'}` } },
-            { is_short: true, text: { tag: 'lark_md', content: `**Phone**\n${lead.phone || '-'}` } },
-            { is_short: true, text: { tag: 'lark_md', content: `**Brand**\n${lead.brand || '-'}` } },
-            { is_short: true, text: { tag: 'lark_md', content: `**Budget**\n${lead.monthly_budget || '-'}` } },
-            { is_short: false, text: { tag: 'lark_md', content: `**Channels**\n${channels || '-'}` } },
-            { is_short: false, text: { tag: 'lark_md', content: `**Note**\n${lead.note || '-'}` } },
-            { is_short: false, text: { tag: 'lark_md', content: `**Source**\n${lead.source || 'homepage'} · ${lead.utm_source || 'direct'}` } },
-          ],
-        },
-        { tag: 'hr' },
-        {
-          tag: 'note',
-          elements: [
-            { tag: 'plain_text', content: `${new Date().toLocaleString('vi-VN')} · Mở /admin/leads để xử lý` },
-          ],
-        },
-      ],
-    },
-  }
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(card),
-    })
-  } catch (err) {
-    console.error('Lark notify failed:', err)
-  }
-}
-
 /* ── POST /api/leads — public ── */
 export async function POST(req: NextRequest) {
   try {
@@ -129,9 +83,6 @@ export async function POST(req: NextRequest) {
       console.error('Insert lead failed:', error)
       return NextResponse.json({ error: 'Không thể lưu lead' }, { status: 500 })
     }
-
-    // Fire & forget Lark
-    notifyLark(insert).catch(() => {})
 
     return NextResponse.json({ ok: true, lead_id: data.id })
   } catch (err) {
