@@ -72,10 +72,34 @@ function toISO(d: Date): string {
 function fmtNum(n: number, unit: string): string {
   if (!n && n !== 0) return '—'
   if (unit === '₫') return n.toLocaleString('vi-VN') + '₫'
-  if (unit === 'x') return n.toFixed(2) + 'x'
+  if (unit === 'x') return n.toFixed(2)
   if (unit === '%') return n.toFixed(2) + '%'
   if (unit === '‰') return n.toFixed(0) + '‰'
   return n.toLocaleString('vi-VN')
+}
+/* Format integer with Vietnamese thousand separator (dot) */
+function fmtVN(v: number | string): string {
+  const raw = String(v ?? '').replace(/[^\d-]/g, '')
+  if (!raw || raw === '-') return ''
+  const num = parseInt(raw, 10)
+  if (isNaN(num)) return ''
+  return num.toLocaleString('vi-VN')
+}
+/* Parse VN-formatted input (handles dots, commas, math expressions safely) */
+function parseVN(s: string): number {
+  if (!s) return 0
+  return parseFloat(String(s).replace(/[.,\s]/g, '').replace(/[^\d.-]/g, '')) || 0
+}
+/* Evaluate math expression like "100+200" → 300; returns NaN if invalid */
+function evalExpr(s: string): number {
+  const stripped = s.replace(/[.,\s]/g, '')
+  if (!/[+\-*/]/.test(stripped)) return NaN
+  if (!/^[\d+\-*/().]+$/.test(stripped)) return NaN
+  try {
+    const r = Function('"use strict";return(' + stripped + ')')()
+    if (!isFinite(r) || isNaN(r)) return NaN
+    return Math.round(Number(r))
+  } catch { return NaN }
 }
 function pct(actual: number, plan: number | undefined): number | null {
   if (!plan) return null
@@ -140,6 +164,18 @@ function getCurrentWeekDefault(month: number, year: number): number {
   }
   return weekNum || 1
 }
+
+/* Ordered list of all actual metric keys — used for paste fill direction */
+const ACTUAL_KEYS_ORDER = [
+  's_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
+  's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
+  's_live_gmv','s_live_chi_phi','s_live_luot_xem',
+  't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
+  't_lgm_doanhthu','t_lgm_chi_phi',
+  't_con_nguoi','t_con_chi_phi',
+  't_brd_view','t_brd_follow','t_brd_chi_phi',
+]
+const PLAN_PERIODS_ORDER = ['month','w1','w2','w3','w4','w5'] as const
 
 const EMPTY_SHOPEE: ShopeeData = {
   s_cpc_doanh_so:0,s_cpc_chi_phi:0,s_cpc_luot_xem:0,s_cpc_luot_click:0,s_cpc_don_hang:0,
@@ -228,6 +264,10 @@ export default function ReportPage() {
     tiktok_thuc_trang: '', tiktok_van_de: '', tiktok_giai_phap: '',
   })
   const [aiLoading, setAiLoading] = useState(false)
+  /* rawInputs: per-key formatted display string for actual inputs (e.g. "100.000.000") */
+  const [rawInputs, setRawInputs] = useState<Record<string, string>>({})
+  /* planRawInputs: per-key formatted display string for plan modal cells */
+  const [planRawInputs, setPlanRawInputs] = useState<Record<string, string>>({})
 
   // Step 3 state
   const [mailSubject, setMailSubject] = useState('')
@@ -332,12 +372,51 @@ export default function ReportPage() {
       ])
       setShopeePlan(sp.data || null)
       setTiktokPlan(tp.data || null)
-      setWeekHistory(hist.data || [])
+      const histRows: Record<string, number|string|null>[] = hist.data || []
+      setWeekHistory(histRows)
       const hp = (shopeeChecked ? !!sp.data : true) && (tiktokChecked ? !!tp.data : true)
       setHasPlan(hp)
-      setShopeeData({ ...EMPTY_SHOPEE })
-      setTiktokData({ ...EMPTY_TIKTOK })
-      setAiResult({ highlight:'',lowlight:'',shopee_thuc_trang:'',shopee_van_de:'',shopee_giai_phap:'',tiktok_thuc_trang:'',tiktok_van_de:'',tiktok_giai_phap:'' })
+
+      /* Auto-load existing data for current week (if any) */
+      const existing = histRows.find(r => parseInt(String(r.week_num)) === weekInfo.weekNum)
+      const newShopee: ShopeeData = { ...EMPTY_SHOPEE }
+      const newTiktok: TiktokData = { ...EMPTY_TIKTOK }
+      const newRaw: Record<string,string> = {}
+      if (existing) {
+        ;(Object.keys(EMPTY_SHOPEE) as (keyof ShopeeData)[]).forEach(k => {
+          const v = parseFloat(String(existing[k] ?? 0)) || 0
+          newShopee[k] = v
+          newRaw[k as string] = v ? v.toLocaleString('vi-VN') : ''
+        })
+        ;(Object.keys(EMPTY_TIKTOK) as (keyof TiktokData)[]).forEach(k => {
+          const v = parseFloat(String(existing[k] ?? 0)) || 0
+          newTiktok[k] = v
+          newRaw[k as string] = v ? v.toLocaleString('vi-VN') : ''
+        })
+      }
+      setShopeeData(newShopee)
+      setTiktokData(newTiktok)
+      setRawInputs(newRaw)
+
+      // Pre-fill AI text from existing row (legacy stored shopee+tiktok joined w/ \n)
+      if (existing) {
+        const splitNote = (s: string) => {
+          const parts = String(s || '').split('\n')
+          return { shopee: parts[0] || '', tiktok: parts.slice(1).join('\n') || '' }
+        }
+        const tt = splitNote(String(existing.nhan_xet_thuc_trang || ''))
+        const vd = splitNote(String(existing.nhan_xet_van_de || ''))
+        const gp = splitNote(String(existing.nhan_xet_giai_phap || ''))
+        setAiResult({
+          highlight:        String(existing.highlight || ''),
+          lowlight:         String(existing.lowlight  || ''),
+          shopee_thuc_trang: tt.shopee, tiktok_thuc_trang: tt.tiktok,
+          shopee_van_de:     vd.shopee, tiktok_van_de:     vd.tiktok,
+          shopee_giai_phap:  gp.shopee, tiktok_giai_phap:  gp.tiktok,
+        })
+      } else {
+        setAiResult({ highlight:'',lowlight:'',shopee_thuc_trang:'',shopee_van_de:'',shopee_giai_phap:'',tiktok_thuc_trang:'',tiktok_van_de:'',tiktok_giai_phap:'' })
+      }
       setStep(2)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
@@ -456,7 +535,7 @@ export default function ReportPage() {
   /* ── Step 2 → Step 3 ── */
   function goStep3() {
     if (!weekInfo) return
-    const subject = `MEDIA x Group | Báo cáo tuần & Kế hoạch hành động | ${selectedBrand} | ${weekInfo.label}`
+    const subject = `MEDIA x ${selectedBrand} | Báo cáo tuần & Kế hoạch hành động | ${weekInfo.label}`
     setMailSubject(subject)
     setMailHTML(buildMailHTML())
     setStep(3)
@@ -465,145 +544,306 @@ export default function ReportPage() {
 
   function buildMailHTML(): string {
     if (!weekInfo) return ''
-    const wk = `w${weekInfo.weekNum}` as 'w1'|'w2'|'w3'|'w4'|'w5'|'month'
 
-    const tdS = (v: string, extra = '') => `<td style="padding:5px 10px;border:1px solid #ccc;text-align:right;${extra}">${v}</td>`
-    const tdL = (v: string) => `<td style="padding:5px 10px;border:1px solid #ccc;text-align:left">${v}</td>`
-    const th = (v: string) => `<th style="padding:6px 10px;border:1px solid #999;background:#1a2e5c;color:#fff;text-align:right">${v}</th>`
-    const thL = (v: string) => `<th style="padding:6px 10px;border:1px solid #999;background:#1a2e5c;color:#fff;text-align:left">${v}</th>`
-    const pctStyle = (p: number | null) => {
-      if (p === null) return ''
-      const c = p >= 100 ? '#059669' : p >= 80 ? '#D97706' : '#DC2626'
-      return `color:${c};font-weight:bold`
+    const totalWeeks = getWeeksInMonth(weekInfo.month, weekInfo.year)
+    const weeksList = Array.from({ length: totalWeeks }, (_, i) => i + 1)
+    const plan = (k: string): Record<string, number> | undefined => (shopeePlan?.[k] || tiktokPlan?.[k]) as Record<string,number> | undefined
+    const pW = (f: string, w: number): number => Number(plan(f)?.[`w${w}`]) || 0
+    const pM = (f: string): number => Number(plan(f)?.month) || 0
+
+    /* hRow returns actual value for week w from history (or current input if w === current week) */
+    const curData: Record<string, number> = { ...shopeeData, ...tiktokData }
+    const hRow = (f: string, w: number): number | null => {
+      if (w === weekInfo.weekNum) return Number(curData[f] || 0)
+      const r = weekHistory.find(h => parseInt(String(h.week_num)) === w)
+      if (!r) return null
+      const v = parseFloat(String(r[f] || 0))
+      return isNaN(v) ? 0 : v
+    }
+    const getMTD = (getter: (w: number) => number | null): number =>
+      weeksList.filter(w => w <= weekInfo.weekNum).reduce((a, w) => { const v = getter(w); return a + (v !== null ? v : 0) }, 0)
+    const ratioW = (nF: string, dF: string, w: number): number | null => {
+      const n = hRow(nF, w), d = hRow(dF, w); if (d === null || !d) return null; return n! / d
+    }
+    const ratioPW = (nF: string, dF: string, w: number): number | null => {
+      const d = pW(dF, w); return d ? pW(nF, w) / d : null
+    }
+    const ratioPM = (nF: string, dF: string): number | null => {
+      const d = pM(dF); return d ? pM(nF) / d : null
+    }
+    const ratioMTD = (nF: string, dF: string): number | null => {
+      const n = getMTD(w => hRow(nF, w) || 0)
+      const d = getMTD(w => hRow(dF, w) || 0)
+      return d ? n / d : null
     }
 
-    let html = `<div style="font-family:'Times New Roman',Times,serif;font-size:13px;color:#000;line-height:1.6">`
-    html += `<p><strong>BÁO CÁO HIỆU SUẤT QUẢNG CÁO — ${selectedBrand.toUpperCase()}</strong><br>${weekInfo.label} | ${weekInfo.start} – ${weekInfo.end}${!weekInfo.isFull ? ` (${weekInfo.days} ngày)` : ''}</p>`
-    html += `<hr style="border:1px solid #ccc;margin:12px 0">`
+    const fmtMail = (v: number | null | undefined): string => {
+      if (v === null || v === undefined || isNaN(v)) return '—'
+      return Math.round(parseFloat(String(v))).toLocaleString('vi-VN')
+    }
+    const fmtX = (v: number | null | undefined): string =>
+      v !== null && v !== undefined && !isNaN(v) ? parseFloat(String(v)).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+    const fmtPct = (v: number | null | undefined): string =>
+      v !== null && v !== undefined && !isNaN(v) ? parseFloat(String(v)).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—'
+    const fmtN = (v: number | null | undefined): string => fmtMail(v)
+    const fmtMoney = (v: number | null | undefined): string => fmtMail(v)
+    const fmtCPC = (v: number | null | undefined): string => fmtMail(v)
+    const getPctS = (act: number | null, planV: number | null): string | null => {
+      if (act === null || act === undefined) return null
+      const a = parseFloat(String(act)), p = parseFloat(String(planV))
+      if (!p || isNaN(a) || isNaN(p)) return null
+      return ((a / p) * 100).toFixed(1)
+    }
 
-    /* ── Shopee table ── */
+    const ts = `padding:3px 5px;border:1px solid #ccc;text-align:right;font-family:'Times New Roman',serif;font-size:11px;white-space:nowrap`
+    const tsL = `padding:3px 5px;border:1px solid #ccc;text-align:left;font-family:'Times New Roman',serif;font-size:11px;white-space:nowrap;min-width:100px`
+    const thS = `padding:4px 5px;border:1px solid #999;background:#1a2e5c;color:#fff;font-family:'Times New Roman',serif;font-size:11px;text-align:center;white-space:nowrap`
+    const tblStyle = `border-collapse:collapse;width:100%;font-family:'Times New Roman',serif;font-size:11px;margin:4px 0 14px`
+
+    const hdr = `<tr><th style="${thS};text-align:center;min-width:130px">Metric</th><th style="${thS}">Tháng (Plan)</th><th style="${thS}">Luỹ tiến</th><th style="${thS}">% thực hiện</th>${weeksList.map(w => `<th style="${thS}">W${w}</th><th style="${thS}">Thực hiện</th><th style="${thS}">% thực hiện</th>`).join('')}</tr>`
+
+    type Fmt = (v: number | null | undefined) => string
+    const wRow = (label: string, planMth: number | null, mtdAct: number | null,
+                  getAct: (w: number) => number | null, getPlan: (w: number) => number | null,
+                  fmtFn: Fmt = fmtMail): string => {
+      const pctMtd = getPctS(mtdAct, planMth)
+      const wCells = weeksList.map(w => {
+        const pw = getPlan(w), act = getAct(w)
+        const p = getPctS(act, pw)
+        return `<td style="${ts}">${pw !== null && pw !== undefined && pw !== 0 ? fmtFn(pw) : '—'}</td><td style="${ts}">${act !== null ? fmtFn(act) : '—'}</td><td style="${ts}">${p ? p + '%' : '—'}</td>`
+      }).join('')
+      return `<tr><td style="${tsL}">${label}</td><td style="${ts}">${planMth ? fmtFn(planMth) : '—'}</td><td style="${ts}">${mtdAct !== null && !isNaN(mtdAct) ? fmtFn(mtdAct) : '—'}</td><td style="${ts}">${pctMtd ? pctMtd + '%' : '—'}</td>${wCells}</tr>`
+    }
+    const dRow = (label: string, planMth: number | null, mtdAct: number | null,
+                  getAct: (w: number) => number | null, getPlan: (w: number) => number | null,
+                  fmtFn: Fmt = fmtX): string => {
+      const pctMtd = getPctS(mtdAct, planMth)
+      const wCells = weeksList.map(w => {
+        const pw = getPlan(w), act = getAct(w)
+        const p = getPctS(act, pw)
+        return `<td style="${ts}">${pw !== null ? fmtFn(pw) : '—'}</td><td style="${ts}">${act !== null ? fmtFn(act) : '—'}</td><td style="${ts}">${p ? p + '%' : '—'}</td>`
+      }).join('')
+      return `<tr style="background:#fafafa"><td style="${tsL};color:#555;font-style:italic">${label}</td><td style="${ts}">${planMth !== null ? fmtFn(planMth) : '—'}</td><td style="${ts}">${mtdAct !== null ? fmtFn(mtdAct) : '—'}</td><td style="${ts}">${pctMtd ? pctMtd + '%' : '—'}</td>${wCells}</tr>`
+    }
+
+    const hasSectionData = (keys: string[]): boolean => {
+      if (keys.some(k => { const p = plan(k); return p && Object.values(p).some(v => parseFloat(String(v)) > 0) })) return true
+      if (keys.some(k => parseFloat(String(curData[k] || 0)) > 0)) return true
+      if (weekHistory.length && keys.some(k => weekHistory.some(h => parseFloat(String(h[k] || 0)) > 0))) return true
+      return false
+    }
+
+    /* GMV/Cost helpers per platform */
+    const sPlanGmvM = pM('s_cpc_doanh_so') + pM('s_nd_gmv') + pM('s_live_gmv')
+    const tPlanGmvM = pM('t_pgm_doanh_so') + pM('t_lgm_doanhthu')
+    const totPlanGmvM = sPlanGmvM + tPlanGmvM
+
+    const getHistGmv = (w: number): number | null => {
+      const r = weekHistory.find(h => parseInt(String(h.week_num)) === w)
+      if (w === weekInfo.weekNum) {
+        let g = 0
+        if (shopeeChecked) g += shopeeData.s_cpc_doanh_so + shopeeData.s_nd_gmv + shopeeData.s_live_gmv
+        if (tiktokChecked) g += tiktokData.t_pgm_doanh_so + tiktokData.t_lgm_doanhthu
+        return g
+      }
+      if (!r) return null
+      let g = 0
+      if (shopeeChecked) g += parseFloat(String(r.s_cpc_doanh_so || 0)) + parseFloat(String(r.s_nd_gmv || 0)) + parseFloat(String(r.s_live_gmv || 0))
+      if (tiktokChecked) g += parseFloat(String(r.t_pgm_doanh_so || 0)) + parseFloat(String(r.t_lgm_doanhthu || 0))
+      return g
+    }
+    const getHistCp = (w: number): number | null => {
+      const r = weekHistory.find(h => parseInt(String(h.week_num)) === w)
+      if (w === weekInfo.weekNum) {
+        let c = 0
+        if (shopeeChecked) c += shopeeData.s_cpc_chi_phi + shopeeData.s_nd_chi_phi + shopeeData.s_live_chi_phi
+        if (tiktokChecked) c += tiktokData.t_pgm_chi_phi + tiktokData.t_lgm_chi_phi + tiktokData.t_con_chi_phi + tiktokData.t_brd_chi_phi
+        return c
+      }
+      if (!r) return null
+      let c = 0
+      if (shopeeChecked) c += parseFloat(String(r.s_cpc_chi_phi || 0)) + parseFloat(String(r.s_nd_chi_phi || 0)) + parseFloat(String(r.s_live_chi_phi || 0))
+      if (tiktokChecked) c += parseFloat(String(r.t_pgm_chi_phi || 0)) + parseFloat(String(r.t_lgm_chi_phi || 0)) + parseFloat(String(r.t_con_chi_phi || 0)) + parseFloat(String(r.t_brd_chi_phi || 0))
+      return c
+    }
+    const getPlanGmvW = (w: number): number => {
+      let g = 0
+      if (shopeeChecked) g += pW('s_cpc_doanh_so', w) + pW('s_nd_gmv', w) + pW('s_live_gmv', w)
+      if (tiktokChecked) g += pW('t_pgm_doanh_so', w) + pW('t_lgm_doanhthu', w)
+      return g
+    }
+    const mtdTotGmv = getMTD(w => getHistGmv(w))
+
+    let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:13px;color:#000;line-height:1.6">`
+    body += `<p style="margin:0 0 4px">Dear: <strong>Growth Phụ trách dự án</strong><br>và Leader Team Media Omni, PIC Marketing B2C</p>`
+    body += `<p style="margin:0 0 6px">Tôi xin phép gửi Report của <strong>${weekInfo.label}</strong> dự án <strong>${selectedBrand}</strong></p>`
+    body += `<hr style="border:1px solid #ccc;margin:8px 0">`
+    body += `<p style="margin:0 0 4px"><strong style="font-size:13px">BÁO CÁO HIỆU SUẤT — ${selectedBrand.toUpperCase()}</strong><br>${weekInfo.label} | ${weekInfo.start} – ${weekInfo.end}${!weekInfo.isFull ? ` (${weekInfo.days} ngày)` : ''}</p>`
+    body += `<hr style="border:1px solid #ccc;margin:8px 0">`
+
+    /* ── TỔNG 2 SÀN ── */
+    if (shopeeChecked && tiktokChecked) {
+      body += `<p style="margin:6px 0 2px"><strong>━━━ TỔNG 2 SÀN ━━━</strong></p>`
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+      const totPlanCpM = pM('s_cpc_chi_phi') + pM('s_nd_chi_phi') + pM('s_live_chi_phi') + pM('t_pgm_chi_phi') + pM('t_lgm_chi_phi') + pM('t_con_chi_phi') + pM('t_brd_chi_phi')
+      const cpKeys = ['s_cpc_chi_phi','s_nd_chi_phi','s_live_chi_phi','t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi']
+      const mtdTotCp = getMTD(w => getHistCp(w))
+      body += wRow('GMV Ads tổng', totPlanGmvM || null, mtdTotGmv, w => getHistGmv(w), w => getPlanGmvW(w) || null)
+      body += wRow('Chi phí tổng', totPlanCpM || null, mtdTotCp, w => getHistCp(w), w => cpKeys.reduce((a, k) => a + pW(k, w), 0) || null)
+      body += dRow('ROAS tổng', totPlanCpM ? totPlanGmvM / totPlanCpM : null, (mtdTotCp ? mtdTotGmv / mtdTotCp : null),
+        w => { const g = getHistGmv(w), c = getHistCp(w); return g !== null && c ? g / c : null },
+        w => { const g = getPlanGmvW(w); const c = cpKeys.reduce((a, k) => a + pW(k, w), 0); return c ? g / c : null }, fmtX)
+      body += `</tbody></table>`
+    }
+
+    /* ── SHOPEE ADS ── */
     if (shopeeChecked) {
-      const c = calcCPC(shopeeData)
-      const cn = calcND(shopeeData)
-      const cl = calcLive(shopeeData)
-      const sPlan = shopeePlan
+      body += `<p style="margin:10px 0 2px"><strong>━━━ SHOPEE ADS ━━━</strong></p>`
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+      body += wRow('Doanh thu Ads (GMV)', sPlanGmvM || null,
+        getMTD(w => (hRow('s_cpc_doanh_so', w) || 0) + (hRow('s_nd_gmv', w) || 0) + (hRow('s_live_gmv', w) || 0)),
+        w => (hRow('s_cpc_doanh_so', w) || 0) + (hRow('s_nd_gmv', w) || 0) + (hRow('s_live_gmv', w) || 0),
+        w => (pW('s_cpc_doanh_so', w) + pW('s_nd_gmv', w) + pW('s_live_gmv', w)) || null)
+      body += wRow('Chi phí Ads tổng', (pM('s_cpc_chi_phi') + pM('s_nd_chi_phi') + pM('s_live_chi_phi')) || null,
+        getMTD(w => (hRow('s_cpc_chi_phi', w) || 0) + (hRow('s_nd_chi_phi', w) || 0) + (hRow('s_live_chi_phi', w) || 0)),
+        w => (hRow('s_cpc_chi_phi', w) || 0) + (hRow('s_nd_chi_phi', w) || 0) + (hRow('s_live_chi_phi', w) || 0),
+        w => (pW('s_cpc_chi_phi', w) + pW('s_nd_chi_phi', w) + pW('s_live_chi_phi', w)) || null)
+      body += dRow('ROAS Ads tổng', ratioPM('s_cpc_doanh_so','s_cpc_chi_phi'), ratioMTD('s_cpc_doanh_so','s_cpc_chi_phi'),
+        w => ratioW('s_cpc_doanh_so','s_cpc_chi_phi',w), w => ratioPW('s_cpc_doanh_so','s_cpc_chi_phi',w), fmtX)
+      body += `</tbody></table>`
 
-      const rows: Array<{ name: string; val: string; planKey: string }> = [
-        // CPC
-        { name: '[ CPC ] Doanh số Ads', val: fmtNum(shopeeData.s_cpc_doanh_so,'₫'), planKey: 's_cpc_doanh_so' },
-        { name: '[ CPC ] Chi phí', val: fmtNum(shopeeData.s_cpc_chi_phi,'₫'), planKey: 's_cpc_chi_phi' },
-        { name: '[ CPC ] ROAS', val: fmtNum(c.roas,'x'), planKey: '' },
-        { name: '[ CPC ] Lượt xem', val: fmtNum(shopeeData.s_cpc_luot_xem,''), planKey: 's_cpc_luot_xem' },
-        { name: '[ CPC ] Lượt click', val: fmtNum(shopeeData.s_cpc_luot_click,''), planKey: 's_cpc_luot_click' },
-        { name: '[ CPC ] CPC', val: fmtNum(c.cpc,'₫'), planKey: '' },
-        { name: '[ CPC ] CTR', val: fmtNum(c.ctr,'%'), planKey: '' },
-        { name: '[ CPC ] CR', val: fmtNum(c.cr,'%'), planKey: '' },
-        { name: '[ CPC ] Đơn hàng', val: fmtNum(shopeeData.s_cpc_don_hang,''), planKey: 's_cpc_don_hang' },
-        { name: '[ CPC ] AOV', val: fmtNum(c.aov,'₫'), planKey: '' },
-        // ND
-        { name: '[ ND ] GMV', val: fmtNum(shopeeData.s_nd_gmv,'₫'), planKey: 's_nd_gmv' },
-        { name: '[ ND ] Chi phí', val: fmtNum(shopeeData.s_nd_chi_phi,'₫'), planKey: 's_nd_chi_phi' },
-        { name: '[ ND ] ROAS', val: fmtNum(cn.roas,'x'), planKey: '' },
-        { name: '[ ND ] Lượt xem', val: fmtNum(shopeeData.s_nd_luot_xem,''), planKey: '' },
-        { name: '[ ND ] CPC', val: fmtNum(cn.cpc,'₫'), planKey: '' },
-        { name: '[ ND ] CTR', val: fmtNum(cn.ctr,'%'), planKey: '' },
-        // Live
-        { name: '[ Live ] GMV', val: fmtNum(shopeeData.s_live_gmv,'₫'), planKey: 's_live_gmv' },
-        { name: '[ Live ] Chi phí', val: fmtNum(shopeeData.s_live_chi_phi,'₫'), planKey: 's_live_chi_phi' },
-        { name: '[ Live ] ROAS', val: fmtNum(cl.roas,'x'), planKey: '' },
-      ]
+      // Ads CPC
+      body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads CPC</p>`
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+      body += wRow('Doanh số Ads', pM('s_cpc_doanh_so') || null, getMTD(w => hRow('s_cpc_doanh_so', w) || 0), w => hRow('s_cpc_doanh_so', w), w => pW('s_cpc_doanh_so', w) || null)
+      body += wRow('Chi Phí Dịch vụ hiển thị', pM('s_cpc_chi_phi') || null, getMTD(w => hRow('s_cpc_chi_phi', w) || 0), w => hRow('s_cpc_chi_phi', w), w => pW('s_cpc_chi_phi', w) || null)
+      body += dRow('ROAS', ratioPM('s_cpc_doanh_so','s_cpc_chi_phi'), ratioMTD('s_cpc_doanh_so','s_cpc_chi_phi'), w => ratioW('s_cpc_doanh_so','s_cpc_chi_phi',w), w => ratioPW('s_cpc_doanh_so','s_cpc_chi_phi',w), fmtX)
+      body += dRow('CPC = Chi phí / Lượt click', ratioPM('s_cpc_chi_phi','s_cpc_luot_click'), ratioMTD('s_cpc_chi_phi','s_cpc_luot_click'), w => ratioW('s_cpc_chi_phi','s_cpc_luot_click',w), w => ratioPW('s_cpc_chi_phi','s_cpc_luot_click',w), fmtCPC)
+      body += dRow('CTR (%)', ratioPM('s_cpc_luot_click','s_cpc_luot_xem') !== null ? (ratioPM('s_cpc_luot_click','s_cpc_luot_xem') as number) * 100 : null, ratioMTD('s_cpc_luot_click','s_cpc_luot_xem') !== null ? (ratioMTD('s_cpc_luot_click','s_cpc_luot_xem') as number) * 100 : null, w => { const v = ratioW('s_cpc_luot_click','s_cpc_luot_xem',w); return v !== null ? v * 100 : null }, w => { const v = ratioPW('s_cpc_luot_click','s_cpc_luot_xem',w); return v !== null ? v * 100 : null }, fmtPct)
+      body += dRow('CR = Đơn hàng / Lượt click*100 (%)', ratioPM('s_cpc_don_hang','s_cpc_luot_click') !== null ? (ratioPM('s_cpc_don_hang','s_cpc_luot_click') as number) * 100 : null, ratioMTD('s_cpc_don_hang','s_cpc_luot_click') !== null ? (ratioMTD('s_cpc_don_hang','s_cpc_luot_click') as number) * 100 : null, w => { const v = ratioW('s_cpc_don_hang','s_cpc_luot_click',w); return v !== null ? v * 100 : null }, w => { const v = ratioPW('s_cpc_don_hang','s_cpc_luot_click',w); return v !== null ? v * 100 : null }, fmtPct)
+      body += wRow('Số lượt xem', pM('s_cpc_luot_xem') || null, getMTD(w => hRow('s_cpc_luot_xem', w) || 0), w => hRow('s_cpc_luot_xem', w), w => pW('s_cpc_luot_xem', w) || null, fmtN)
+      body += wRow('Số lượt click', pM('s_cpc_luot_click') || null, getMTD(w => hRow('s_cpc_luot_click', w) || 0), w => hRow('s_cpc_luot_click', w), w => pW('s_cpc_luot_click', w) || null, fmtN)
+      body += wRow('Số đơn hàng', pM('s_cpc_don_hang') || null, getMTD(w => hRow('s_cpc_don_hang', w) || 0), w => hRow('s_cpc_don_hang', w), w => pW('s_cpc_don_hang', w) || null, fmtN)
+      body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('s_cpc_doanh_so','s_cpc_don_hang'), ratioMTD('s_cpc_doanh_so','s_cpc_don_hang'), w => ratioW('s_cpc_doanh_so','s_cpc_don_hang',w), w => ratioPW('s_cpc_doanh_so','s_cpc_don_hang',w), fmtMoney)
+      body += `</tbody></table>`
 
-      html += `<p><strong>— SHOPEE ADS —</strong></p>`
-      html += `<table style="border-collapse:collapse;width:100%;font-size:12px;margin:6px 0 16px">`
-      html += `<tr>${thL('Metric')}${th('Actual W')}${th('Plan W')}${th('% Plan')}</tr>`
-      rows.forEach(row => {
-        const planV = sPlan && row.planKey ? (sPlan[row.planKey]?.[wk] || 0) : 0
-        const pVal = planV ? pct(parseFloat(row.val.replace(/[^\d.-]/g,'')), planV) : null
-        html += `<tr>${tdL(row.name)}${tdS(row.val)}${tdS(planV ? planV.toLocaleString('vi-VN') : '—')}${tdS(pVal !== null ? pVal+'%' : '—', pctStyle(pVal))}</tr>`
-      })
-      html += `</table>`
+      if (hasSectionData(['s_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click'])) {
+        body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads nhận diện thương hiệu</p>`
+        body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+        body += wRow('Doanh thu Ads (GMV)', pM('s_nd_gmv') || null, getMTD(w => hRow('s_nd_gmv', w) || 0), w => hRow('s_nd_gmv', w), w => pW('s_nd_gmv', w) || null)
+        body += wRow('Chi phí ads', pM('s_nd_chi_phi') || null, getMTD(w => hRow('s_nd_chi_phi', w) || 0), w => hRow('s_nd_chi_phi', w), w => pW('s_nd_chi_phi', w) || null)
+        body += dRow('ROAS ads', ratioPM('s_nd_gmv','s_nd_chi_phi'), ratioMTD('s_nd_gmv','s_nd_chi_phi'), w => ratioW('s_nd_gmv','s_nd_chi_phi',w), w => ratioPW('s_nd_gmv','s_nd_chi_phi',w), fmtX)
+        body += dRow('CTR (%)', ratioPM('s_nd_luot_click','s_nd_luot_xem') !== null ? (ratioPM('s_nd_luot_click','s_nd_luot_xem') as number) * 100 : null, ratioMTD('s_nd_luot_click','s_nd_luot_xem') !== null ? (ratioMTD('s_nd_luot_click','s_nd_luot_xem') as number) * 100 : null, w => { const v = ratioW('s_nd_luot_click','s_nd_luot_xem',w); return v !== null ? v * 100 : null }, w => { const v = ratioPW('s_nd_luot_click','s_nd_luot_xem',w); return v !== null ? v * 100 : null }, fmtPct)
+        body += wRow('Số lượt xem', pM('s_nd_luot_xem') || null, getMTD(w => hRow('s_nd_luot_xem', w) || 0), w => hRow('s_nd_luot_xem', w), w => pW('s_nd_luot_xem', w) || null, fmtN)
+        body += wRow('Số lượt click', pM('s_nd_luot_click') || null, getMTD(w => hRow('s_nd_luot_click', w) || 0), w => hRow('s_nd_luot_click', w), w => pW('s_nd_luot_click', w) || null, fmtN)
+        body += `</tbody></table>`
+      }
+      if (hasSectionData(['s_live_gmv','s_live_chi_phi','s_live_luot_xem'])) {
+        body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads livestream</p>`
+        body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+        body += wRow('Doanh thu Ads (GMV)', pM('s_live_gmv') || null, getMTD(w => hRow('s_live_gmv', w) || 0), w => hRow('s_live_gmv', w), w => pW('s_live_gmv', w) || null)
+        body += wRow('Chi phí ads', pM('s_live_chi_phi') || null, getMTD(w => hRow('s_live_chi_phi', w) || 0), w => hRow('s_live_chi_phi', w), w => pW('s_live_chi_phi', w) || null)
+        body += dRow('ROAS ads', ratioPM('s_live_gmv','s_live_chi_phi'), ratioMTD('s_live_gmv','s_live_chi_phi'), w => ratioW('s_live_gmv','s_live_chi_phi',w), w => ratioPW('s_live_gmv','s_live_chi_phi',w), fmtX)
+        body += wRow('Lượt xem', pM('s_live_luot_xem') || null, getMTD(w => hRow('s_live_luot_xem', w) || 0), w => hRow('s_live_luot_xem', w), w => pW('s_live_luot_xem', w) || null, fmtN)
+        body += `</tbody></table>`
+      }
     }
 
-    /* ── TikTok table ── */
+    /* ── TIKTOK SHOP ── */
     if (tiktokChecked) {
-      const cp = calcPGM(tiktokData)
-      const cl2 = calcLGM(tiktokData)
-      const cc = calcCon(tiktokData)
-      const cb = calcBrd(tiktokData)
-      const tPlan = tiktokPlan
+      body += `<p style="margin:10px 0 2px"><strong>━━━ TIKTOK SHOP ━━━</strong></p>`
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+      const tCpKeys = ['t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi']
+      const tPlanCpM = tCpKeys.reduce((a, k) => a + pM(k), 0)
+      body += wRow('Doanh thu Ads (GMV)', tPlanGmvM || null,
+        getMTD(w => (hRow('t_pgm_doanh_so', w) || 0) + (hRow('t_lgm_doanhthu', w) || 0)),
+        w => (hRow('t_pgm_doanh_so', w) || 0) + (hRow('t_lgm_doanhthu', w) || 0),
+        w => (pW('t_pgm_doanh_so', w) + pW('t_lgm_doanhthu', w)) || null)
+      body += wRow('Chi phí Ads', tPlanCpM || null,
+        getMTD(w => tCpKeys.reduce((a, k) => a + (hRow(k, w) || 0), 0)),
+        w => tCpKeys.reduce((a, k) => a + (hRow(k, w) || 0), 0),
+        w => tCpKeys.reduce((a, k) => a + pW(k, w), 0) || null)
+      body += dRow('ROI', tPlanCpM ? tPlanGmvM / tPlanCpM : null,
+        (() => { const g = getMTD(w => (hRow('t_pgm_doanh_so', w) || 0) + (hRow('t_lgm_doanhthu', w) || 0)); const c = getMTD(w => tCpKeys.reduce((a,k) => a + (hRow(k, w) || 0), 0)); return c ? g / c : null })(),
+        w => { const g = (hRow('t_pgm_doanh_so', w) || 0) + (hRow('t_lgm_doanhthu', w) || 0); const c = tCpKeys.reduce((a, k) => a + (hRow(k, w) || 0), 0); return c ? g / c : null },
+        w => { const g = pW('t_pgm_doanh_so', w) + pW('t_lgm_doanhthu', w); const c = tCpKeys.reduce((a, k) => a + pW(k, w), 0); return c ? g / c : null }, fmtX)
+      body += `</tbody></table>`
 
-      const rows: Array<{ name: string; val: string; planKey: string }> = [
-        // PGM
-        { name: '[ PGM ] Doanh số', val: fmtNum(tiktokData.t_pgm_doanh_so,'₫'), planKey: 't_pgm_doanh_so' },
-        { name: '[ PGM ] Chi phí', val: fmtNum(tiktokData.t_pgm_chi_phi,'₫'), planKey: 't_pgm_chi_phi' },
-        { name: '[ PGM ] ROAS', val: fmtNum(cp.roas,'x'), planKey: '' },
-        { name: '[ PGM ] Lượt xem', val: fmtNum(tiktokData.t_pgm_luot_xem,''), planKey: '' },
-        { name: '[ PGM ] Lượt click', val: fmtNum(tiktokData.t_pgm_luot_click,''), planKey: '' },
-        { name: '[ PGM ] CPC', val: fmtNum(cp.cpc,'₫'), planKey: '' },
-        { name: '[ PGM ] CTR', val: fmtNum(cp.ctr,'%'), planKey: '' },
-        { name: '[ PGM ] CR', val: fmtNum(cp.cr,'%'), planKey: '' },
-        { name: '[ PGM ] CPM', val: fmtNum(cp.cpm,'₫'), planKey: '' },
-        { name: '[ PGM ] Đơn hàng', val: fmtNum(tiktokData.t_pgm_don_hang,''), planKey: '' },
-        { name: '[ PGM ] AOV', val: fmtNum(cp.aov,'₫'), planKey: '' },
-        // LGM
-        { name: '[ LGM ] Doanh thu Live', val: fmtNum(tiktokData.t_lgm_doanhthu,'₫'), planKey: 't_lgm_doanhthu' },
-        { name: '[ LGM ] Chi phí', val: fmtNum(tiktokData.t_lgm_chi_phi,'₫'), planKey: '' },
-        { name: '[ LGM ] ROI', val: fmtNum(cl2.roi,'x'), planKey: '' },
-        // Con
-        { name: '[ Con ] Người tiếp cận', val: fmtNum(tiktokData.t_con_nguoi,''), planKey: '' },
-        { name: '[ Con ] Chi phí', val: fmtNum(tiktokData.t_con_chi_phi,'₫'), planKey: '' },
-        { name: '[ Con ] CPA', val: fmtNum(cc.cpa,'₫'), planKey: '' },
-        // Brand
-        { name: '[ Brand ] View', val: fmtNum(tiktokData.t_brd_view,''), planKey: '' },
-        { name: '[ Brand ] Follow', val: fmtNum(tiktokData.t_brd_follow,''), planKey: '' },
-        { name: '[ Brand ] Chi phí', val: fmtNum(tiktokData.t_brd_chi_phi,'₫'), planKey: '' },
-        { name: '[ Brand ] CPA/Follow', val: fmtNum(cb.cpa,'₫'), planKey: '' },
-      ]
+      // PGM
+      body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_PGM</p>`
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+      body += wRow('Doanh số Ads', pM('t_pgm_doanh_so') || null, getMTD(w => hRow('t_pgm_doanh_so', w) || 0), w => hRow('t_pgm_doanh_so', w), w => pW('t_pgm_doanh_so', w) || null)
+      body += wRow('Chi Phí Dịch vụ hiển thị', pM('t_pgm_chi_phi') || null, getMTD(w => hRow('t_pgm_chi_phi', w) || 0), w => hRow('t_pgm_chi_phi', w), w => pW('t_pgm_chi_phi', w) || null)
+      body += dRow('ROAS', ratioPM('t_pgm_doanh_so','t_pgm_chi_phi'), ratioMTD('t_pgm_doanh_so','t_pgm_chi_phi'), w => ratioW('t_pgm_doanh_so','t_pgm_chi_phi',w), w => ratioPW('t_pgm_doanh_so','t_pgm_chi_phi',w), fmtX)
+      body += dRow('CPC = Chi phí / Lượt click', ratioPM('t_pgm_chi_phi','t_pgm_luot_click'), ratioMTD('t_pgm_chi_phi','t_pgm_luot_click'), w => ratioW('t_pgm_chi_phi','t_pgm_luot_click',w), w => ratioPW('t_pgm_chi_phi','t_pgm_luot_click',w), fmtCPC)
+      body += dRow('CTR (%)', ratioPM('t_pgm_luot_click','t_pgm_luot_xem') !== null ? (ratioPM('t_pgm_luot_click','t_pgm_luot_xem') as number) * 100 : null, ratioMTD('t_pgm_luot_click','t_pgm_luot_xem') !== null ? (ratioMTD('t_pgm_luot_click','t_pgm_luot_xem') as number) * 100 : null, w => { const v = ratioW('t_pgm_luot_click','t_pgm_luot_xem',w); return v !== null ? v * 100 : null }, w => { const v = ratioPW('t_pgm_luot_click','t_pgm_luot_xem',w); return v !== null ? v * 100 : null }, fmtPct)
+      body += dRow('CR = Đơn hàng / Lượt click*100 (%)', ratioPM('t_pgm_don_hang','t_pgm_luot_click') !== null ? (ratioPM('t_pgm_don_hang','t_pgm_luot_click') as number) * 100 : null, ratioMTD('t_pgm_don_hang','t_pgm_luot_click') !== null ? (ratioMTD('t_pgm_don_hang','t_pgm_luot_click') as number) * 100 : null, w => { const v = ratioW('t_pgm_don_hang','t_pgm_luot_click',w); return v !== null ? v * 100 : null }, w => { const v = ratioPW('t_pgm_don_hang','t_pgm_luot_click',w); return v !== null ? v * 100 : null }, fmtPct)
+      body += dRow('CPM', ratioPM('t_pgm_chi_phi','t_pgm_luot_xem') !== null ? (ratioPM('t_pgm_chi_phi','t_pgm_luot_xem') as number) * 1000 : null, ratioMTD('t_pgm_chi_phi','t_pgm_luot_xem') !== null ? (ratioMTD('t_pgm_chi_phi','t_pgm_luot_xem') as number) * 1000 : null, w => { const v = ratioW('t_pgm_chi_phi','t_pgm_luot_xem',w); return v !== null ? v * 1000 : null }, w => { const v = ratioPW('t_pgm_chi_phi','t_pgm_luot_xem',w); return v !== null ? v * 1000 : null }, fmtMoney)
+      body += wRow('Số lượt xem', pM('t_pgm_luot_xem') || null, getMTD(w => hRow('t_pgm_luot_xem', w) || 0), w => hRow('t_pgm_luot_xem', w), w => pW('t_pgm_luot_xem', w) || null, fmtN)
+      body += wRow('Số lượt click', pM('t_pgm_luot_click') || null, getMTD(w => hRow('t_pgm_luot_click', w) || 0), w => hRow('t_pgm_luot_click', w), w => pW('t_pgm_luot_click', w) || null, fmtN)
+      body += wRow('Số đơn hàng', pM('t_pgm_don_hang') || null, getMTD(w => hRow('t_pgm_don_hang', w) || 0), w => hRow('t_pgm_don_hang', w), w => pW('t_pgm_don_hang', w) || null, fmtN)
+      body += dRow('AOV = Doanh thu / Số đơn hàng', ratioPM('t_pgm_doanh_so','t_pgm_don_hang'), ratioMTD('t_pgm_doanh_so','t_pgm_don_hang'), w => ratioW('t_pgm_doanh_so','t_pgm_don_hang',w), w => ratioPW('t_pgm_doanh_so','t_pgm_don_hang',w), fmtMoney)
+      body += `</tbody></table>`
 
-      html += `<p><strong>— TIKTOK SHOP ADS —</strong></p>`
-      html += `<table style="border-collapse:collapse;width:100%;font-size:12px;margin:6px 0 16px">`
-      html += `<tr>${thL('Metric')}${th('Actual W')}${th('Plan W')}${th('% Plan')}</tr>`
-      rows.forEach(row => {
-        const planV = tPlan && row.planKey ? (tPlan[row.planKey]?.[wk] || 0) : 0
-        const pVal = planV ? pct(parseFloat(row.val.replace(/[^\d.-]/g,'')), planV) : null
-        html += `<tr>${tdL(row.name)}${tdS(row.val)}${tdS(planV ? planV.toLocaleString('vi-VN') : '—')}${tdS(pVal !== null ? pVal+'%' : '—', pctStyle(pVal))}</tr>`
-      })
-      html += `</table>`
+      // LGM
+      body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Ads_LGM</p>`
+      body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+      body += wRow('Doanh thu LGM', pM('t_lgm_doanhthu') || null, getMTD(w => hRow('t_lgm_doanhthu', w) || 0), w => hRow('t_lgm_doanhthu', w), w => pW('t_lgm_doanhthu', w) || null)
+      body += wRow('Chi phí', pM('t_lgm_chi_phi') || null, getMTD(w => hRow('t_lgm_chi_phi', w) || 0), w => hRow('t_lgm_chi_phi', w), w => pW('t_lgm_chi_phi', w) || null)
+      body += dRow('ROI', ratioPM('t_lgm_doanhthu','t_lgm_chi_phi'), ratioMTD('t_lgm_doanhthu','t_lgm_chi_phi'), w => ratioW('t_lgm_doanhthu','t_lgm_chi_phi',w), w => ratioPW('t_lgm_doanhthu','t_lgm_chi_phi',w), fmtX)
+      body += `</tbody></table>`
+
+      if (hasSectionData(['t_con_nguoi','t_con_chi_phi'])) {
+        body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Consideration_Ads</p>`
+        body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+        body += wRow('Consider (Số người nhận biết thương hiệu)', pM('t_con_nguoi') || null, getMTD(w => hRow('t_con_nguoi', w) || 0), w => hRow('t_con_nguoi', w), w => pW('t_con_nguoi', w) || null, fmtN)
+        body += wRow('Chi phí', pM('t_con_chi_phi') || null, getMTD(w => hRow('t_con_chi_phi', w) || 0), w => hRow('t_con_chi_phi', w), w => pW('t_con_chi_phi', w) || null)
+        body += dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w => ratioW('t_con_chi_phi','t_con_nguoi',w), w => ratioPW('t_con_chi_phi','t_con_nguoi',w), fmtMoney)
+        body += `</tbody></table>`
+      }
+      if (hasSectionData(['t_brd_view','t_brd_follow','t_brd_chi_phi'])) {
+        body += `<p style="font-size:13px;font-weight:700;color:#1a2e5c;margin:6px 0 2px">Branding_Ads</p>`
+        body += `<table style="${tblStyle}"><thead>${hdr}</thead><tbody>`
+        body += wRow('View', pM('t_brd_view') || null, getMTD(w => hRow('t_brd_view', w) || 0), w => hRow('t_brd_view', w), w => pW('t_brd_view', w) || null, fmtN)
+        body += wRow('Follow', pM('t_brd_follow') || null, getMTD(w => hRow('t_brd_follow', w) || 0), w => hRow('t_brd_follow', w), w => pW('t_brd_follow', w) || null, fmtN)
+        body += wRow('Chi phí', pM('t_brd_chi_phi') || null, getMTD(w => hRow('t_brd_chi_phi', w) || 0), w => hRow('t_brd_chi_phi', w), w => pW('t_brd_chi_phi', w) || null)
+        body += dRow('CPA', ratioPM('t_brd_chi_phi','t_brd_follow'), ratioMTD('t_brd_chi_phi','t_brd_follow'), w => ratioW('t_brd_chi_phi','t_brd_follow',w), w => ratioPW('t_brd_chi_phi','t_brd_follow',w), fmtMoney)
+        body += `</tbody></table>`
+      }
     }
 
-    /* ── Highlight / Lowlight ── */
-    html += `<hr style="border:1px solid #ccc;margin:12px 0">`
-    html += `<p><strong>HIGHLIGHT &amp; LOWLIGHT</strong></p>`
-    html += `<table style="border-collapse:collapse;width:100%;font-size:12px">`
-    html += `<tr>`
-    html += `<th style="background:#1a5c2e;color:#fff;padding:6px 14px;border:1px solid #999;text-align:left;width:50%">Highlight</th>`
-    html += `<th style="background:#5c1a1a;color:#fff;padding:6px 14px;border:1px solid #999;text-align:left;width:50%">Lowlight</th>`
-    html += `</tr><tr>`
-    html += `<td style="padding:10px 14px;border:1px solid #ccc;vertical-align:top;white-space:pre-wrap">${aiResult.highlight || '1. \n2. '}</td>`
-    html += `<td style="padding:10px 14px;border:1px solid #ccc;vertical-align:top;white-space:pre-wrap">${aiResult.lowlight || '1. \n2. '}</td>`
-    html += `</tr></table>`
+    /* ── HIGHLIGHT / LOWLIGHT ── */
+    const F = `font-family:'Times New Roman',serif`
+    const cmpct = `border-collapse:collapse;width:100%;max-width:860px;${F};font-size:11px;margin:4px 0 10px;table-layout:fixed`
+    const thHL = (c: string) => `padding:5px 10px;border:1px solid #999;background:${c};color:#fff;text-align:center;width:50%;${F};font-size:11px;font-weight:700`
+    const tdHL = `padding:8px 10px;border:1px solid #ccc;vertical-align:top;${F};font-size:11px;line-height:1.5;word-wrap:break-word`
+    body += `<hr style="border:none;border-top:1.5px solid #1a2e5c;margin:12px 0 8px">`
+    body += `<table style="${cmpct}"><thead><tr><th style="${thHL('#1a5c2e')}">Highlight</th><th style="${thHL('#5c1a1a')}">Lowlight</th></tr></thead><tbody><tr><td style="${tdHL}">${(aiResult.highlight || '—').replace(/\n/g, '<br>')}</td><td style="${tdHL}">${(aiResult.lowlight || '—').replace(/\n/g, '<br>')}</td></tr></tbody></table>`
 
-    /* ── DARA Analysis ── */
-    html += `<hr style="border:1px solid #ccc;margin:12px 0">`
-    html += `<p><strong>NHẬN XÉT &amp; KẾ HOẠCH — FRAMEWORK DARA</strong></p>`
-
-    if (shopeeChecked) {
-      html += `<p><strong>SHOPEE</strong></p>`
-      html += `<p><strong>Thực trạng:</strong><br>${(aiResult.shopee_thuc_trang||'').replace(/\n/g,'<br>')}</p>`
-      html += `<p><strong>Vấn đề &amp; Root Cause:</strong><br>${(aiResult.shopee_van_de||'').replace(/\n/g,'<br>')}</p>`
-      html += `<p><strong>Giải pháp &amp; Plan tuần tới:</strong><br>${(aiResult.shopee_giai_phap||'').replace(/\n/g,'<br>')}</p>`
-    }
-    if (tiktokChecked) {
-      html += `<p><strong>TIKTOK SHOP</strong></p>`
-      html += `<p><strong>Thực trạng:</strong><br>${(aiResult.tiktok_thuc_trang||'').replace(/\n/g,'<br>')}</p>`
-      html += `<p><strong>Vấn đề &amp; Root Cause:</strong><br>${(aiResult.tiktok_van_de||'').replace(/\n/g,'<br>')}</p>`
-      html += `<p><strong>Giải pháp &amp; Plan tuần tới:</strong><br>${(aiResult.tiktok_giai_phap||'').replace(/\n/g,'<br>')}</p>`
-    }
-
-    html += `<hr style="border:1px solid #ccc;margin:12px 0">`
-    html += `<p style="color:#555;font-size:12px">Reported by: ${user?.name || ''} | ${fmtDate(new Date())}</p>`
-    html += `</div>`
-    return html
+    /* ── Brand / Sàn DARA ── */
+    const nl = (v: string) => (v || '').replace(/\n/g, '<br>')
+    const thSummary = (w: string) => `padding:5px 8px;border:1px solid #999;background:#1a2e5c;color:#fff;${F};font-size:11px;text-align:center;width:${w}`
+    const tdSm = (extra = '') => `padding:6px 8px;border:1px solid #ccc;${F};font-size:11px;vertical-align:top;line-height:1.55;word-wrap:break-word;${extra}`
+    const platformRows = [shopeeChecked && 'shopee', tiktokChecked && 'tiktok'].filter(Boolean) as Array<'shopee'|'tiktok'>
+    const rc = platformRows.length
+    body += `<hr style="border:none;border-top:1px solid #ccc;margin:10px 0 8px">`
+    body += `<table style="${cmpct}"><thead><tr><th style="${thSummary('7%')}">Brand</th><th style="${thSummary('6%')}">Sàn</th><th style="${thSummary('6%')}">Hạng mục</th><th style="${thSummary('27%')}">Thực tế</th><th style="${thSummary('27%')}">Vấn đề</th><th style="${thSummary('27%')}">Giải pháp/Kế hoạch tới</th></tr></thead><tbody>`
+    platformRows.forEach((p, i) => {
+      const sanLabel = p === 'shopee' ? 'Shopee' : 'TikTok'
+      body += `<tr>`
+      if (i === 0) body += `<td rowspan="${rc}" style="${tdSm('text-align:center;font-weight:700;vertical-align:middle')}">${selectedBrand}</td>`
+      body += `<td style="${tdSm('text-align:center;font-weight:600')}">${sanLabel}</td>`
+      body += `<td style="${tdSm('text-align:center')}">Ads</td>`
+      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_thuc_trang` as keyof AIResult] as string)}</td>`
+      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_van_de` as keyof AIResult] as string)}</td>`
+      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_giai_phap` as keyof AIResult] as string)}</td>`
+      body += `</tr>`
+    })
+    body += `</tbody></table>`
+    body += `<hr style="border:1px solid #ccc;margin:10px 0">`
+    body += `<p style="color:#555;font-size:14px">Reported by: ${user?.name || ''} | ${fmtDate(new Date())}</p>`
+    body += `</div>`
+    return body
   }
 
   /* ── Copy HTML ── */
@@ -652,18 +892,22 @@ export default function ReportPage() {
 
   /* ── Plan modal ── */
   function openPlanModal() {
-    // Pre-fill existing plan values
+    // Pre-fill existing plan values (raw + numeric)
     const inputs: Record<string, string> = {}
+    const raws: Record<string, string> = {}
     const fillPlan = (plat: string, plan: PlanData | null) => {
       planMetricKeys.forEach(mk => {
-        ['w1','w2','w3','w4','w5','month'].forEach(w => {
-          inputs[`${plat}_${mk}_${w}`] = plan ? String(plan[mk]?.[w as 'w1'] || '') : ''
+        ;['w1','w2','w3','w4','w5','month'].forEach(w => {
+          const v = plan?.[mk]?.[w as 'w1'] || 0
+          inputs[`${plat}_${mk}_${w}`] = String(v || '')
+          raws[`${plat}_${mk}_${w}`] = v ? Math.round(v).toLocaleString('vi-VN') : ''
         })
       })
     }
     if (shopeeChecked) fillPlan('shopee', shopeePlan)
     if (tiktokChecked) fillPlan('tiktok', tiktokPlan)
     setPlanInputs(inputs)
+    setPlanRawInputs(raws)
     setPlanModal(true)
   }
 
@@ -675,7 +919,8 @@ export default function ReportPage() {
         planMetricKeys.forEach(mk => {
           plan_data[mk] = {} as PlanData[string]
           ;(['w1','w2','w3','w4','w5','month'] as const).forEach(w => {
-            plan_data[mk][w] = parseFloat(planInputs[`${plat}_${mk}_${w}`] || '0') || 0
+            const raw = planRawInputs[`${plat}_${mk}_${w}`] ?? planInputs[`${plat}_${mk}_${w}`] ?? ''
+            plan_data[mk][w] = parseVN(raw)
           })
         })
         await fetch('/api/report', {
@@ -874,6 +1119,113 @@ export default function ReportPage() {
 
   const wk = weekInfo ? `w${weekInfo.weekNum}` as 'w1'|'w2'|'w3'|'w4'|'w5'|'month' : 'w1'
 
+  /* ── Actual input change handler (formats VN, supports math expr on blur) ── */
+  function setActual(key: string, raw: string) {
+    setRawInputs(prev => ({ ...prev, [key]: raw }))
+    // Live formatting: strip non-digits and re-format
+    if (/[+\-*/]/.test(raw)) return // expression mode → don't reformat while typing
+    const num = parseInt(raw.replace(/[^\d]/g, ''), 10)
+    const formatted = isNaN(num) ? '' : num.toLocaleString('vi-VN')
+    setRawInputs(prev => ({ ...prev, [key]: formatted }))
+    const v = isNaN(num) ? 0 : num
+    if (key.startsWith('s_')) setShopeeData(prev => ({ ...prev, [key]: v }))
+    else if (key.startsWith('t_')) setTiktokData(prev => ({ ...prev, [key]: v }))
+  }
+  function blurActual(key: string) {
+    const cur = rawInputs[key] || ''
+    if (!cur) return
+    const evald = evalExpr(cur)
+    if (!isNaN(evald)) {
+      const formatted = evald ? evald.toLocaleString('vi-VN') : ''
+      setRawInputs(prev => ({ ...prev, [key]: formatted }))
+      if (key.startsWith('s_')) setShopeeData(prev => ({ ...prev, [key]: evald }))
+      else if (key.startsWith('t_')) setTiktokData(prev => ({ ...prev, [key]: evald }))
+    }
+  }
+
+  /* ── Handle paste from sheet: \t for horizontal, \n for vertical ── */
+  function handleActualPaste(e: React.ClipboardEvent<HTMLInputElement>, fieldKey: string) {
+    const text = e.clipboardData.getData('text')
+    const lines = text.split(/\r?\n/).filter(l => l !== '')
+    const grid = lines.map(l => l.split('\t'))
+    if (grid.length === 1 && grid[0].length === 1) return // single cell — let browser handle
+    e.preventDefault()
+    const startIdx = ACTUAL_KEYS_ORDER.indexOf(fieldKey)
+    if (startIdx === -1) return
+    const newRaw: Record<string,string> = { ...rawInputs }
+    const newShopee: Record<string, number> = { ...shopeeData }
+    const newTiktok: Record<string, number> = { ...tiktokData }
+    grid.forEach((cols, dr) => {
+      const key = ACTUAL_KEYS_ORDER[startIdx + dr]
+      if (!key) return
+      const raw = (cols[0] || '').trim().replace(/[^\d]/g, '')
+      const v = parseInt(raw, 10) || 0
+      newRaw[key] = v ? v.toLocaleString('vi-VN') : ''
+      if (key.startsWith('s_') && key in newShopee) newShopee[key] = v
+      else if (key.startsWith('t_') && key in newTiktok) newTiktok[key] = v
+    })
+    setRawInputs(newRaw)
+    setShopeeData(newShopee as ShopeeData)
+    setTiktokData(newTiktok as TiktokData)
+  }
+
+  /* ── Plan modal helpers ── */
+  function planKeyCell(plat: string, mk: string, w: string) { return `${plat}_${mk}_${w}` }
+  function setPlanRaw(plat: string, mk: string, w: string, raw: string) {
+    const key = planKeyCell(plat, mk, w)
+    if (/[+\-*/]/.test(raw)) {
+      setPlanRawInputs(prev => ({ ...prev, [key]: raw }))
+      setPlanInputs(prev => ({ ...prev, [key]: raw }))
+      return
+    }
+    const num = parseInt(raw.replace(/[^\d]/g, ''), 10)
+    const formatted = isNaN(num) ? '' : num.toLocaleString('vi-VN')
+    setPlanRawInputs(prev => ({ ...prev, [key]: formatted }))
+    setPlanInputs(prev => ({ ...prev, [key]: String(isNaN(num) ? 0 : num) }))
+  }
+  function blurPlanRaw(plat: string, mk: string, w: string) {
+    const key = planKeyCell(plat, mk, w)
+    const cur = planRawInputs[key] || ''
+    if (!cur) return
+    const evald = evalExpr(cur)
+    if (!isNaN(evald)) {
+      setPlanRawInputs(prev => ({ ...prev, [key]: evald ? evald.toLocaleString('vi-VN') : '' }))
+      setPlanInputs(prev => ({ ...prev, [key]: String(evald) }))
+    }
+  }
+  /* Sum W1..W5 for a metric to show alongside Month */
+  function sumWeeksForMetric(plat: string, mk: string): number {
+    let s = 0
+    ;(['w1','w2','w3','w4','w5'] as const).forEach(w => {
+      const key = planKeyCell(plat, mk, w)
+      s += parseVN(planRawInputs[key] ?? planInputs[key] ?? '')
+    })
+    return s
+  }
+  /* Distribute month value evenly across actual weeks of the month */
+  function distributeMonthEven(plat: string, mk: string) {
+    if (!weekInfo) return
+    const monthKey = planKeyCell(plat, mk, 'month')
+    const monthV = parseVN(planRawInputs[monthKey] ?? planInputs[monthKey] ?? '')
+    if (!monthV) { showToast('Nhập tháng trước', 'error'); return }
+    const totalWeeks = getWeeksInMonth(weekInfo.month, weekInfo.year)
+    const per = Math.round(monthV / totalWeeks)
+    const newRaw = { ...planRawInputs }
+    const newInp = { ...planInputs }
+    for (let i = 1; i <= 5; i++) {
+      const key = planKeyCell(plat, mk, `w${i}`)
+      if (i <= totalWeeks) {
+        newRaw[key] = per ? per.toLocaleString('vi-VN') : ''
+        newInp[key] = String(per)
+      } else {
+        newRaw[key] = ''
+        newInp[key] = '0'
+      }
+    }
+    setPlanRawInputs(newRaw)
+    setPlanInputs(newInp)
+  }
+
   if (!user) return null
 
   /* ════════════════════════
@@ -1011,8 +1363,8 @@ export default function ReportPage() {
       {/* ══════════════ STEP 2 ══════════════ */}
       {step === 2 && weekInfo && (
         <div>
-          {/* Plan warning */}
-          {!hasPlan && (
+          {/* Plan warning / edit */}
+          {!hasPlan ? (
             <div className="plan-warn">
               <span style={{ fontSize:'1.2rem' }}>⚠️</span>
               <div style={{ flex:1 }}>
@@ -1020,6 +1372,15 @@ export default function ReportPage() {
                 <span style={{ display:'block' }}>Nhập plan để xem % Plan theo tuần.</span>
               </div>
               <button className="btn-set-plan" onClick={openPlanModal}>Set Plan</button>
+            </div>
+          ) : (
+            <div className="plan-warn" style={{ background:'#ECFDF5', borderColor:'#A7F3D0' }}>
+              <span style={{ fontSize:'1.2rem' }}>✓</span>
+              <div style={{ flex:1 }}>
+                <strong>Đã có Plan tháng {weekInfo.month}/{weekInfo.year}</strong>
+                <span style={{ display:'block', fontSize:'.82rem', color:'var(--muted)' }}>Click &quot;Sửa Plan&quot; nếu cần điều chỉnh.</span>
+              </div>
+              <button className="btn-s" onClick={openPlanModal}>Sửa Plan</button>
             </div>
           )}
 
@@ -1054,8 +1415,10 @@ export default function ReportPage() {
                       return (
                         <tr key={key}>
                           <td className="mn">{label}</td>
-                          <td><input className="m-inp" type="number" value={actual || ''} placeholder="0"
-                            onChange={e => setShopeeData(prev => ({ ...prev, [key]: parseFloat(e.target.value)||0 }))} /></td>
+                          <td><input className="m-inp" type="text" inputMode="numeric" value={rawInputs[key] ?? (actual ? actual.toLocaleString('vi-VN') : '')} placeholder="0"
+                            onChange={e => setActual(key, e.target.value)}
+                            onBlur={() => blurActual(key)}
+                            onPaste={e => handleActualPaste(e, key)} /></td>
                           <td className="plan-v">{planV ? planV.toLocaleString('vi-VN') : '—'}</td>
                           <td><span className={`pct ${pctClass(pVal)}`}>{pVal !== null ? pVal+'%' : '—'}</span></td>
                         </tr>
@@ -1105,8 +1468,10 @@ export default function ReportPage() {
                       return (
                         <tr key={key}>
                           <td className="mn">{label}</td>
-                          <td><input className="m-inp" type="number" value={actual || ''} placeholder="0"
-                            onChange={e => setShopeeData(prev => ({ ...prev, [key]: parseFloat(e.target.value)||0 }))} /></td>
+                          <td><input className="m-inp" type="text" inputMode="numeric" value={rawInputs[key] ?? (actual ? actual.toLocaleString('vi-VN') : '')} placeholder="0"
+                            onChange={e => setActual(key, e.target.value)}
+                            onBlur={() => blurActual(key)}
+                            onPaste={e => handleActualPaste(e, key)} /></td>
                           <td className="plan-v">{planV ? planV.toLocaleString('vi-VN') : '—'}</td>
                           <td><span className={`pct ${pctClass(pVal)}`}>{pVal !== null ? pVal+'%' : '—'}</span></td>
                         </tr>
@@ -1138,8 +1503,10 @@ export default function ReportPage() {
                       return (
                         <tr key={key}>
                           <td className="mn">{label}</td>
-                          <td><input className="m-inp" type="number" value={actual || ''} placeholder="0"
-                            onChange={e => setShopeeData(prev => ({ ...prev, [key]: parseFloat(e.target.value)||0 }))} /></td>
+                          <td><input className="m-inp" type="text" inputMode="numeric" value={rawInputs[key] ?? (actual ? actual.toLocaleString('vi-VN') : '')} placeholder="0"
+                            onChange={e => setActual(key, e.target.value)}
+                            onBlur={() => blurActual(key)}
+                            onPaste={e => handleActualPaste(e, key)} /></td>
                           <td className="plan-v">{planV ? planV.toLocaleString('vi-VN') : '—'}</td>
                           <td><span className={`pct ${pctClass(pVal)}`}>{pVal !== null ? pVal+'%' : '—'}</span></td>
                         </tr>
@@ -1201,8 +1568,10 @@ export default function ReportPage() {
                       return (
                         <tr key={key}>
                           <td className="mn">{label}</td>
-                          <td><input className="m-inp" type="number" value={actual || ''} placeholder="0"
-                            onChange={e => setTiktokData(prev => ({ ...prev, [key]: parseFloat(e.target.value)||0 }))} /></td>
+                          <td><input className="m-inp" type="text" inputMode="numeric" value={rawInputs[key] ?? (actual ? actual.toLocaleString('vi-VN') : '')} placeholder="0"
+                            onChange={e => setActual(key, e.target.value)}
+                            onBlur={() => blurActual(key)}
+                            onPaste={e => handleActualPaste(e, key)} /></td>
                           <td className="plan-v">{planV ? planV.toLocaleString('vi-VN') : '—'}</td>
                           <td><span className={`pct ${pctClass(pVal)}`}>{pVal !== null ? pVal+'%' : '—'}</span></td>
                         </tr>
@@ -1236,8 +1605,10 @@ export default function ReportPage() {
                       return (
                         <tr key={key}>
                           <td className="mn">{label}</td>
-                          <td><input className="m-inp" type="number" value={actual || ''} placeholder="0"
-                            onChange={e => setTiktokData(prev => ({ ...prev, [key]: parseFloat(e.target.value)||0 }))} /></td>
+                          <td><input className="m-inp" type="text" inputMode="numeric" value={rawInputs[key] ?? (actual ? actual.toLocaleString('vi-VN') : '')} placeholder="0"
+                            onChange={e => setActual(key, e.target.value)}
+                            onBlur={() => blurActual(key)}
+                            onPaste={e => handleActualPaste(e, key)} /></td>
                           <td className="plan-v">{planV ? planV.toLocaleString('vi-VN') : '—'}</td>
                           <td><span className={`pct ${pctClass(pVal)}`}>{pVal !== null ? pVal+'%' : '—'}</span></td>
                         </tr>
@@ -1266,8 +1637,10 @@ export default function ReportPage() {
                       return (
                         <tr key={key}>
                           <td className="mn">{label}</td>
-                          <td><input className="m-inp" type="number" value={actual || ''} placeholder="0"
-                            onChange={e => setTiktokData(prev => ({ ...prev, [key]: parseFloat(e.target.value)||0 }))} /></td>
+                          <td><input className="m-inp" type="text" inputMode="numeric" value={rawInputs[key] ?? (actual ? actual.toLocaleString('vi-VN') : '')} placeholder="0"
+                            onChange={e => setActual(key, e.target.value)}
+                            onBlur={() => blurActual(key)}
+                            onPaste={e => handleActualPaste(e, key)} /></td>
                           <td className="plan-v">{planV ? planV.toLocaleString('vi-VN') : '—'}</td>
                           <td><span className={`pct ${pctClass(pVal)}`}>{pVal !== null ? pVal+'%' : '—'}</span></td>
                         </tr>
@@ -1297,8 +1670,10 @@ export default function ReportPage() {
                       return (
                         <tr key={key}>
                           <td className="mn">{label}</td>
-                          <td><input className="m-inp" type="number" value={actual || ''} placeholder="0"
-                            onChange={e => setTiktokData(prev => ({ ...prev, [key]: parseFloat(e.target.value)||0 }))} /></td>
+                          <td><input className="m-inp" type="text" inputMode="numeric" value={rawInputs[key] ?? (actual ? actual.toLocaleString('vi-VN') : '')} placeholder="0"
+                            onChange={e => setActual(key, e.target.value)}
+                            onBlur={() => blurActual(key)}
+                            onPaste={e => handleActualPaste(e, key)} /></td>
                           <td className="plan-v">{planV ? planV.toLocaleString('vi-VN') : '—'}</td>
                           <td><span className={`pct ${pctClass(pVal)}`}>{pVal !== null ? pVal+'%' : '—'}</span></td>
                         </tr>
@@ -1557,38 +1932,40 @@ export default function ReportPage() {
                 <div key={h} className="pg-head">{h}</div>
               ))}
             </div>
-            {/* Shopee section */}
-            {shopeeChecked && (
-              <>
-                <div className="pg-section" style={{ gridColumn:'1/-1', marginBottom:8 }}>Shopee</div>
-                {activePlanKeys.filter(k => k.startsWith('s_')).map(mk => (
-                  <div key={mk} className="pg6" style={{ marginBottom:4 }}>
-                    <div className="pg-lbl" style={{ fontSize:'.78rem' }}>{planMetricLabels[mk] || mk}</div>
-                    {(['w1','w2','w3','w4','w5','month'] as const).map(w => (
-                      <input key={w} className="pg-inp" type="number" placeholder="0"
-                        value={planInputs[`shopee_${mk}_${w}`] || ''}
-                        onChange={e => setPlanInputs(prev => ({ ...prev, [`shopee_${mk}_${w}`]: e.target.value }))} />
-                    ))}
-                  </div>
-                ))}
-              </>
-            )}
-            {/* TikTok section */}
-            {tiktokChecked && (
-              <>
-                <div className="pg-section" style={{ gridColumn:'1/-1', marginBottom:8, marginTop:16 }}>TikTok Shop</div>
-                {activePlanKeys.filter(k => k.startsWith('t_')).map(mk => (
-                  <div key={mk} className="pg6" style={{ marginBottom:4 }}>
-                    <div className="pg-lbl" style={{ fontSize:'.78rem' }}>{planMetricLabels[mk] || mk}</div>
-                    {(['w1','w2','w3','w4','w5','month'] as const).map(w => (
-                      <input key={w} className="pg-inp" type="number" placeholder="0"
-                        value={planInputs[`tiktok_${mk}_${w}`] || ''}
-                        onChange={e => setPlanInputs(prev => ({ ...prev, [`tiktok_${mk}_${w}`]: e.target.value }))} />
-                    ))}
-                  </div>
-                ))}
-              </>
-            )}
+            {(['shopee','tiktok'] as const).map(plat => {
+              if (plat === 'shopee' && !shopeeChecked) return null
+              if (plat === 'tiktok' && !tiktokChecked) return null
+              return (
+                <div key={plat}>
+                  <div className="pg-section" style={{ gridColumn:'1/-1', marginBottom:8, marginTop: plat === 'tiktok' ? 16 : 0 }}>{plat === 'shopee' ? 'Shopee' : 'TikTok Shop'}</div>
+                  {activePlanKeys.filter(k => k.startsWith(plat === 'shopee' ? 's_' : 't_')).map(mk => {
+                    const monthV = parseVN(planRawInputs[`${plat}_${mk}_month`] ?? planInputs[`${plat}_${mk}_month`] ?? '')
+                    const sumW = sumWeeksForMetric(plat, mk)
+                    const diff = monthV - sumW
+                    return (
+                      <div key={mk} style={{ marginBottom:6 }}>
+                        <div className="pg6">
+                          <div className="pg-lbl" style={{ fontSize:'.78rem' }}>{planMetricLabels[mk] || mk}</div>
+                          {(['w1','w2','w3','w4','w5','month'] as const).map(w => (
+                            <input key={w} className="pg-inp" type="text" inputMode="numeric" placeholder="0"
+                              value={planRawInputs[`${plat}_${mk}_${w}`] ?? ''}
+                              onChange={e => setPlanRaw(plat, mk, w, e.target.value)}
+                              onBlur={() => blurPlanRaw(plat, mk, w)} />
+                          ))}
+                        </div>
+                        {(monthV > 0 || sumW > 0) && (
+                          <div style={{ display:'flex', gap:8, alignItems:'center', fontSize:'.72rem', color: Math.abs(diff) < monthV * 0.02 ? '#059669' : '#D97706', paddingLeft: 4, marginTop: 2 }}>
+                            <span>Tổng W: <strong>{sumW.toLocaleString('vi-VN')}</strong> / Tháng: <strong>{monthV.toLocaleString('vi-VN')}</strong></span>
+                            {diff !== 0 && monthV > 0 && <span style={{ color:'#9CA3AF' }}>(lệch {diff.toLocaleString('vi-VN')})</span>}
+                            <button type="button" className="btn-s" style={{ padding:'2px 8px', fontSize:'.7rem' }} onClick={() => distributeMonthEven(plat, mk)}>Chia đều theo W</button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
           <div className="mo-foot">
             <button className="btn-s" onClick={() => setPlanModal(false)}>Hủy</button>
