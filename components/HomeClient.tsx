@@ -33,21 +33,26 @@ interface Props {
 }
 
 const TICKER_DEFAULT = [
-  '356B NMV', '100+ Brands', '>7x ROAS', '12 Operators',
-  'TikTok Shop', 'Shopee', 'Meta', 'Google', 'UpBase Vietnam',
+  { val: '323B',  lbl: 'GMV ADS 2025',      sub: 'Tổng GMV có Ads đóng góp' },
+  { val: '356B',  lbl: 'NMV TOTAL 2025',    sub: '57% NMV toàn UpBase' },
+  { val: '>7x',   lbl: 'ROAS TRUNG BÌNH',   sub: 'TikTok ~6 | Shopee ~9' },
+  { val: '62B',   lbl: 'BUDGET MANAGED',    sub: 'TikTok · Shopee · Meta · GG' },
+  { val: '12',    lbl: 'GROWTH OPERATORS',  sub: 'Media Omni team' },
+  { val: '100+',  lbl: 'BRANDS & SHOPS',    sub: 'Đang vận hành' },
 ]
 
 export default function HomeClient({ settings, team, brands }: Props) {
-  const tickerItems = settings?.ticker ?? TICKER_DEFAULT
-
   useEffect(() => {
     // Build ticker
     const track = document.getElementById('ticker-track')
     if (track) {
-      const items = [...tickerItems, ...tickerItems]
-      track.innerHTML = items
-        .map(t => `<span class="ticker-item">${t}</span>`)
-        .join('<span class="ticker-sep">·</span>')
+      const items = [...TICKER_DEFAULT, ...TICKER_DEFAULT]
+      track.innerHTML = items.map(d => `
+        <div class="ticker-item">
+          <div class="ticker-val"><span class="blue-grad">${d.val}</span></div>
+          <div><span class="ticker-lbl">${d.lbl}</span><span class="ticker-sub">${d.sub}</span></div>
+          <div class="ticker-dot"></div>
+        </div>`).join('')
     }
 
     // Scroll-reveal
@@ -85,7 +90,7 @@ export default function HomeClient({ settings, team, brands }: Props) {
     })
 
     return () => io.disconnect()
-  }, [tickerItems, team])
+  }, [team])
 
   return (
     <>
