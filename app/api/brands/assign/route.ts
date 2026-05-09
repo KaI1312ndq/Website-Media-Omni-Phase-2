@@ -38,30 +38,43 @@ export async function POST(req: NextRequest) {
   const username = body.username.trim().toLowerCase()
   const want = new Set(body.brand_ids)
 
-  const { data, error } = await supabaseAdmin
-    .from('brands')
-    .select('id, assigned_members')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const [{ data: brandsData, error: bErr }, { data: usersData, error: uErr }] = await Promise.all([
+    supabaseAdmin.from('brands').select('id, assigned_members'),
+    supabaseAdmin.from('users').select('username').eq('status', 'active'),
+  ])
+  if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 })
+  if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 })
+
+  const allUsernames = (usersData || []).map(u => (u.username as string).trim().toLowerCase()).filter(Boolean)
 
   const updates: Promise<{ error: { message: string } | null }>[] = []
-  for (const b of data || []) {
+  for (const b of brandsData || []) {
     const cur = (b.assigned_members ?? '').trim()
-    // Brands open to 'all' are immutable per requirement.
-    if (cur === 'all') continue
-
-    const list: string[] = cur ? cur.split(',').map((s: string) => s.trim()).filter(Boolean) : []
-    const has = list.includes(username)
+    const isAll = cur === 'all'
     const shouldHave = want.has(b.id)
 
     let next: string[] | null = null
-    if (shouldHave && !has) next = [...list, username]
-    else if (!shouldHave && has) next = list.filter(u => u !== username)
+
+    if (isAll) {
+      // 'all' = mọi user thấy. Nếu admin uncheck cho user này → convert thành CSV of all users except this one.
+      if (!shouldHave) {
+        next = allUsernames.filter(u => u !== username)
+      }
+      // Nếu shouldHave → giữ 'all' (no change)
+    } else {
+      const list: string[] = cur ? cur.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+      const has = list.includes(username)
+      if (shouldHave && !has) next = [...list, username]
+      else if (!shouldHave && has) next = list.filter(u => u !== username)
+    }
 
     if (next !== null) {
-      const value = next.length ? next.join(',') : 'all'
+      // Nếu list mới chứa TẤT CẢ active users → simplify về 'all'
+      const isFullSet = next.length >= allUsernames.length && allUsernames.every(u => next!.includes(u))
+      const value = isFullSet ? 'all' : (next.length ? next.join(',') : '')
       updates.push(
         Promise.resolve(
-          supabaseAdmin.from('brands').update({ assigned_members: value }).eq('id', b.id)
+          supabaseAdmin.from('brands').update({ assigned_members: value || 'all' }).eq('id', b.id)
         )
       )
     }

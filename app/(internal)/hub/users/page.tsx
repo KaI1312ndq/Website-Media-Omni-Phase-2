@@ -75,7 +75,8 @@ export default function UsersPage() {
       const j = await fetch(`/api/brands/assign?username=${encodeURIComponent(username)}`).then(r => r.json())
       const list: BrandAssign[] = j.brands || []
       setBrands(list)
-      setBrandSel(new Set(list.filter(b => b.included && !b.isAll).map(b => b.id)))
+      // Include cả 'all' brands trong selection (hiện tích sẵn, có thể uncheck để revoke)
+      setBrandSel(new Set(list.filter(b => b.included).map(b => b.id)))
     } catch {
       setBrands([]); setBrandSel(new Set())
     } finally {
@@ -92,7 +93,7 @@ export default function UsersPage() {
   }
 
   function selectAllBrands() {
-    setBrandSel(new Set(brands.filter(b => !b.isAll).map(b => b.id)))
+    setBrandSel(new Set(brands.map(b => b.id)))
   }
 
   function clearAllBrands() {
@@ -230,7 +231,23 @@ export default function UsersPage() {
 
         <div className="um-layout">
           <div className="um-left">
-            <div className="um-search-wrap"><input className="um-search" type="search" name="member-search" autoComplete="off" placeholder="Tìm thành viên..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+            <div className="um-search-wrap">
+              {/* Honeypot fields absorb browser autofill attempts */}
+              <input type="text" name="username" autoComplete="username" style={{ display: 'none' }} tabIndex={-1} aria-hidden />
+              <input type="password" name="password" autoComplete="current-password" style={{ display: 'none' }} tabIndex={-1} aria-hidden />
+              <input
+                className="um-search"
+                type="text"
+                name={`member-search-${Math.random().toString(36).slice(2, 8)}`}
+                autoComplete="off"
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                placeholder="Tìm thành viên..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
             <div className="um-filter-row">
               {['ALL','admin','member','upbase'].map(r => (
                 <button key={r} className={`umf${filter === r ? ' active' : ''}`} onClick={() => setFilter(r)}>{r === 'ALL' ? 'Tất cả' : r.charAt(0).toUpperCase() + r.slice(1)}</button>
@@ -325,24 +342,20 @@ export default function UsersPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
                         {brands.map(b => {
                           const checked = brandSel.has(b.id)
-                          if (b.isAll) {
-                            return (
-                              <div key={b.id} title="Brand này mở cho TẤT CẢ"
-                                style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: '.78rem', color: 'var(--muted)', fontStyle: 'italic' }}>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.brand_name}</span>
-                                <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.6rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#34d399', fontStyle: 'normal' }}>ALL</span>
-                              </div>
-                            )
-                          }
+                          const isAllOriginal = b.isAll
                           return (
                             <div key={b.id} onClick={() => toggleBrand(b.id)}
+                              title={isAllOriginal ? 'Đang mở cho TẤT CẢ — uncheck để revoke quyền user này' : undefined}
                               style={{ cursor: 'pointer', padding: '10px 12px', borderRadius: 8,
                                 background: checked ? 'rgba(37,99,235,0.3)' : 'rgba(255,255,255,0.05)',
                                 border: `1px solid ${checked ? 'rgba(37,99,235,0.6)' : 'rgba(255,255,255,0.08)'}`,
                                 display: 'flex', alignItems: 'center', gap: 8, fontSize: '.8rem',
                                 transition: 'background .15s, border-color .15s' }}>
                               <span style={{ width: 14, height: 14, borderRadius: 3, border: '1.5px solid rgba(255,255,255,0.4)', background: checked ? '#2563eb' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', fontSize: 10, color: '#fff' }}>{checked ? '✓' : ''}</span>
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.brand_name}</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{b.brand_name}</span>
+                              {isAllOriginal && checked && (
+                                <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.55rem', padding: '2px 5px', borderRadius: 3, background: 'rgba(34,197,94,0.15)', color: '#34d399', flex: '0 0 auto' }}>ALL</span>
+                              )}
                             </div>
                           )
                         })}
@@ -354,8 +367,8 @@ export default function UsersPage() {
                 <div className="pass-section">
                   <h4>🔑 Đặt lại mật khẩu</h4>
                   <div className="pass-grid">
-                    <div><label className="fp-label">Mật khẩu mới</label><input className="fp-input" type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" /></div>
-                    <div><label className="fp-label">Xác nhận</label><input className="fp-input" type="password" value={cfmPass} onChange={e => setCfmPass(e.target.value)} placeholder="Nhập lại mật khẩu" /></div>
+                    <div><label className="fp-label">Mật khẩu mới</label><input className="fp-input" type="password" autoComplete="new-password" data-lpignore="true" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" /></div>
+                    <div><label className="fp-label">Xác nhận</label><input className="fp-input" type="password" autoComplete="new-password" data-lpignore="true" value={cfmPass} onChange={e => setCfmPass(e.target.value)} placeholder="Nhập lại mật khẩu" /></div>
                     <div style={{ display: 'flex', alignItems: 'flex-end' }}><button className="pass-save-btn" onClick={resetPass}>Đặt lại mật khẩu</button></div>
                   </div>
                 </div>

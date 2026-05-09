@@ -1106,7 +1106,7 @@ select.form-input{cursor:pointer}
 .perm-ico{font-size:1rem;flex-shrink:0}
 .pass-section{margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
 .pass-section h4{font-family:var(--f-display);font-size:.9rem;font-weight:700;margin-bottom:14px;color:var(--ink)}
-.pass-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
+.pass-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}
 .pass-save-btn{padding:10px 16px;background:var(--blue);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--f-body);font-weight:700;font-size:.8rem;cursor:pointer;white-space:nowrap;height:42px;transition:background .18s}
 .pass-save-btn:hover{background:var(--blue2)}
 .save-bar{display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
