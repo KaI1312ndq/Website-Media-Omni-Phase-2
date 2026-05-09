@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface BlogPost {
   _id: string
@@ -139,9 +140,15 @@ export default function BlogListClient({ initialPosts }: Props) {
                 >
                   {/* Cover / gradient header */}
                   {p.coverImage?.asset?.url ? (
-                    <div className="blog-card-cover">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.coverImage.asset.url} alt={p.coverImage.alt ?? p.title} />
+                    <div className="blog-card-cover" style={{ position: 'relative' }}>
+                      <Image
+                        src={p.coverImage.asset.url}
+                        alt={p.coverImage.alt ?? p.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        style={{ objectFit: 'cover' }}
+                        loading={i < 3 ? 'eager' : 'lazy'}
+                      />
                     </div>
                   ) : (
                     <div

@@ -2,9 +2,16 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, SessionUser } from '@/lib/auth'
-import * as XLSX from 'xlsx'
+import type * as XLSXType from 'xlsx'
 import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables)
+
+/* Lazy-load xlsx (~600kb) only when user actually downloads/uploads files */
+let _xlsxPromise: Promise<typeof XLSXType> | null = null
+async function loadXLSX(): Promise<typeof XLSXType> {
+  if (!_xlsxPromise) _xlsxPromise = import('xlsx')
+  return _xlsxPromise
+}
 
 /* ── Default AI System Prompt ── */
 const DEFAULT_SYS_PROMPT = `Bạn là Senior Performance Marketing Manager với 7 năm thực chiến trên Shopee Ads và TikTok Shop Ads tại thị trường Việt Nam. Bạn phân tích thuần technical ads — không đề cập creative, content, hay KOC.
@@ -867,7 +874,8 @@ export default function ReportPage() {
   }
 
   /* ── Export Preview XLSX (matching mail preview format) ── */
-  function exportPreviewXlsx() {
+  async function exportPreviewXlsx() {
+    const XLSX = await loadXLSX()
     if (!weekInfo) return
     const totalWeeks = getWeeksInMonth(weekInfo.month, weekInfo.year)
     const weeksList = Array.from({ length: totalWeeks }, (_, i) => i + 1)
@@ -1358,7 +1366,8 @@ export default function ReportPage() {
 
   /* ── XLSX helpers ── */
   /* Plan template: grouped by section, header [Section, Metric, Tháng, W1..W5, key] */
-  function downloadPlanTemplateXlsx() {
+  async function downloadPlanTemplateXlsx() {
+    const XLSX = await loadXLSX()
     if (!weekInfo) return
     const headers = ['Section', 'Metric', 'Tháng', 'W1', 'W2', 'W3', 'W4', 'W5', 'key']
     const rows: (string|number)[][] = [headers]
@@ -1405,9 +1414,10 @@ export default function ReportPage() {
 
   /* Plan upload: parse XLSX → fill planInputs / planRawInputs.
      New format: [Section, Metric, Tháng, W1..W5, key] — key in last column. */
-  function uploadPlanXlsx(e: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadPlanXlsx(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const XLSX = await loadXLSX()
     const reader = new FileReader()
     reader.onload = ev => {
       try {
@@ -1445,7 +1455,8 @@ export default function ReportPage() {
     e.target.value = ''
   }
 
-  function downloadActualTemplate() {
+  async function downloadActualTemplate() {
+    const XLSX = await loadXLSX()
     if (!weekInfo) return
     const headers = ['Section', 'Metric', 'Actual W', 'key']
     const rows: (string|number)[][] = [headers]
@@ -1480,9 +1491,10 @@ export default function ReportPage() {
     showToast('Đã export Actual XLSX!')
   }
 
-  function handleActualUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleActualUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const XLSX = await loadXLSX()
     const reader = new FileReader()
     reader.onload = ev => {
       try {
