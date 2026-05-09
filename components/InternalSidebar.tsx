@@ -88,7 +88,7 @@ export default function InternalSidebar({ user, onLogout, open, onClose, collaps
       {open && <div className="isb-overlay" onClick={onClose} />}
       <aside className={`isb${open ? ' open' : ''}${isCollapsed ? ' collapsed' : ''}`}>
         <div className="isb-top">
-          <Link href="/dashboard" className="isb-brand" title={isCollapsed ? 'MediaOmni' : undefined}>
+          <Link href="/" className="isb-brand" title={isCollapsed ? 'MediaOmni — Trang chủ' : 'Về trang chủ'}>
             <span className="isb-mark">MO</span>
             <span className="isb-brand-text">MediaOmni</span>
           </Link>
