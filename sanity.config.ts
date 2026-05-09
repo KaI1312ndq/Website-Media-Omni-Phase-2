@@ -99,6 +99,29 @@ export default defineConfig({
                   .filter('_type == "brand"')
                   .defaultOrdering([{ field: 'category', direction: 'asc' }, { field: 'order', direction: 'asc' }])
               ),
+            S.divider(),
+            // RESOURCES
+            S.listItem()
+              .title('Resources')
+              .icon(() => '📚')
+              .child(
+                S.list()
+                  .title('Resources')
+                  .items([
+                    S.listItem()
+                      .title('SOP & Docs')
+                      .icon(() => '📋')
+                      .child(
+                        S.documentList()
+                          .title('SOP & Resources')
+                          .filter('_type == "sopDoc"')
+                          .defaultOrdering([
+                            { field: 'pinned', direction: 'desc' },
+                            { field: 'order', direction: 'asc' },
+                          ])
+                      ),
+                  ])
+              ),
           ]),
     }),
     visionTool(),

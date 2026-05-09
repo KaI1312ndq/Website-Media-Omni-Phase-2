@@ -213,6 +213,141 @@ const TEAM_LIST: { name: string; role: string; isLead?: boolean; order: number }
   { name: 'Nguyễn Mai Phương',       role: 'Performance Marketing Specialist',  order: 12 },
 ]
 
+/* ── SOP & Resources sample docs ── */
+type SopBlock =
+  | { _key: string; _type: 'block'; style?: string; listItem?: 'bullet' | 'number'; level?: number; markDefs?: unknown[]; children: Array<{ _key: string; _type: 'span'; text: string; marks?: string[] }> }
+  | { _key: string; _type: 'callout'; type: 'info' | 'warning' | 'success' | 'danger'; text: string }
+
+type SopItem = {
+  title: string
+  slug: string
+  category: 'process' | 'template' | 'checklist' | 'training' | 'playbook' | 'tools'
+  platform: string[]
+  level: 'beginner' | 'intermediate' | 'advanced'
+  excerpt: string
+  icon: string
+  pinned: boolean
+  order: number
+  author: string
+  content: SopBlock[]
+  tags: string[]
+}
+
+const SAMPLE_SOPS: SopItem[] = [
+  {
+    title: 'SOP — Setup Shopee CPC campaign từ A đến Z',
+    slug: 'sop-shopee-cpc-setup',
+    category: 'process',
+    platform: ['shopee'],
+    level: 'beginner',
+    excerpt: 'Quy trình 8 bước setup Shopee CPC campaign chuẩn — từ keyword research đến launch + monitoring tuần đầu.',
+    icon: '🛍️',
+    pinned: true,
+    order: 1,
+    author: 'Media Omni Lead',
+    content: [
+      { _key: 'b1', _type: 'block', style: 'h2', children: [{ _key: 's1', _type: 'span', text: 'Bước 1 — Keyword Research' }] },
+      { _key: 'b2', _type: 'block', children: [{ _key: 's2', _type: 'span', text: 'Dùng Shopee Marketing Tool → Tìm kiếm keyword theo category brand. Export top 50 keyword có search volume cao + relevance.' }] },
+      { _key: 'b3', _type: 'block', style: 'h2', children: [{ _key: 's3', _type: 'span', text: 'Bước 2 — Phân loại keyword' }] },
+      { _key: 'b4', _type: 'block', children: [{ _key: 's4', _type: 'span', text: 'Chia 3 nhóm: Brand keyword (CPC thấp, conversion cao), Generic (CPC cao, traffic lớn), Competitor (CPC trung bình).' }] },
+      { _key: 'b5', _type: 'callout', type: 'warning', text: 'Không dùng broad match cho competitor keyword — dễ bị Shopee ban hoặc penalty.' },
+      { _key: 'b6', _type: 'block', style: 'h2', children: [{ _key: 's6', _type: 'span', text: 'Bước 3-8 — Setup, Launch, Monitor' }] },
+      { _key: 'b7', _type: 'block', children: [{ _key: 's7', _type: 'span', text: 'Setup ad group theo từng nhóm keyword với CPC bid riêng. Launch sau khi check creative + landing page. Monitor daily 7 ngày đầu, optimize bid + negative keyword theo performance.' }] },
+    ],
+    tags: ['shopee', 'cpc', 'keyword', 'setup'],
+  },
+  {
+    title: 'Checklist — Pre-launch campaign TikTok PGM',
+    slug: 'checklist-tiktok-pgm-prelaunch',
+    category: 'checklist',
+    platform: ['tiktok'],
+    level: 'intermediate',
+    excerpt: 'Checklist 12 mục cần verify trước khi launch TikTok PGM campaign — tracking, creative, budget, audience.',
+    icon: '✅',
+    pinned: true,
+    order: 2,
+    author: 'Performance Team',
+    content: [
+      { _key: 'b1', _type: 'block', style: 'h2', children: [{ _key: 's1', _type: 'span', text: 'Tracking & Pixel' }] },
+      { _key: 'b2', _type: 'block', listItem: 'bullet', level: 1, children: [{ _key: 's2', _type: 'span', text: 'TikTok Pixel đã verify trên website' }] },
+      { _key: 'b3', _type: 'block', listItem: 'bullet', level: 1, children: [{ _key: 's3', _type: 'span', text: 'Conversion events đã setup (Add to cart, Purchase)' }] },
+      { _key: 'b4', _type: 'block', style: 'h2', children: [{ _key: 's4', _type: 'span', text: 'Creative' }] },
+      { _key: 'b5', _type: 'block', listItem: 'bullet', level: 1, children: [{ _key: 's5', _type: 'span', text: '3+ video creative, mỗi video < 30s' }] },
+      { _key: 'b6', _type: 'block', listItem: 'bullet', level: 1, children: [{ _key: 's6', _type: 'span', text: 'Aspect ratio 9:16 (full screen)' }] },
+      { _key: 'b7', _type: 'block', style: 'h2', children: [{ _key: 's7', _type: 'span', text: 'Budget & Audience' }] },
+      { _key: 'b8', _type: 'block', listItem: 'bullet', level: 1, children: [{ _key: 's8', _type: 'span', text: 'Budget tối thiểu 50–100 đơn/ngày để qua learning phase' }] },
+      { _key: 'b9', _type: 'block', listItem: 'bullet', level: 1, children: [{ _key: 's9', _type: 'span', text: 'Audience không overlap với campaign khác đang chạy' }] },
+    ],
+    tags: ['tiktok', 'pgm', 'checklist', 'launch'],
+  },
+  {
+    title: 'Template — Weekly Report DARA framework',
+    slug: 'template-weekly-report-dara',
+    category: 'template',
+    platform: ['general'],
+    level: 'beginner',
+    excerpt: 'Template báo cáo tuần theo framework DARA: Data → Analysis → Root cause → Action. Dùng cho mọi platform.',
+    icon: '📋',
+    pinned: false,
+    order: 3,
+    author: 'Operations',
+    content: [
+      { _key: 'b1', _type: 'block', children: [{ _key: 's1', _type: 'span', text: 'DARA framework giúp report có structure rõ ràng và action-oriented.' }] },
+      { _key: 'b2', _type: 'block', style: 'h3', children: [{ _key: 's2', _type: 'span', text: 'D — Data' }] },
+      { _key: 'b3', _type: 'block', children: [{ _key: 's3', _type: 'span', text: 'Số liệu cụ thể: GMV, Chi phí, ROAS, CTR, CR, AOV. So sánh vs Plan + tuần trước.' }] },
+      { _key: 'b4', _type: 'block', style: 'h3', children: [{ _key: 's4', _type: 'span', text: 'A — Analysis' }] },
+      { _key: 'b5', _type: 'block', children: [{ _key: 's5', _type: 'span', text: 'Phân tích trend, anomaly, breakdown theo loại ads (CPC/ND/Live cho Shopee, PGM/LGM/Con/Brand cho TikTok).' }] },
+      { _key: 'b6', _type: 'block', style: 'h3', children: [{ _key: 's6', _type: 'span', text: 'R — Root cause' }] },
+      { _key: 'b7', _type: 'block', children: [{ _key: 's7', _type: 'span', text: 'Tìm nguyên nhân gốc (bid thấp, audience overlap, learning phase, etc).' }] },
+      { _key: 'b8', _type: 'block', style: 'h3', children: [{ _key: 's8', _type: 'span', text: 'A — Action' }] },
+      { _key: 'b9', _type: 'block', children: [{ _key: 's9', _type: 'span', text: '2-3 action cụ thể tuần tới: tăng/giảm bid, shift budget, A/B test, etc.' }] },
+    ],
+    tags: ['weekly', 'report', 'dara', 'template'],
+  },
+  {
+    title: 'Onboarding — 7 ngày đầu cho Performance Marketing Specialist',
+    slug: 'onboarding-7days-pms',
+    category: 'training',
+    platform: ['general'],
+    level: 'beginner',
+    excerpt: 'Lộ trình onboarding 7 ngày cho specialist mới — học platform, tools, quy trình team Media Omni.',
+    icon: '🎓',
+    pinned: false,
+    order: 4,
+    author: 'HR & Training',
+    content: [
+      { _key: 'b1', _type: 'block', style: 'h2', children: [{ _key: 's1', _type: 'span', text: 'Day 1-2: Platform basics' }] },
+      { _key: 'b2', _type: 'block', children: [{ _key: 's2', _type: 'span', text: 'Tổng quan TikTok Shop, Shopee, Meta, Google. Account access + tool setup.' }] },
+      { _key: 'b3', _type: 'block', style: 'h2', children: [{ _key: 's3', _type: 'span', text: 'Day 3-4: DARA framework + Reporting' }] },
+      { _key: 'b4', _type: 'block', children: [{ _key: 's4', _type: 'span', text: 'Học framework DARA, làm thử weekly report cho 1 brand thực tế (shadowing senior).' }] },
+      { _key: 'b5', _type: 'block', style: 'h2', children: [{ _key: 's5', _type: 'span', text: 'Day 5-7: Hands-on' }] },
+      { _key: 'b6', _type: 'block', children: [{ _key: 's6', _type: 'span', text: 'Được assign 1-2 brand pilot. Quiz Dạng 1 + Dạng 2 (target 80%+).' }] },
+    ],
+    tags: ['onboarding', 'training', 'team'],
+  },
+  {
+    title: 'Playbook — Scale từ 50M lên 200M ngân sách/tháng',
+    slug: 'playbook-scale-50m-200m',
+    category: 'playbook',
+    platform: ['shopee', 'tiktok'],
+    level: 'advanced',
+    excerpt: 'Strategic playbook khi scale ngân sách brand từ 50M lên 200M/tháng — phòng tránh ROAS drop.',
+    icon: '🚀',
+    pinned: false,
+    order: 5,
+    author: 'Senior Lead',
+    content: [
+      { _key: 'b1', _type: 'block', children: [{ _key: 's1', _type: 'span', text: 'Scaling 4x ngân sách trong 1-2 tháng cần chiến lược cẩn thận để không bị ROAS drop > 30%.' }] },
+      { _key: 'b2', _type: 'callout', type: 'info', text: 'Rule of thumb: scale 25-30% mỗi tuần, không nhảy hơn 50% trong 1 lần.' },
+      { _key: 'b3', _type: 'block', style: 'h2', children: [{ _key: 's3', _type: 'span', text: 'Phase 1 (Week 1-2): Audit + Reallocation' }] },
+      { _key: 'b4', _type: 'block', children: [{ _key: 's4', _type: 'span', text: 'Identify top-performing ad sets/keywords. Cut bottom 20% performers. Reallocate budget vào top 30%.' }] },
+      { _key: 'b5', _type: 'block', style: 'h2', children: [{ _key: 's5', _type: 'span', text: 'Phase 2 (Week 3-6): Gradual scale' }] },
+      { _key: 'b6', _type: 'block', children: [{ _key: 's6', _type: 'span', text: 'Tăng budget 25% mỗi tuần trên winning campaigns. Monitor ROAS daily. Nếu drop >15% → hold scale, optimize trước.' }] },
+    ],
+    tags: ['scale', 'playbook', 'advanced', 'budget'],
+  },
+]
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -285,7 +420,32 @@ async function main() {
   await csTx.commit()
   console.log(`[seed-sanity] ✓ Upserted ${SAMPLE_CASE_STUDIES.length} case studies`)
 
-  console.log(`\n[seed-sanity] Done. Upserted 1 siteSettings, ${BRAND_LIST.length} brands, ${TEAM_LIST.length} team members, ${SAMPLE_CASE_STUDIES.length} case studies.`)
+  // 5) Upsert SOP docs
+  const sopTx = client.transaction()
+  SAMPLE_SOPS.forEach(s => {
+    const _id = `sopDoc-${s.slug}`
+    sopTx.createOrReplace({
+      _id,
+      _type: 'sopDoc',
+      title: s.title,
+      slug: { _type: 'slug', current: s.slug },
+      category: s.category,
+      platform: s.platform,
+      level: s.level,
+      excerpt: s.excerpt,
+      icon: s.icon,
+      pinned: s.pinned,
+      order: s.order,
+      author: s.author,
+      content: s.content,
+      tags: s.tags,
+      publishedAt: new Date().toISOString(),
+    })
+  })
+  await sopTx.commit()
+  console.log(`[seed-sanity] ✓ Upserted ${SAMPLE_SOPS.length} SOP docs`)
+
+  console.log(`\n[seed-sanity] Done. Upserted 1 siteSettings, ${BRAND_LIST.length} brands, ${TEAM_LIST.length} team members, ${SAMPLE_CASE_STUDIES.length} case studies, ${SAMPLE_SOPS.length} SOP docs.`)
 }
 
 main().catch(err => {

@@ -152,8 +152,8 @@ export default function DashboardPage() {
     { key: 'users',    icon: ICON.users,     title: 'Quản lý thành viên', desc: 'Tạo, sửa, phân quyền tài khoản.',           badge: 'open',  badgeText: 'Mở',       url: '/hub/users' },
     { key: 'report',   icon: ICON.report,    title: 'Weekly Report',       desc: 'Nhập data → AI nhận xét → Copy Lark.',      badge: 'open',  badgeText: 'Mở',       url: '/hub/report' },
     { key: 'analytics',icon: ICON.analytics, title: 'Analytics',           desc: 'Thống kê performance report theo brand.',    badge: 'open',  badgeText: 'Mở',       url: '/hub/analytics' },
-    { key: 'sop',      icon: ICON.sop,       title: 'SOP & Resources',    desc: 'Tài liệu, template, checklist nội bộ.',      badge: 'soon',  badgeText: 'Phase 4',  disabled: true },
-    { key: 'kb',       icon: ICON.kb,        title: 'Knowledge Base',     desc: 'Tìm kiếm kiến thức & hướng dẫn.',           badge: 'new',   badgeText: 'Khám phá', disabled: true },
+    { key: 'sop',      icon: ICON.sop,       title: 'SOP & Resources',    desc: 'Tài liệu, template, checklist nội bộ.',      badge: 'open',  badgeText: 'Mở',       url: '/hub/sop' },
+    { key: 'kb',       icon: ICON.kb,        title: 'Knowledge Base',     desc: 'Tìm kiếm kiến thức & hướng dẫn.',           badge: 'open',  badgeText: 'Khám phá', url: '/hub/sop' },
   ]
 
   const memberCards: CardDef[] = [
@@ -162,8 +162,8 @@ export default function DashboardPage() {
     { key: 'score',    icon: ICON.score,     title: 'Kết quả của tôi',    desc: 'Xem lịch sử điểm các bài đã làm.',          badge: 'open',  badgeText: 'Xem',      url: '/hub/scores' },
     { key: 'report',   icon: ICON.report,    title: 'Weekly Report',       desc: 'Nhập data → AI nhận xét → Copy Lark.',      badge: 'open',  badgeText: 'Mở',       url: '/hub/report' },
     { key: 'analytics',icon: ICON.analytics, title: 'Analytics',           desc: 'Thống kê performance report theo brand.',   badge: 'open',  badgeText: 'Mở',       url: '/hub/analytics' },
-    { key: 'sop',      icon: ICON.sop,       title: 'SOP & Resources',    desc: 'Tài liệu, template nội bộ.',                badge: 'soon',  badgeText: 'Phase 4',  disabled: true },
-    { key: 'kb',       icon: ICON.kb,        title: 'Knowledge Base',     desc: 'Tìm kiếm kiến thức & hướng dẫn.',           badge: 'new',   badgeText: 'Khám phá', disabled: true },
+    { key: 'sop',      icon: ICON.sop,       title: 'SOP & Resources',    desc: 'Tài liệu, template nội bộ.',                badge: 'open',  badgeText: 'Mở',       url: '/hub/sop' },
+    { key: 'kb',       icon: ICON.kb,        title: 'Knowledge Base',     desc: 'Tìm kiếm kiến thức & hướng dẫn.',           badge: 'open',  badgeText: 'Khám phá', url: '/hub/sop' },
   ]
 
   const cards = isAdmin ? adminCards : memberCards

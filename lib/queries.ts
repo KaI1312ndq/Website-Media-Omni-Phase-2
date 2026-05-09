@@ -89,6 +89,29 @@ export const caseStudySlugsQuery = groq`
   *[_type == "caseStudy" && defined(slug.current)] { "slug": slug.current }
 `
 
+export const sopListQuery = groq`
+  *[_type == "sopDoc"] | order(pinned desc, order asc, publishedAt desc) {
+    _id, title, slug, category, platform, level,
+    excerpt, icon, pinned, tags, author, publishedAt
+  }
+`
+
+export const sopBySlugQuery = groq`
+  *[_type == "sopDoc" && slug.current == $slug][0] {
+    _id, title, slug, category, platform, level,
+    excerpt, icon, content, attachments, tags,
+    pinned, author, publishedAt, _updatedAt
+  }
+`
+
+export const sopSlugsQuery = groq`*[_type == "sopDoc" && defined(slug.current)].slug.current`
+
+export const relatedSopQuery = groq`
+  *[_type == "sopDoc" && category == $category && slug.current != $slug] | order(pinned desc, order asc)[0...3] {
+    _id, title, slug, category, icon, excerpt, level
+  }
+`
+
 export const relatedCaseStudiesQuery = groq`
   *[_type == "caseStudy" && industry == $industry && slug.current != $slug] | order(featured desc, order asc)[0...3] {
     _id, title, slug, brandName, industry, excerpt,

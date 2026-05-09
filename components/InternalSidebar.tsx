@@ -78,7 +78,7 @@ export default function InternalSidebar({ user, onLogout, open, onClose, collaps
     { href: '/hub/report', label: 'Weekly Report', icon: I.report },
     { href: '/hub/analytics', label: 'Analytics', icon: I.analytics },
     ...(isAdmin ? [{ href: '/admin/leads', label: 'Leads', icon: I.leads } as Item] : []),
-    { label: 'SOP & Resources', icon: I.sop, disabled: true, badge: 'Phase 4' },
+    { href: '/hub/sop', label: 'SOP & Resources', icon: I.sop },
   ]
 
   const isCollapsed = !!collapsed
