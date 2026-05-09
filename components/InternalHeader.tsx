@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SessionUser, initials } from '@/lib/auth'
+import { Icon } from '@/lib/icons'
 
 interface Props {
   user: SessionUser
@@ -96,21 +97,21 @@ export default function InternalHeader({ user, onMenuClick, greeting, subline, o
                 onClick={() => { setMenuOpen(false); onOpenProfile?.() }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-              >👤 <span>Tài khoản</span></button>
+              ><span style={{ display: 'inline-flex' }}>{Icon.users(14)}</span><span>Tài khoản</span></button>
               <button
                 type="button"
                 style={menuItem}
                 onClick={() => { setMenuOpen(false); router.push('/') }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-              >🌐 <span>Trang công khai</span></button>
+              ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span>Trang công khai</span></button>
               <button
                 type="button"
                 style={{ ...menuItem, color: '#f87171' }}
                 onClick={() => { setMenuOpen(false); onLogout?.() }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(248,113,113,0.08)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-              >🚪 <span>Đăng xuất</span></button>
+              ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Đăng xuất</span></button>
             </div>
           )}
         </div>

@@ -284,7 +284,7 @@ export default function UsersPage() {
                     </div>
                   </div>
                   <div className="um-detail-actions">
-                    <button className="ud-btn" onClick={() => openEdit(selected)}>✏️ Sửa</button>
+                    <button className="ud-btn" onClick={() => openEdit(selected)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex' }}>{Icon.edit(13)}</span>Sửa</button>
                     <button className="ud-btn ud-btn-danger" onClick={toggleStatus}>{selected.status === 'disabled' ? 'Bật' : 'Tắt'}</button>
                     {selected.username !== me?.username && <button className="ud-btn ud-btn-danger" onClick={deleteUser}>Xóa</button>}
                   </div>
@@ -292,13 +292,17 @@ export default function UsersPage() {
 
                 <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--faint)', marginBottom: 10 }}>Role</div>
                 <div className="role-selector" style={{ marginBottom: 24, display: 'flex', gap: 10 }}>
-                  {(['admin','member','upbase'] as const).map(r => (
-                    <div key={r} className={`role-opt${selected.role === r ? ' selected-' + r : ''}`} onClick={() => { setSelected({ ...selected, role: r }); setCurPerms({ ...ROLE_DEFAULTS[r] }) }}>
-                      <div className="ro-ico">{r === 'admin' ? '👑' : r === 'member' ? '⚡' : '🏢'}</div>
-                      <div className="ro-name" style={{ color: r === 'admin' ? 'var(--error)' : r === 'member' ? 'var(--blue)' : 'var(--success)' }}>{r}</div>
-                      <div className="ro-desc">{r === 'admin' ? 'Toàn quyền' : r === 'member' ? 'Truy cập cơ bản' : 'Xem quiz'}</div>
-                    </div>
-                  ))}
+                  {(['admin','member','upbase'] as const).map(r => {
+                    const roleIcon = r === 'admin' ? Icon.users(22) : r === 'member' ? Icon.zap(22) : Icon.barChart(22)
+                    const roleColor = r === 'admin' ? '#ef4444' : r === 'member' ? '#3b82f6' : '#10b981'
+                    return (
+                      <div key={r} className={`role-opt${selected.role === r ? ' selected-' + r : ''}`} onClick={() => { setSelected({ ...selected, role: r }); setCurPerms({ ...ROLE_DEFAULTS[r] }) }}>
+                        <div className="ro-ico" style={{ display: 'inline-flex', justifyContent: 'center', color: roleColor }}>{roleIcon}</div>
+                        <div className="ro-name" style={{ color: roleColor }}>{r}</div>
+                        <div className="ro-desc">{r === 'admin' ? 'Toàn quyền' : r === 'member' ? 'Truy cập cơ bản' : 'Xem quiz'}</div>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--faint)', marginBottom: 14 }}>Phân quyền tính năng</div>
@@ -324,8 +328,8 @@ export default function UsersPage() {
                 <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 14 }}>Chọn brands user này được phép xem trong Report Tool & Analytics</div>
 
                 {(selected.role === 'admin' || (selected.role as string) === 'lead') ? (
-                  <div style={{ padding: '14px 16px', borderRadius: 10, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.25)', color: 'var(--muted)', fontStyle: 'italic', fontSize: '.85rem', marginBottom: 22 }}>
-                    👑 Admin/Lead — thấy tất cả brands
+                  <div style={{ padding: '14px 16px', borderRadius: 10, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.25)', color: 'var(--muted)', fontStyle: 'italic', fontSize: '.85rem', marginBottom: 22, display: 'inline-flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' }}>
+                    <span style={{ display: 'inline-flex', color: '#fbbf24' }}>{Icon.check(16)}</span>Admin/Lead — thấy tất cả brands
                   </div>
                 ) : (
                   <div style={{ marginBottom: 22 }}>

@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSession, SessionUser } from '@/lib/auth'
+import { Icon } from '@/lib/icons'
 import '@/app/(internal)/dashboard/dashboard.css'
 import * as XLSX from 'xlsx'
 import { Chart, registerables } from 'chart.js'
@@ -1750,11 +1751,11 @@ function ReportPageInner() {
             Weekly Report Tool
           </h1>
           <div style={{ display:'flex', gap:8 }}>
-            <button className="btn-s" style={{ fontSize:'.8rem' }} onClick={() => { setPromptInput((typeof window !== 'undefined' ? localStorage.getItem('mo_ai_prompt') : null) || DEFAULT_SYS_PROMPT); setPromptModal(true) }}>
-              ✏️ AI Prompt
+            <button className="btn-s" style={{ fontSize:'.8rem', display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => { setPromptInput((typeof window !== 'undefined' ? localStorage.getItem('mo_ai_prompt') : null) || DEFAULT_SYS_PROMPT); setPromptModal(true) }}>
+              <span style={{ display:'inline-flex' }}>{Icon.edit(13)}</span>AI Prompt
             </button>
-            <button className="btn-s" style={{ fontSize:'.8rem' }} onClick={() => { setKeyInput(typeof window !== 'undefined' ? (localStorage.getItem('mo_openai_key') || '') : ''); setKeyModal(true) }}>
-              🔑 API Key
+            <button className="btn-s" style={{ fontSize:'.8rem', display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => { setKeyInput(typeof window !== 'undefined' ? (localStorage.getItem('mo_openai_key') || '') : ''); setKeyModal(true) }}>
+              <span style={{ display:'inline-flex', color:'#fbbf24' }}>{Icon.key(13)}</span>API Key
             </button>
           </div>
         </div>
@@ -2365,7 +2366,7 @@ function ReportPageInner() {
         <div className="mo open">
           <div className="mo-box" style={{ maxWidth:480 }}>
             <div className="mo-hdr">
-              <h3>🔑 OpenAI API Key</h3>
+              <h3 style={{ display:'inline-flex', alignItems:'center', gap:8 }}><span style={{ display:'inline-flex', color:'#fbbf24' }}>{Icon.key(16)}</span>OpenAI API Key</h3>
               <button className="mo-close" onClick={() => setKeyModal(false)}>×</button>
             </div>
             <div className="mo-body">
@@ -2396,7 +2397,7 @@ function ReportPageInner() {
         <div className="mo open">
           <div className="mo-box" style={{ maxWidth:700 }}>
             <div className="mo-hdr">
-              <h3>✏️ AI System Prompt</h3>
+              <h3 style={{ display:'inline-flex', alignItems:'center', gap:8 }}><span style={{ display:'inline-flex' }}>{Icon.edit(16)}</span>AI System Prompt</h3>
               <button className="mo-close" onClick={() => setPromptModal(false)}>×</button>
             </div>
             <div className="mo-body">
