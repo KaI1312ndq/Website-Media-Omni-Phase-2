@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { PortableText } from '@portabletext/react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { client, urlFor } from '@/lib/sanity'
 import { blogPostQuery, blogSlugsQuery } from '@/lib/queries'
 
@@ -62,12 +63,16 @@ const ptComponents = {
   types: {
     image: ({ value }: { value: { asset: unknown; alt?: string; caption?: string } }) => {
       if (!value?.asset) return null
+      const src = urlFor(value.asset as Parameters<typeof urlFor>[0]).width(900).url()
       return (
         <figure className="pt-image">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={urlFor(value.asset as Parameters<typeof urlFor>[0]).width(900).url()}
+          <Image
+            src={src}
             alt={value.alt ?? ''}
+            width={900}
+            height={600}
+            sizes="(max-width: 768px) 100vw, 900px"
+            style={{ width: '100%', height: 'auto' }}
             loading="lazy"
           />
           {value.caption && <figcaption>{value.caption}</figcaption>}
@@ -153,11 +158,15 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         {/* HERO */}
         <header className="post-hero">
           {post.coverImage?.asset ? (
-            <div className="post-cover">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+            <div className="post-cover" style={{ position: 'relative', aspectRatio: '1400 / 560' }}>
+              <Image
                 src={urlFor(post.coverImage).width(1400).height(560).url()}
                 alt={post.coverImage.alt ?? post.title}
+                fill
+                sizes="(max-width: 1200px) 100vw, 1400px"
+                style={{ objectFit: 'cover' }}
+                priority
+                fetchPriority="high"
               />
             </div>
           ) : (

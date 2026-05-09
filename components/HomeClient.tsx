@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import LeadForm from './LeadForm'
 
 interface TickerItem { val?: string; lbl?: string; sub?: string }
@@ -243,8 +244,15 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
                 {settings?.aboutBody && <p className="sec-sub" style={{ whiteSpace: 'pre-wrap' }}>{settings.aboutBody}</p>}
               </div>
               {settings?.aboutImage?.asset?.url && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={settings.aboutImage.asset.url} alt={settings.aboutImage.alt ?? 'About Media Omni'} style={{ width: '100%', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }} />
+                <Image
+                  src={settings.aboutImage.asset.url}
+                  alt={settings.aboutImage.alt ?? 'About Media Omni'}
+                  width={800}
+                  height={600}
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  style={{ width: '100%', height: 'auto', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)' }}
+                  loading="lazy"
+                />
               )}
             </div>
           </div>
@@ -375,10 +383,16 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
             <div className="home-blog-grid rv">
               {posts.map(p => (
                 <Link key={p._id} href={`/blog/${p.slug.current}`} className="home-blog-card">
-                  <div className="home-blog-cover">
+                  <div className="home-blog-cover" style={{ position: 'relative', aspectRatio: '16 / 10' }}>
                     {p.coverImage?.asset?.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.coverImage.asset.url} alt={p.coverImage.alt ?? p.title} loading="lazy" decoding="async" />
+                      <Image
+                        src={p.coverImage.asset.url}
+                        alt={p.coverImage.alt ?? p.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        style={{ objectFit: 'cover' }}
+                        loading="lazy"
+                      />
                     ) : null}
                   </div>
                   <div className="home-blog-body">
@@ -677,7 +691,7 @@ function BrandsSection({ brands }: { brands: SanityBrand[] }) {
             {[...row.items, ...row.items, ...row.items].map((b, j) => (
               <div key={j} className={`brand-pill${b.logoUrl ? ' brand-pill-logo' : ''}`} title={b.name}>
                 {b.logoUrl
-                  ? <img src={b.logoUrl} alt={b.name} loading="lazy" decoding="async" />
+                  ? <Image src={b.logoUrl} alt={b.name} width={120} height={36} sizes="120px" style={{ maxHeight: 36, maxWidth: 120, width: 'auto', height: 'auto', objectFit: 'contain' }} loading="lazy" />
                   : <span>{b.name}</span>}
               </div>
             ))}
