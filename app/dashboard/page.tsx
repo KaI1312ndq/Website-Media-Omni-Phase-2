@@ -12,6 +12,7 @@ const SVG = {
   report:   `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
   analytics:`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
   sop:      `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>`,
+  migrate:  `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>`,
   home:     `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
 }
 
@@ -29,6 +30,7 @@ const DASH_CFG: Record<string, { badge: string; badgeClass: string; sub: string;
       { icon: SVG.users,     title: 'Quản lý thành viên', desc: 'Tạo, sửa, phân quyền tài khoản.',           badge: 'dcb-available', label: 'Mở',       url: '/hub/users' },
       { icon: SVG.report,    title: 'Weekly Report',       desc: 'Nhập data → AI nhận xét → Copy Lark.',      badge: 'dcb-available', label: 'Mở',       url: '/hub/report' },
       { icon: SVG.analytics, title: 'Analytics',           desc: 'Thống kê performance report theo brand.',    badge: 'dcb-available', label: 'Mở',       url: '/hub/analytics' },
+      { icon: SVG.migrate,   title: 'Migration Tool',     desc: 'Đồng bộ data từ Google Sheets → Supabase.', badge: 'dcb-available', label: 'Chạy',     url: '/hub/migrate' },
       { icon: SVG.sop,       title: 'SOP & Resources',    desc: 'Tài liệu, template, checklist nội bộ.',      badge: 'dcb-soon',      label: 'Phase 4' },
     ],
   },
