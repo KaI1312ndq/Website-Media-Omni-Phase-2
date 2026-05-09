@@ -1,8 +1,10 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession, setSession, SessionUser, initials } from '@/lib/auth'
+import { getSession, setSession, clearSession, SessionUser, initials } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
+import InternalLayout from '@/components/InternalLayout'
+import '@/app/dashboard/dashboard.css'
 
 type Task = {
   id: string; task_name: string; description?: string
@@ -115,12 +117,18 @@ export default function TasksPage() {
 
   const weekDates = getWeekDates(weekOff)
 
+  async function logout() {
+    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
+    clearSession()
+    router.push('/')
+  }
+
   if (!user) {
     return <HubPageSkeleton title="Đang tải tasks..." />
   }
 
   return (
-    <>
+    <InternalLayout user={user} onLogout={logout} greeting="Daily Tasks" subline="Quản lý task hàng ngày của bạn và team.">
       {toast && (
         <div className={`toast show ${toast.type || 'success'}`} style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
           <div className="toast-dot" /><span>{toast.msg}</span>
@@ -140,23 +148,18 @@ export default function TasksPage() {
         </div>
       )}
 
-      <nav id="main-nav" className="dash-nav scrolled">
-        <div className="nav-inner">
-          <a href="/" className="nav-logo"><span className="nav-logo-mark">MO</span>MediaOmni</a>
-          <div className="nav-links">
-            <button className={`nav-link${tab === 'myday' ? ' active' : ''}`} onClick={() => setTab('myday')}>📅 My Day</button>
-            <button className={`nav-link${tab === 'team' ? ' active' : ''}`} onClick={() => setTab('team')}>👥 Team</button>
-            {(user?.role === 'admin' || user?.perms?.tasks_create) && (
-              <button className={`nav-link${tab === 'create' ? ' active' : ''}`} onClick={() => setTab('create')}>➕ Tạo task</button>
-            )}
-            <a href="/dashboard" className="nav-cta">← Dashboard</a>
-          </div>
-        </div>
-      </nav>
+      <div className="il-paper">
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+        <button className={`btn-${tab === 'myday' ? 'p' : 's'}`} onClick={() => setTab('myday')}>📅 My Day</button>
+        <button className={`btn-${tab === 'team' ? 'p' : 's'}`} onClick={() => setTab('team')}>👥 Team</button>
+        {(user?.role === 'admin' || user?.perms?.tasks_create) && (
+          <button className={`btn-${tab === 'create' ? 'p' : 's'}`} onClick={() => setTab('create')}>➕ Tạo task</button>
+        )}
+      </div>
 
       {/* MY DAY */}
       {tab === 'myday' && (
-        <div className="rw" style={{ maxWidth: 1100, margin: '0 auto', padding: '88px 20px 80px' }}>
+        <div className="rw" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 0 40px'}}>
           <div className="date-bar">
             <h1 style={{ fontFamily: 'var(--f-display)', fontSize: '1.6rem', fontWeight: 800 }}>My Day — <span>{DAYS[curDate.getDay()]}</span></h1>
             <div className="date-nav">
@@ -241,7 +244,7 @@ export default function TasksPage() {
 
       {/* TEAM CALENDAR */}
       {tab === 'team' && (
-        <div className="rw" style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 20px 80px' }}>
+        <div className="rw" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 0 40px'}}>
           <div className="date-bar">
             <h1 style={{ fontFamily: 'var(--f-display)', fontSize: '1.6rem', fontWeight: 800 }}>Team <span>Calendar</span></h1>
             <div className="date-nav">
@@ -291,7 +294,7 @@ export default function TasksPage() {
 
       {/* CREATE */}
       {tab === 'create' && (
-        <div className="rw" style={{ maxWidth: 680, margin: '0 auto', padding: '88px 20px 80px' }}>
+        <div className="rw" style={{ maxWidth: 680, margin: '0 auto', padding: '0 0 40px'}}>
           <div className="rc">
             <h2 style={{ fontFamily: 'var(--f-display)', fontSize: '1.3rem', fontWeight: 800, marginBottom: 4 }}>Tạo task mới</h2>
             <p style={{ fontSize: '.88rem', color: 'var(--muted)', marginBottom: 20 }}>Assign task cho bản thân hoặc thành viên khác trong team.</p>
@@ -340,7 +343,8 @@ export default function TasksPage() {
           </div>
         </div>
       )}
-    </>
+      </div>
+    </InternalLayout>
   )
 }
 

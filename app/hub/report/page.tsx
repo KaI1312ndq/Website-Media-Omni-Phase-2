@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getSession, SessionUser } from '@/lib/auth'
+import { getSession, clearSession, SessionUser } from '@/lib/auth'
+import InternalLayout from '@/components/InternalLayout'
+import '@/app/dashboard/dashboard.css'
 import * as XLSX from 'xlsx'
 import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables)
@@ -359,6 +361,9 @@ function ReportPageInner() {
   }, [selMonth, selYear, selWeek])
 
   /* ── Auto prefill from query params (?brand=&month=&year=&openPlan=1) ── */
+  /* deepLinkOpenPlan: when set, the effect that watches shopeePlan/tiktokPlan opens modal */
+  const [deepLinkOpenPlan, setDeepLinkOpenPlan] = useState(false)
+
   useEffect(() => {
     if (autoOpened) return
     if (!searchParams) return
@@ -377,13 +382,47 @@ function ReportPageInner() {
     setSelYear(y)
     setSelWeek(1)
     setAutoOpened(true)
-    // wait for state to flush + weekInfo recompute, then advance
-    setTimeout(async () => {
-      await goStep2()
-      if (qOpen === '1') setTimeout(() => openPlanModal(), 350)
-    }, 80)
+    if (qOpen === '1') setDeepLinkOpenPlan(true)
+
+    /* Fetch plans + history directly using URL params so we don't depend on stale state.
+       After fetch, set state — the secondary effect then opens the plan modal. */
+    ;(async () => {
+      try {
+        const wInfo = getWeekInfo(m, y, 1)
+        const [sp, tp, hist, chartHist] = await Promise.all([
+          fetch(`/api/report?action=plan&brand=${encodeURIComponent(qBrand)}&platform=shopee&month=${m}&year=${y}`).then(r => r.json()),
+          fetch(`/api/report?action=plan&brand=${encodeURIComponent(qBrand)}&platform=tiktok&month=${m}&year=${y}`).then(r => r.json()),
+          fetch(`/api/report?action=history&brand=${encodeURIComponent(qBrand)}&month=${m}&year=${y}`).then(r => r.json()),
+          fetch(`/api/report?action=history&brand=${encodeURIComponent(qBrand)}`).then(r => r.json()),
+        ])
+        setShopeePlan(sp.data || null)
+        setTiktokPlan(tp.data || null)
+        const histRows: Record<string, number|string|null>[] = hist.data || []
+        setWeekHistory(histRows)
+        setChartHistory(chartHist.data || [])
+        setHasPlan(!!sp.data || !!tp.data)
+        setWeekInfo(wInfo)
+        setStep(2)
+      } catch {
+        showToast('Lỗi tải plan từ deep-link', 'error')
+      }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brands, searchParams, autoOpened])
+
+  /* When deep-link requested openPlan, wait for plans to be loaded into state then open modal */
+  useEffect(() => {
+    if (!deepLinkOpenPlan) return
+    if (step < 2) return
+    // Wait until at least the plan-fetch has settled (shopeePlan or tiktokPlan no longer null
+    // implies data was fetched; both null but step===2 also means fetch completed with no data).
+    const t = setTimeout(() => {
+      openPlanModal()
+      setDeepLinkOpenPlan(false)
+    }, 80)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkOpenPlan, step, shopeePlan, tiktokPlan])
 
   /* ── Close brand dropdown on outside click ── */
   useEffect(() => {
@@ -1713,12 +1752,20 @@ function ReportPageInner() {
     setPlanInputs(newInp)
   }
 
+  async function logout() {
+    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
+    clearSession()
+    router.push('/')
+  }
+
   if (!user) return null
 
   /* ════════════════════════
      RENDER
   ════════════════════════ */
   return (
+    <InternalLayout user={user} onLogout={logout} greeting="Weekly Report" subline="Nhập data, AI generate nhận xét, copy mail Lark.">
+    <div className="il-paper">
     <div className="rw">
       {/* Toast */}
       <div id="toast" className={toast ? 'show' : ''}>
@@ -2476,5 +2523,7 @@ function ReportPageInner() {
         </div>
       </div>
     </div>
+    </div>
+    </InternalLayout>
   )
 }

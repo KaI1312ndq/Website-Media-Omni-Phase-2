@@ -62,7 +62,7 @@ export default function InternalSidebar({ user, onLogout, open, onClose }: Props
     { href: '/dashboard', label: 'Tổng quan', icon: I.home, match: (p) => p === '/dashboard' },
     { href: '/quiz', label: 'Quiz Hub', icon: I.quiz },
     { href: '/hub/tasks', label: 'Daily Tasks', icon: I.task },
-    { href: '/dashboard#scores', label: isAdmin ? 'Bảng điểm Team' : 'Kết quả của tôi', icon: I.score, match: () => false },
+    { href: '/hub/scores', label: isAdmin ? 'Bảng điểm Team' : 'Kết quả của tôi', icon: I.score },
     ...(isAdmin ? [{ href: '/hub/users', label: 'Quản lý thành viên', icon: I.users } as Item] : []),
     { href: '/hub/report', label: 'Weekly Report', icon: I.report },
     { href: '/hub/analytics', label: 'Analytics', icon: I.analytics },

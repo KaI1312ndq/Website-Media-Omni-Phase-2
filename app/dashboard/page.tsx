@@ -160,7 +160,7 @@ export default function DashboardPage() {
   const adminCards: CardDef[] = [
     { key: 'quiz',     icon: ICON.quiz,      title: 'Quiz Hub',           desc: 'Làm bài kiểm tra Dạng 1 & Dạng 2.',         badge: 'ready', badgeText: 'Sẵn sàng', url: '/quiz' },
     { key: 'tasks',    icon: ICON.task,      title: 'Daily Tasks',        desc: 'Xem và quản lý task hàng ngày.',             badge: 'open',  badgeText: 'Mở',       url: '/hub/tasks' },
-    { key: 'score',    icon: ICON.score,     title: 'Bảng điểm Team',     desc: 'Xem điểm quiz của tất cả thành viên.',       badge: 'open',  badgeText: 'Xem ngay', fn: 'scores' },
+    { key: 'score',    icon: ICON.score,     title: 'Bảng điểm Team',     desc: 'Xem điểm quiz của tất cả thành viên.',       badge: 'open',  badgeText: 'Xem ngay', url: '/hub/scores' },
     { key: 'users',    icon: ICON.users,     title: 'Quản lý thành viên', desc: 'Tạo, sửa, phân quyền tài khoản.',           badge: 'open',  badgeText: 'Mở',       url: '/hub/users' },
     { key: 'report',   icon: ICON.report,    title: 'Weekly Report',       desc: 'Nhập data → AI nhận xét → Copy Lark.',      badge: 'open',  badgeText: 'Mở',       url: '/hub/report' },
     { key: 'analytics',icon: ICON.analytics, title: 'Analytics',           desc: 'Thống kê performance report theo brand.',    badge: 'open',  badgeText: 'Mở',       url: '/hub/analytics' },
@@ -171,7 +171,7 @@ export default function DashboardPage() {
   const memberCards: CardDef[] = [
     { key: 'quiz',     icon: ICON.quiz,      title: 'Quiz Hub',           desc: 'Làm bài kiểm tra kiến thức.',                badge: 'ready', badgeText: 'Sẵn sàng', url: '/quiz' },
     { key: 'tasks',    icon: ICON.task,      title: 'Daily Tasks',        desc: 'Xem task hàng ngày được assign.',            badge: 'open',  badgeText: 'Mở',       url: '/hub/tasks' },
-    { key: 'score',    icon: ICON.score,     title: 'Kết quả của tôi',    desc: 'Xem lịch sử điểm các bài đã làm.',          badge: 'open',  badgeText: 'Xem',      fn: 'my-scores' },
+    { key: 'score',    icon: ICON.score,     title: 'Kết quả của tôi',    desc: 'Xem lịch sử điểm các bài đã làm.',          badge: 'open',  badgeText: 'Xem',      url: '/hub/scores' },
     { key: 'report',   icon: ICON.report,    title: 'Weekly Report',       desc: 'Nhập data → AI nhận xét → Copy Lark.',      badge: 'open',  badgeText: 'Mở',       url: '/hub/report' },
     { key: 'analytics',icon: ICON.analytics, title: 'Analytics',           desc: 'Thống kê performance report theo brand.',   badge: 'open',  badgeText: 'Mở',       url: '/hub/analytics' },
     { key: 'sop',      icon: ICON.sop,       title: 'SOP & Resources',    desc: 'Tài liệu, template nội bộ.',                badge: 'soon',  badgeText: 'Phase 4',  disabled: true },

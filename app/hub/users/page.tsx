@@ -1,8 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession, setSession, SessionUser, initials, ROLE_DEFAULTS } from '@/lib/auth'
+import { setSession, clearSession, SessionUser, initials, ROLE_DEFAULTS } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
+import InternalLayout from '@/components/InternalLayout'
+import '@/app/dashboard/dashboard.css'
 
 type UserRow = { id: string; username: string; name: string; role: string; status: string; perms: Record<string, number> }
 
@@ -127,12 +129,18 @@ export default function UsersPage() {
 
   const avCls = (role: string) => role === 'admin' ? 'av-admin' : role === 'upbase' ? 'av-upbase' : 'av-member'
 
+  async function logout() {
+    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
+    clearSession()
+    router.push('/')
+  }
+
   if (!me) {
     return <HubPageSkeleton title="Đang tải users..." />
   }
 
   return (
-    <>
+    <InternalLayout user={me} onLogout={logout} greeting="Quản lý thành viên" subline="Phân quyền tính năng cho từng thành viên Media Omni.">
       {toast && <div className={`toast show ${toast.type || 'success'}`} style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}><div className="toast-dot" /><span>{toast.msg}</span></div>}
 
       {modal && (
@@ -165,17 +173,8 @@ export default function UsersPage() {
         </div>
       )}
 
-      <nav id="main-nav" className="dash-nav scrolled">
-        <div className="nav-inner">
-          <a href="/" className="nav-logo"><span className="nav-logo-mark">MO</span>MediaOmni</a>
-          <div className="nav-links">
-            <a href="/dashboard" className="nav-link">← Dashboard</a>
-            <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.65rem', fontWeight: 700, padding: '.25rem .65rem', borderRadius: 'var(--r-pill)', background: 'rgba(239,68,68,.1)', color: 'var(--error)' }}>Admin Only</span>
-          </div>
-        </div>
-      </nav>
-
-      <div className="users-wrap">
+      <div className="il-paper">
+      <div className="users-wrap" style={{ paddingTop: 0 }}>
         <div className="users-hdr">
           <div><h1>Quản lý tài khoản</h1><p>Phân quyền tính năng cho từng thành viên Media Omni.</p></div>
           <button className="btn-primary" onClick={openCreate}>＋ Tạo tài khoản</button>
@@ -273,6 +272,7 @@ export default function UsersPage() {
           </div>
         </div>
       </div>
-    </>
+      </div>
+    </InternalLayout>
   )
 }
