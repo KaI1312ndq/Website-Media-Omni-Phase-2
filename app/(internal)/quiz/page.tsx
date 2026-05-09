@@ -1,9 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { getSession, setSession, clearSession, SessionUser } from '@/lib/auth'
-import InternalLayout from '@/components/InternalLayout'
-import '@/app/dashboard/dashboard.css'
+import { getSession, SessionUser } from '@/lib/auth'
+import '@/app/(internal)/dashboard/dashboard.css'
 
 // ── D1 Benchmark Data ──
 const D1_DATA = [
@@ -87,7 +85,6 @@ const fmtVi = (m: string, v: number | null) => {
 type Screen = 'hub' | 'd1-setup' | 'd1-quiz' | 'd1-result' | 'd2-quiz' | 'd2-result'
 
 export default function QuizPage() {
-  const router = useRouter()
   const [user, setUser] = useState<SessionUser | null>(null)
   const [screen, setScreen] = useState<Screen>('hub')
 
@@ -99,14 +96,9 @@ export default function QuizPage() {
   const [toast, setToast] = useState('')
 
   useEffect(() => {
-    fetch('/api/auth').then(r => r.json()).then(({ user: su }) => {
-      if (su) { setSession(su); setUser(su) }
-      else {
-        const u = getSession()
-        if (u) setUser(u); else router.push('/')
-      }
-    })
-  }, [router])
+    const u = getSession()
+    if (u) setUser(u)
+  }, [])
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
@@ -130,16 +122,10 @@ export default function QuizPage() {
     showToast('✅ Đã lưu điểm!')
   }
 
-  async function logout() {
-    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
-    clearSession()
-    router.push('/')
-  }
-
   if (!user) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--f-mono)', color: 'var(--faint)' }}>Đang tải...</div>
 
   return (
-    <InternalLayout user={user} onLogout={logout} greeting="Quiz Hub" subline="Kiểm tra kiến thức benchmark Ads & chỉ số.">
+    <>
       {toast && <div className="toast show success" style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}><div className="toast-dot" /><span>{toast}</span></div>}
 
       <div style={{ padding: '16px 0 40px', maxWidth: 760, margin: '0 auto' }}>
@@ -232,7 +218,7 @@ export default function QuizPage() {
           </div>
         )}
       </div>
-    </InternalLayout>
+    </>
   )
 }
 

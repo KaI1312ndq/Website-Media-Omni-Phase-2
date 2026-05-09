@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getSession, clearSession, setSession, SessionUser, initials } from '@/lib/auth'
-import InternalLayout from '@/components/InternalLayout'
+import { getSession, SessionUser, initials } from '@/lib/auth'
 import './dashboard.css'
 
 type CardDef = {
@@ -54,13 +53,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const u = getSession()
-    if (!u) { router.push('/'); return }
-    fetch('/api/auth').then(r => r.json()).then(({ user: su }) => {
-      if (su) { setSession(su); setUser(su) }
-      else if (u) setUser(u)
-      else router.push('/')
-    }).catch(() => setUser(u))
-  }, [router])
+    if (u) setUser(u)
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -132,12 +126,6 @@ export default function DashboardPage() {
     return () => { cancelled = true; if (chartInstance.current) { chartInstance.current.destroy(); chartInstance.current = null } }
   }, [data])
 
-  async function logout() {
-    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
-    clearSession()
-    router.push('/')
-  }
-
   async function loadScores(onlyMe: boolean) {
     setLoadingScores(true)
     const url = onlyMe ? `/api/quiz?username=${user?.username}` : '/api/quiz'
@@ -208,7 +196,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <InternalLayout user={user} onLogout={logout}>
+    <>
       {/* Cards grid */}
       <div className="dashCardsGrid">
         {cards.map((c) => <CardEl key={c.key} c={c} />)}
@@ -339,6 +327,6 @@ export default function DashboardPage() {
           )}
         </div>
       )}
-    </InternalLayout>
+    </>
   )
 }

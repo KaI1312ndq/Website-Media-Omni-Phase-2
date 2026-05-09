@@ -1,10 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { setSession, clearSession, SessionUser, initials, ROLE_DEFAULTS } from '@/lib/auth'
+import { getSession, SessionUser, initials, ROLE_DEFAULTS } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
-import InternalLayout from '@/components/InternalLayout'
-import '@/app/dashboard/dashboard.css'
+import '@/app/(internal)/dashboard/dashboard.css'
 
 type UserRow = { id: string; username: string; name: string; role: string; status: string; perms: Record<string, number> }
 
@@ -48,10 +47,10 @@ export default function UsersPage() {
   function showToast(msg: string, type = 'success') { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
 
   useEffect(() => {
-    fetch('/api/auth').then(r => r.json()).then(({ user }) => {
-      if (!user || user.role !== 'admin') { router.push('/dashboard'); return }
-      setMe(user); setSession(user); loadUsers()
-    })
+    const u = getSession()
+    if (!u) return
+    if (u.role !== 'admin') { router.push('/dashboard'); return }
+    setMe(u); loadUsers()
   }, [router])
 
   async function loadUsers() {
@@ -129,18 +128,12 @@ export default function UsersPage() {
 
   const avCls = (role: string) => role === 'admin' ? 'av-admin' : role === 'upbase' ? 'av-upbase' : 'av-member'
 
-  async function logout() {
-    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
-    clearSession()
-    router.push('/')
-  }
-
   if (!me) {
     return <HubPageSkeleton title="Đang tải users..." />
   }
 
   return (
-    <InternalLayout user={me} onLogout={logout} greeting="Quản lý thành viên" subline="Phân quyền tính năng cho từng thành viên Media Omni.">
+    <>
       {toast && <div className={`toast show ${toast.type || 'success'}`} style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}><div className="toast-dot" /><span>{toast.msg}</span></div>}
 
       {modal && (
@@ -270,6 +263,6 @@ export default function UsersPage() {
           </div>
         </div>
       </div>
-    </InternalLayout>
+    </>
   )
 }

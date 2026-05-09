@@ -1,10 +1,8 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { getSession, setSession, clearSession, SessionUser, initials } from '@/lib/auth'
+import { getSession, SessionUser, initials } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
-import InternalLayout from '@/components/InternalLayout'
-import '@/app/dashboard/dashboard.css'
+import '@/app/(internal)/dashboard/dashboard.css'
 
 type Task = {
   id: string; task_name: string; description?: string
@@ -31,7 +29,6 @@ const fmtTime = (v?: string) => {
 }
 
 export default function TasksPage() {
-  const router = useRouter()
   const [user, setUser] = useState<SessionUser | null>(null)
   const [tab, setTab] = useState<'myday'|'team'|'create'>('myday')
   const [curDate, setCurDate] = useState(new Date())
@@ -51,17 +48,12 @@ export default function TasksPage() {
   }
 
   useEffect(() => {
-    let u = getSession()
-    if (!u) { router.push('/'); return }
-    fetch('/api/auth').then(r => r.json()).then(({ user: su }) => {
-      if (su) { setSession(su); setUser(su); setForm(f => ({ ...f, assignee: su.username })) }
-      else if (u) { setUser(u); setForm(f => ({ ...f, assignee: u!.username })) }
-      else router.push('/')
-    })
+    const u = getSession()
+    if (u) { setUser(u); setForm(f => ({ ...f, assignee: u.username })) }
     fetch('/api/users').then(r => r.json()).then(({ users }) => {
       setMembers((users || []).filter((x: UserRow) => x.role !== 'upbase'))
     })
-  }, [router])
+  }, [])
 
   const loadMyDay = useCallback(async (date: Date) => {
     if (!user) return
@@ -117,18 +109,12 @@ export default function TasksPage() {
 
   const weekDates = getWeekDates(weekOff)
 
-  async function logout() {
-    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
-    clearSession()
-    router.push('/')
-  }
-
   if (!user) {
     return <HubPageSkeleton title="Đang tải tasks..." />
   }
 
   return (
-    <InternalLayout user={user} onLogout={logout} greeting="Daily Tasks" subline="Quản lý task hàng ngày của bạn và team.">
+    <>
       {toast && (
         <div className={`toast show ${toast.type || 'success'}`} style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
           <div className="toast-dot" /><span>{toast.msg}</span>
@@ -342,7 +328,7 @@ export default function TasksPage() {
           </div>
         </div>
       )}
-    </InternalLayout>
+    </>
   )
 }
 

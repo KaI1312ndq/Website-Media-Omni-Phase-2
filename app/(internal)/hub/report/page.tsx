@@ -1,9 +1,8 @@
 'use client'
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getSession, clearSession, SessionUser } from '@/lib/auth'
-import InternalLayout from '@/components/InternalLayout'
-import '@/app/dashboard/dashboard.css'
+import { getSession, SessionUser } from '@/lib/auth'
+import '@/app/(internal)/dashboard/dashboard.css'
 import * as XLSX from 'xlsx'
 import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables)
@@ -334,9 +333,8 @@ function ReportPageInner() {
   /* ── Auth ── */
   useEffect(() => {
     const u = getSession()
-    if (!u) { router.push('/'); return }
-    setUser(u)
-  }, [router])
+    if (u) setUser(u)
+  }, [])
 
   /* ── Load brands ── */
   useEffect(() => {
@@ -1728,19 +1726,13 @@ function ReportPageInner() {
     })
     return s
   }
-  async function logout() {
-    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
-    clearSession()
-    router.push('/')
-  }
-
   if (!user) return null
 
   /* ════════════════════════
      RENDER
   ════════════════════════ */
   return (
-    <InternalLayout user={user} onLogout={logout} greeting="Weekly Report Tool" subline="Nhập data → AI nhận xét → Copy Lark.">
+    <>
     <div className="rw" style={{ paddingTop: 16 }}>
       {/* Toast */}
       <div id="toast" className={toast ? 'show' : ''}>
@@ -2501,6 +2493,6 @@ function ReportPageInner() {
         </div>
       </div>
     </div>
-    </InternalLayout>
+    </>
   )
 }

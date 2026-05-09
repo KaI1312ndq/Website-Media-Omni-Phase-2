@@ -3,10 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { getSession, clearSession, setSession, SessionUser } from '@/lib/auth'
+import { getSession, SessionUser } from '@/lib/auth'
 import { Skeleton } from '@/components/Skeleton'
-import InternalLayout from '@/components/InternalLayout'
-import '@/app/dashboard/dashboard.css'
+import '@/app/(internal)/dashboard/dashboard.css'
 import './analytics.css'
 
 /* ─── Types ─── */
@@ -155,18 +154,8 @@ export default function AnalyticsPage() {
   /* auth */
   useEffect(() => {
     const u = getSession()
-    if (!u) { router.replace('/'); return }
-    setUser(u)
-    fetch('/api/auth').then(r => r.json()).then(({ user: su }) => {
-      if (su) { setSession(su); setUser(su) }
-    }).catch(() => {})
-  }, [router])
-
-  async function logout() {
-    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
-    clearSession()
-    router.push('/')
-  }
+    if (u) setUser(u)
+  }, [])
 
   /* load brands once */
   useEffect(() => {
@@ -355,7 +344,7 @@ export default function AnalyticsPage() {
 
   /* ─── RENDER ─── */
   return (
-    <InternalLayout user={user} onLogout={logout} greeting="Analytics — Operations" subline="Plan completeness, report coverage, data consistency & report timing.">
+    <>
       <div className="an2">
         <div className="an2-pageHdr">
           <div />
@@ -755,6 +744,6 @@ export default function AnalyticsPage() {
           </>
         )}
       </div>
-    </InternalLayout>
+    </>
   )
 }

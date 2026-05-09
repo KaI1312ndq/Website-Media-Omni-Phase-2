@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@sanity/client'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getSessionFromCookie } from '@/lib/session-server'
@@ -74,22 +75,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'DB lỗi: ' + updErr.message }, { status: 500 })
   }
 
-  // Sync với teamMember nếu có match theo name
+  // Sync với teamMember nếu có match theo name (case-insensitive, trimmed)
   let syncedToSanity = false
+  let matchedTeamName: string | null = null
   try {
-    const tm = await sanity.fetch<{ _id: string } | null>(
-      `*[_type == "teamMember" && name == $name][0]{_id}`,
-      { name: session.name }
+    const normalizedName = (session.name || '').trim()
+    // Try exact first, then case-insensitive
+    let tm = await sanity.fetch<{ _id: string; name: string } | null>(
+      `*[_type == "teamMember" && name == $name][0]{_id, name}`,
+      { name: normalizedName }
     )
+    if (!tm?._id) {
+      tm = await sanity.fetch<{ _id: string; name: string } | null>(
+        `*[_type == "teamMember" && lower(name) == lower($name)][0]{_id, name}`,
+        { name: normalizedName }
+      )
+    }
     if (tm?._id) {
       await sanity
         .patch(tm._id)
         .set({ avatar: { _type: 'image', asset: { _type: 'reference', _ref: assetId } } })
         .commit()
       syncedToSanity = true
+      matchedTeamName = tm.name
     }
-  } catch {
-    // ignore sync error
+  } catch (e) {
+    console.error('[avatar] Sanity sync error:', e)
+  }
+
+  // Revalidate homepage so Team section shows new avatar
+  if (syncedToSanity) {
+    try { revalidatePath('/') } catch {}
   }
 
   // Refresh session cookie với avatar_url mới
@@ -106,5 +122,5 @@ export async function POST(req: NextRequest) {
     })
   } catch {}
 
-  return NextResponse.json({ ok: true, url, synced_to_sanity: syncedToSanity })
+  return NextResponse.json({ ok: true, url, synced_to_sanity: syncedToSanity, matched_team_name: matchedTeamName })
 }

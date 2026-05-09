@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession, clearSession, setSession, SessionUser } from '@/lib/auth'
-import InternalLayout from '@/components/InternalLayout'
-import '@/app/dashboard/dashboard.css'
-import '@/app/hub/analytics/analytics.css'
+import { getSession, SessionUser } from '@/lib/auth'
+import '@/app/(internal)/dashboard/dashboard.css'
+import '@/app/(internal)/hub/analytics/analytics.css'
 
 interface Attempt {
   id?: string
@@ -84,18 +83,8 @@ export default function ScoresPage() {
   /* Auth */
   useEffect(() => {
     const u = getSession()
-    if (!u) { router.replace('/'); return }
-    setUser(u)
-    fetch('/api/auth').then(r => r.json()).then(({ user: su }) => {
-      if (su) { setSession(su); setUser(su) }
-    }).catch(() => {})
-  }, [router])
-
-  async function logout() {
-    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
-    clearSession()
-    router.push('/')
-  }
+    if (u) setUser(u)
+  }, [])
 
   /* Load users list (admin only) */
   useEffect(() => {
@@ -209,7 +198,7 @@ export default function ScoresPage() {
   const isAdmin = user.role === 'admin'
 
   return (
-    <InternalLayout user={user} onLogout={logout} greeting="Bảng điểm Team" subline={isAdmin ? 'Tổng hợp điểm quiz toàn team. Filter theo quiz, ngày, user.' : 'Lịch sử điểm quiz của bạn.'}>
+    <>
       <div className="an2">
 
         {/* Filters */}
@@ -370,6 +359,6 @@ export default function ScoresPage() {
           </>
         )}
       </div>
-    </InternalLayout>
+    </>
   )
 }
