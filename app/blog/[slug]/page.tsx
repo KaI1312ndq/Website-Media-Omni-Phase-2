@@ -27,11 +27,13 @@ export async function generateMetadata(
   const post = await client.fetch(blogPostQuery, { slug: params.slug }).catch(() => null)
   if (!post) return { title: 'Bài viết không tồn tại' }
 
-  const ogImg = post.ogImage?.asset
+  // Prefer custom uploaded ogImage / coverImage; otherwise let Next.js pick up
+  // the dynamic opengraph-image.tsx convention by omitting `images`.
+  const customOg = post.ogImage?.asset
     ? urlFor(post.ogImage).width(1200).height(630).url()
     : post.coverImage?.asset
     ? urlFor(post.coverImage).width(1200).height(630).url()
-    : 'https://www.mediaomni.site/og-image.png'
+    : null
 
   return {
     title: post.seoTitle ?? post.title,
@@ -44,13 +46,13 @@ export async function generateMetadata(
       publishedTime: post.publishedAt,
       authors: [post.author ?? 'Media Omni'],
       tags: post.tags,
-      images: [{ url: ogImg, width: 1200, height: 630 }],
+      ...(customOg ? { images: [{ url: customOg, width: 1200, height: 630 }] } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: post.seoTitle ?? post.title,
       description: post.seoDescription ?? post.excerpt,
-      images: [ogImg],
+      ...(customOg ? { images: [customOg] } : {}),
     },
   }
 }

@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { SessionUser } from '@/lib/auth'
+import { SessionUser, setSession } from '@/lib/auth'
 import InternalSidebar from './InternalSidebar'
 import InternalHeader from './InternalHeader'
+import ProfileModal from './ProfileModal'
 
 interface Props {
   user: SessionUser
@@ -16,6 +17,10 @@ interface Props {
 export default function InternalLayout({ user, onLogout, children, greeting, subline }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState(user)
+
+  useEffect(() => { setCurrentUser(user) }, [user])
 
   useEffect(() => {
     try {
@@ -34,17 +39,32 @@ export default function InternalLayout({ user, onLogout, children, greeting, sub
   return (
     <div className="il-shell" data-collapsed={collapsed ? 'true' : 'false'} style={styleVar}>
       <InternalSidebar
-        user={user}
+        user={currentUser}
         onLogout={onLogout}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         collapsed={collapsed}
         setCollapsed={toggleCollapsed}
+        onOpenProfile={() => setProfileOpen(true)}
       />
       <div className="il-main">
-        <InternalHeader user={user} onMenuClick={() => setDrawerOpen(true)} greeting={greeting} subline={subline} />
+        <InternalHeader
+          user={currentUser}
+          onMenuClick={() => setDrawerOpen(true)}
+          greeting={greeting}
+          subline={subline}
+          onOpenProfile={() => setProfileOpen(true)}
+          onLogout={onLogout}
+        />
         <main className="il-content">{children}</main>
       </div>
+      {profileOpen && (
+        <ProfileModal
+          user={currentUser}
+          onClose={() => setProfileOpen(false)}
+          onUpdate={(u) => { setCurrentUser(u); setSession(u) }}
+        />
+      )}
     </div>
   )
 }

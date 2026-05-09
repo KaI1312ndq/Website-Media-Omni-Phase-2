@@ -6,6 +6,7 @@ import { HubPageSkeleton } from '@/components/Skeleton'
 import '@/app/(internal)/dashboard/dashboard.css'
 
 type UserRow = { id: string; username: string; name: string; role: string; status: string; perms: Record<string, number> }
+type BrandAssign = { id: string; brand_name: string; assigned_members: string; isAll: boolean; included: boolean }
 
 const PERMS_DEF = [
   { section: 'Quiz & Learning', items: [
@@ -43,6 +44,10 @@ export default function UsersPage() {
   const [newPass, setNewPass] = useState('')
   const [cfmPass, setCfmPass] = useState('')
   const [toast, setToast] = useState<{ msg: string; type?: string } | null>(null)
+  const [brands, setBrands] = useState<BrandAssign[]>([])
+  const [brandSel, setBrandSel] = useState<Set<string>>(new Set())
+  const [brandsLoading, setBrandsLoading] = useState(false)
+  const [savingBrands, setSavingBrands] = useState(false)
 
   function showToast(msg: string, type = 'success') { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
 
@@ -61,6 +66,58 @@ export default function UsersPage() {
   function selectUser(u: UserRow) {
     setSelected(u)
     setCurPerms(u.perms && Object.keys(u.perms).length > 0 ? u.perms : { ...ROLE_DEFAULTS[u.role as keyof typeof ROLE_DEFAULTS] })
+    loadBrandAssign(u.username)
+  }
+
+  async function loadBrandAssign(username: string) {
+    setBrandsLoading(true)
+    try {
+      const j = await fetch(`/api/brands/assign?username=${encodeURIComponent(username)}`).then(r => r.json())
+      const list: BrandAssign[] = j.brands || []
+      setBrands(list)
+      setBrandSel(new Set(list.filter(b => b.included && !b.isAll).map(b => b.id)))
+    } catch {
+      setBrands([]); setBrandSel(new Set())
+    } finally {
+      setBrandsLoading(false)
+    }
+  }
+
+  function toggleBrand(id: string) {
+    setBrandSel(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id); else n.add(id)
+      return n
+    })
+  }
+
+  function selectAllBrands() {
+    setBrandSel(new Set(brands.filter(b => !b.isAll).map(b => b.id)))
+  }
+
+  function clearAllBrands() {
+    setBrandSel(new Set())
+  }
+
+  async function saveBrandAssign() {
+    if (!selected) return
+    setSavingBrands(true)
+    try {
+      const r = await fetch('/api/brands/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: selected.username, brand_ids: Array.from(brandSel) }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Lỗi lưu phân quyền brand')
+      await loadBrandAssign(selected.username)
+      showToast('✅ Đã lưu phân quyền brand!')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Lỗi'
+      showToast(msg, 'error')
+    } finally {
+      setSavingBrands(false)
+    }
   }
 
   const filtered = users.filter(u => {
@@ -244,6 +301,55 @@ export default function UsersPage() {
                     </div>
                   </div>
                 ))}
+
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--faint)', marginBottom: 6, marginTop: 8 }}>Brand Assignment</div>
+                <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 14 }}>Chọn brands user này được phép xem trong Report Tool & Analytics</div>
+
+                {(selected.role === 'admin' || (selected.role as string) === 'lead') ? (
+                  <div style={{ padding: '14px 16px', borderRadius: 10, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.25)', color: 'var(--muted)', fontStyle: 'italic', fontSize: '.85rem', marginBottom: 22 }}>
+                    👑 Admin/Lead — thấy tất cả brands
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 22 }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                      <button type="button" className="ud-btn" onClick={selectAllBrands}>Tất cả</button>
+                      <button type="button" className="ud-btn" onClick={clearAllBrands}>Bỏ chọn</button>
+                      <button type="button" className="ud-btn ud-btn-primary" onClick={saveBrandAssign} disabled={savingBrands}>{savingBrands ? 'Đang lưu...' : '💾 Lưu phân quyền brand'}</button>
+                    </div>
+
+                    {brandsLoading ? (
+                      <div style={{ color: 'var(--faint)', fontSize: '.8rem' }}>Đang tải brands...</div>
+                    ) : brands.length === 0 ? (
+                      <div style={{ color: 'var(--faint)', fontSize: '.8rem' }}>Chưa có brand nào.</div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+                        {brands.map(b => {
+                          const checked = brandSel.has(b.id)
+                          if (b.isAll) {
+                            return (
+                              <div key={b.id} title="Brand này mở cho TẤT CẢ"
+                                style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: '.78rem', color: 'var(--muted)', fontStyle: 'italic' }}>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.brand_name}</span>
+                                <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.6rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#34d399', fontStyle: 'normal' }}>ALL</span>
+                              </div>
+                            )
+                          }
+                          return (
+                            <div key={b.id} onClick={() => toggleBrand(b.id)}
+                              style={{ cursor: 'pointer', padding: '10px 12px', borderRadius: 8,
+                                background: checked ? 'rgba(37,99,235,0.3)' : 'rgba(255,255,255,0.05)',
+                                border: `1px solid ${checked ? 'rgba(37,99,235,0.6)' : 'rgba(255,255,255,0.08)'}`,
+                                display: 'flex', alignItems: 'center', gap: 8, fontSize: '.8rem',
+                                transition: 'background .15s, border-color .15s' }}>
+                              <span style={{ width: 14, height: 14, borderRadius: 3, border: '1.5px solid rgba(255,255,255,0.4)', background: checked ? '#2563eb' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', fontSize: 10, color: '#fff' }}>{checked ? '✓' : ''}</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.brand_name}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="pass-section">
                   <h4>🔑 Đặt lại mật khẩu</h4>

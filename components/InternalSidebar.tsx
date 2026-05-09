@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { SessionUser, initials, setSession } from '@/lib/auth'
-import ProfileModal from './ProfileModal'
+import { SessionUser, initials } from '@/lib/auth'
 
 type Item = {
   href?: string
@@ -56,13 +55,13 @@ interface Props {
   onClose?: () => void
   collapsed?: boolean
   setCollapsed?: (v: boolean) => void
+  onOpenProfile?: () => void
 }
 
-export default function InternalSidebar({ user, onLogout, open, onClose, collapsed, setCollapsed }: Props) {
+export default function InternalSidebar({ user, onLogout, open, onClose, collapsed, setCollapsed, onOpenProfile }: Props) {
   const pathname = usePathname() || ''
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState(user)
   const isAdmin = currentUser.role === 'admin'
   useEffect(() => { setCurrentUser(user) }, [user])
@@ -157,7 +156,7 @@ export default function InternalSidebar({ user, onLogout, open, onClose, collaps
           </div>
           {menuOpen && (
             <div className="isb-menu">
-              <button className="isb-menu-item" onClick={() => { setProfileOpen(true); setMenuOpen(false) }}>
+              <button className="isb-menu-item" onClick={() => { onOpenProfile?.(); setMenuOpen(false) }}>
                 {I.user} <span>Tài khoản</span>
               </button>
               <button className="isb-menu-item" onClick={() => { router.push('/'); setMenuOpen(false) }}>
@@ -170,13 +169,6 @@ export default function InternalSidebar({ user, onLogout, open, onClose, collaps
           )}
         </div>
       </aside>
-      {profileOpen && (
-        <ProfileModal
-          user={currentUser}
-          onClose={() => setProfileOpen(false)}
-          onUpdate={(u) => { setCurrentUser(u); setSession(u) }}
-        />
-      )}
     </>
   )
 }
