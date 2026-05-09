@@ -161,7 +161,7 @@ create index wr_brand_year_month   on public.weekly_reports(brand_name, year, mo
 
 /* ═══════════════════════════════════════════
    7. MONTHLY_PLANS — match Plan.csv (FLAT FORMAT)
-   12 metric keys × 6 periods (plan_month, plan_w1...w5)
+   25 metric keys × 6 periods (plan_month, plan_w1...w5) = 150 cols
    Một row per (username, brand_name, month, year)
 ═══════════════════════════════════════════ */
 create table public.monthly_plans (
@@ -171,7 +171,7 @@ create table public.monthly_plans (
   month       int  not null,
   year        int  not null,
 
-  -- ── Shopee CPC ──
+  -- ── Shopee CPC (5 keys) ──
   s_cpc_doanh_so__plan_month bigint default 0,
   s_cpc_doanh_so__plan_w1    bigint default 0,
   s_cpc_doanh_so__plan_w2    bigint default 0,
@@ -184,8 +184,26 @@ create table public.monthly_plans (
   s_cpc_chi_phi__plan_w3     bigint default 0,
   s_cpc_chi_phi__plan_w4     bigint default 0,
   s_cpc_chi_phi__plan_w5     bigint default 0,
+  s_cpc_luot_xem__plan_month  bigint default 0,
+  s_cpc_luot_xem__plan_w1     bigint default 0,
+  s_cpc_luot_xem__plan_w2     bigint default 0,
+  s_cpc_luot_xem__plan_w3     bigint default 0,
+  s_cpc_luot_xem__plan_w4     bigint default 0,
+  s_cpc_luot_xem__plan_w5     bigint default 0,
+  s_cpc_luot_click__plan_month bigint default 0,
+  s_cpc_luot_click__plan_w1    bigint default 0,
+  s_cpc_luot_click__plan_w2    bigint default 0,
+  s_cpc_luot_click__plan_w3    bigint default 0,
+  s_cpc_luot_click__plan_w4    bigint default 0,
+  s_cpc_luot_click__plan_w5    bigint default 0,
+  s_cpc_don_hang__plan_month  bigint default 0,
+  s_cpc_don_hang__plan_w1     bigint default 0,
+  s_cpc_don_hang__plan_w2     bigint default 0,
+  s_cpc_don_hang__plan_w3     bigint default 0,
+  s_cpc_don_hang__plan_w4     bigint default 0,
+  s_cpc_don_hang__plan_w5     bigint default 0,
 
-  -- ── Shopee Nhận Diện ──
+  -- ── Shopee Nhận Diện (4 keys) ──
   s_nd_gmv__plan_month       bigint default 0,
   s_nd_gmv__plan_w1          bigint default 0,
   s_nd_gmv__plan_w2          bigint default 0,
@@ -198,8 +216,20 @@ create table public.monthly_plans (
   s_nd_chi_phi__plan_w3      bigint default 0,
   s_nd_chi_phi__plan_w4      bigint default 0,
   s_nd_chi_phi__plan_w5      bigint default 0,
+  s_nd_luot_xem__plan_month   bigint default 0,
+  s_nd_luot_xem__plan_w1      bigint default 0,
+  s_nd_luot_xem__plan_w2      bigint default 0,
+  s_nd_luot_xem__plan_w3      bigint default 0,
+  s_nd_luot_xem__plan_w4      bigint default 0,
+  s_nd_luot_xem__plan_w5      bigint default 0,
+  s_nd_luot_click__plan_month bigint default 0,
+  s_nd_luot_click__plan_w1    bigint default 0,
+  s_nd_luot_click__plan_w2    bigint default 0,
+  s_nd_luot_click__plan_w3    bigint default 0,
+  s_nd_luot_click__plan_w4    bigint default 0,
+  s_nd_luot_click__plan_w5    bigint default 0,
 
-  -- ── Shopee Livestream ──
+  -- ── Shopee Livestream (3 keys) ──
   s_live_gmv__plan_month     bigint default 0,
   s_live_gmv__plan_w1        bigint default 0,
   s_live_gmv__plan_w2        bigint default 0,
@@ -212,8 +242,14 @@ create table public.monthly_plans (
   s_live_chi_phi__plan_w3    bigint default 0,
   s_live_chi_phi__plan_w4    bigint default 0,
   s_live_chi_phi__plan_w5    bigint default 0,
+  s_live_luot_xem__plan_month bigint default 0,
+  s_live_luot_xem__plan_w1    bigint default 0,
+  s_live_luot_xem__plan_w2    bigint default 0,
+  s_live_luot_xem__plan_w3    bigint default 0,
+  s_live_luot_xem__plan_w4    bigint default 0,
+  s_live_luot_xem__plan_w5    bigint default 0,
 
-  -- ── TikTok PGM ──
+  -- ── TikTok PGM (5 keys) ──
   t_pgm_doanh_so__plan_month bigint default 0,
   t_pgm_doanh_so__plan_w1    bigint default 0,
   t_pgm_doanh_so__plan_w2    bigint default 0,
@@ -226,8 +262,26 @@ create table public.monthly_plans (
   t_pgm_chi_phi__plan_w3     bigint default 0,
   t_pgm_chi_phi__plan_w4     bigint default 0,
   t_pgm_chi_phi__plan_w5     bigint default 0,
+  t_pgm_luot_xem__plan_month  bigint default 0,
+  t_pgm_luot_xem__plan_w1     bigint default 0,
+  t_pgm_luot_xem__plan_w2     bigint default 0,
+  t_pgm_luot_xem__plan_w3     bigint default 0,
+  t_pgm_luot_xem__plan_w4     bigint default 0,
+  t_pgm_luot_xem__plan_w5     bigint default 0,
+  t_pgm_luot_click__plan_month bigint default 0,
+  t_pgm_luot_click__plan_w1    bigint default 0,
+  t_pgm_luot_click__plan_w2    bigint default 0,
+  t_pgm_luot_click__plan_w3    bigint default 0,
+  t_pgm_luot_click__plan_w4    bigint default 0,
+  t_pgm_luot_click__plan_w5    bigint default 0,
+  t_pgm_don_hang__plan_month  bigint default 0,
+  t_pgm_don_hang__plan_w1     bigint default 0,
+  t_pgm_don_hang__plan_w2     bigint default 0,
+  t_pgm_don_hang__plan_w3     bigint default 0,
+  t_pgm_don_hang__plan_w4     bigint default 0,
+  t_pgm_don_hang__plan_w5     bigint default 0,
 
-  -- ── TikTok LGM ──
+  -- ── TikTok LGM (2 keys) ──
   t_lgm_doanhthu__plan_month bigint default 0,
   t_lgm_doanhthu__plan_w1    bigint default 0,
   t_lgm_doanhthu__plan_w2    bigint default 0,
@@ -241,7 +295,13 @@ create table public.monthly_plans (
   t_lgm_chi_phi__plan_w4     bigint default 0,
   t_lgm_chi_phi__plan_w5     bigint default 0,
 
-  -- ── TikTok Consideration ──
+  -- ── TikTok Consideration (2 keys) ──
+  t_con_nguoi__plan_month    bigint default 0,
+  t_con_nguoi__plan_w1       bigint default 0,
+  t_con_nguoi__plan_w2       bigint default 0,
+  t_con_nguoi__plan_w3       bigint default 0,
+  t_con_nguoi__plan_w4       bigint default 0,
+  t_con_nguoi__plan_w5       bigint default 0,
   t_con_chi_phi__plan_month  bigint default 0,
   t_con_chi_phi__plan_w1     bigint default 0,
   t_con_chi_phi__plan_w2     bigint default 0,
@@ -249,7 +309,19 @@ create table public.monthly_plans (
   t_con_chi_phi__plan_w4     bigint default 0,
   t_con_chi_phi__plan_w5     bigint default 0,
 
-  -- ── TikTok Branding ──
+  -- ── TikTok Branding (3 keys) ──
+  t_brd_view__plan_month     bigint default 0,
+  t_brd_view__plan_w1        bigint default 0,
+  t_brd_view__plan_w2        bigint default 0,
+  t_brd_view__plan_w3        bigint default 0,
+  t_brd_view__plan_w4        bigint default 0,
+  t_brd_view__plan_w5        bigint default 0,
+  t_brd_follow__plan_month   bigint default 0,
+  t_brd_follow__plan_w1      bigint default 0,
+  t_brd_follow__plan_w2      bigint default 0,
+  t_brd_follow__plan_w3      bigint default 0,
+  t_brd_follow__plan_w4      bigint default 0,
+  t_brd_follow__plan_w5      bigint default 0,
   t_brd_chi_phi__plan_month  bigint default 0,
   t_brd_chi_phi__plan_w1     bigint default 0,
   t_brd_chi_phi__plan_w2     bigint default 0,

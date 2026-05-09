@@ -295,6 +295,10 @@ export default function ReportPage() {
 
   // History for chart
   const [weekHistory, setWeekHistory] = useState<Record<string, number|string|null>[]>([])
+  // Broader history (last 10 weeks across months) for chart
+  const [chartHistory, setChartHistory] = useState<Record<string, number|string|null>[]>([])
+  // Chart image dataURL (PNG) — embedded into mail HTML
+  const [chartDataUrl, setChartDataUrl] = useState<string>('')
 
   function showToast(msg: string, type = 'success') {
     setToast({ msg, type })
@@ -361,7 +365,7 @@ export default function ReportPage() {
     if (!weekInfo) return
     showToast('Đang tải dữ liệu...')
     try {
-      const [sp, tp, hist] = await Promise.all([
+      const [sp, tp, hist, chartHist] = await Promise.all([
         shopeeChecked
           ? fetch(`/api/report?action=plan&brand=${encodeURIComponent(selectedBrand)}&platform=shopee&month=${weekInfo.month}&year=${weekInfo.year}`).then(r=>r.json())
           : Promise.resolve({ data: null }),
@@ -369,11 +373,13 @@ export default function ReportPage() {
           ? fetch(`/api/report?action=plan&brand=${encodeURIComponent(selectedBrand)}&platform=tiktok&month=${weekInfo.month}&year=${weekInfo.year}`).then(r=>r.json())
           : Promise.resolve({ data: null }),
         fetch(`/api/report?action=history&brand=${encodeURIComponent(selectedBrand)}&month=${weekInfo.month}&year=${weekInfo.year}`).then(r=>r.json()),
+        fetch(`/api/report?action=history&brand=${encodeURIComponent(selectedBrand)}`).then(r=>r.json()),
       ])
       setShopeePlan(sp.data || null)
       setTiktokPlan(tp.data || null)
       const histRows: Record<string, number|string|null>[] = hist.data || []
       setWeekHistory(histRows)
+      setChartHistory(chartHist.data || [])
       const hp = (shopeeChecked ? !!sp.data : true) && (tiktokChecked ? !!tp.data : true)
       setHasPlan(hp)
 
@@ -677,6 +683,7 @@ export default function ReportPage() {
     let body = `<div style="font-family:'Times New Roman',Times,serif;font-size:13px;color:#000;line-height:1.6">`
     body += `<p style="margin:0 0 4px">Dear: <strong>Growth Phụ trách dự án</strong><br>và Leader Team Media Omni, PIC Marketing B2C</p>`
     body += `<p style="margin:0 0 6px">Tôi xin phép gửi Report của <strong>${weekInfo.label}</strong> dự án <strong>${selectedBrand}</strong></p>`
+    if (chartDataUrl) body += `<img src="${chartDataUrl}" alt="GMV Chart" style="max-width:100%;margin:12px 0;display:block">`
     body += `<hr style="border:1px solid #ccc;margin:8px 0">`
     body += `<p style="margin:0 0 4px"><strong style="font-size:13px">BÁO CÁO HIỆU SUẤT — ${selectedBrand.toUpperCase()}</strong><br>${weekInfo.label} | ${weekInfo.start} – ${weekInfo.end}${!weekInfo.isFull ? ` (${weekInfo.days} ngày)` : ''}</p>`
     body += `<hr style="border:1px solid #ccc;margin:8px 0">`
@@ -846,6 +853,237 @@ export default function ReportPage() {
     return body
   }
 
+  /* ── Export Preview XLSX (matching mail preview format) ── */
+  function exportPreviewXlsx() {
+    if (!weekInfo) return
+    const totalWeeks = getWeeksInMonth(weekInfo.month, weekInfo.year)
+    const weeksList = Array.from({ length: totalWeeks }, (_, i) => i + 1)
+    const plan = (k: string) => (shopeePlan?.[k] || tiktokPlan?.[k]) as Record<string, number> | undefined
+    const pW = (f: string, w: number) => Number(plan(f)?.[`w${w}`]) || 0
+    const pM = (f: string) => Number(plan(f)?.month) || 0
+    const curData: Record<string, number> = { ...shopeeData, ...tiktokData }
+    const hRow = (f: string, w: number): number | null => {
+      if (w === weekInfo.weekNum) return Number(curData[f] || 0)
+      const r = weekHistory.find(h => parseInt(String(h.week_num)) === w)
+      if (!r) return null
+      const v = parseFloat(String(r[f] || 0))
+      return isNaN(v) ? 0 : v
+    }
+    const getMTD = (getter: (w: number) => number | null) =>
+      weeksList.filter(w => w <= weekInfo.weekNum).reduce((a, w) => { const v = getter(w); return a + (v !== null ? v : 0) }, 0)
+    const ratioW = (nF: string, dF: string, w: number) => { const n=hRow(nF,w),d=hRow(dF,w); if(d===null||!d) return null; return n!/d }
+    const ratioPW = (nF: string, dF: string, w: number) => { const d=pW(dF,w); return d?pW(nF,w)/d:null }
+    const ratioPM = (nF: string, dF: string) => { const d=pM(dF); return d?pM(nF)/d:null }
+    const ratioMTD = (nF: string, dF: string) => {
+      const num = getMTD(w => hRow(nF, w) || 0)
+      const den = getMTD(w => hRow(dF, w) || 0)
+      return den ? num / den : null
+    }
+    const hasSectionData = (keys: string[]) => {
+      if (keys.some(k => { const p = plan(k); return p && Object.values(p).some(v => parseFloat(String(v)) > 0) })) return true
+      if (keys.some(k => parseFloat(String(curData[k] || 0)) > 0)) return true
+      if (weekHistory.length && keys.some(k => weekHistory.some(h => parseFloat(String(h[k] || 0)) > 0))) return true
+      return false
+    }
+    const fmtV = (v: number | null) => (v !== null && v !== undefined && !isNaN(v)) ? parseFloat(String(v)).toFixed(2) : null
+    const pctStr = (act: number | null, pl: number | null): string | null => {
+      if (!pl || act === null || act === undefined) return null
+      return Math.round(act/pl*100) + '%'
+    }
+    const wHeaders = weeksList.flatMap(w => [`W${w} Plan`, `W${w} Thực hiện`, `W${w} %TH`])
+    const vRow = (label: string, planMth: number | null, mtdAct: number | null,
+                  getAct: ((w: number) => number | null) | null, getPlanFn: ((w: number) => number | null) | null): (string|number|null)[] => {
+      const wCells = weeksList.flatMap(w => {
+        const pw = getPlanFn ? getPlanFn(w) : null
+        const act = getAct ? getAct(w) : null
+        return [pw ? Math.round(pw) : null, act !== null ? Math.round(act) : null, pctStr(act, pw)]
+      })
+      return [label, planMth ? Math.round(planMth) : null, mtdAct !== null && !isNaN(mtdAct) ? Math.round(mtdAct) : null, pctStr(mtdAct, planMth), ...wCells]
+    }
+    const dRow = (label: string, planMth: number | null, mtdAct: number | null,
+                  getAct: ((w: number) => number | null) | null, getPlanFn: ((w: number) => number | null) | null): (string|number|null)[] => {
+      const wCells = weeksList.flatMap(w => {
+        const pw = getPlanFn ? getPlanFn(w) : null
+        const act = getAct ? getAct(w) : null
+        return [pw ? fmtV(pw) : null, act !== null ? fmtV(act) : null, pctStr(act, pw)]
+      })
+      return [label, planMth ? fmtV(planMth) : null, mtdAct !== null && !isNaN(mtdAct) ? fmtV(mtdAct) : null, pctStr(mtdAct, planMth), ...wCells]
+    }
+
+    const rows: (string|number|null)[][] = []
+    rows.push([`BÁO CÁO HIỆU SUẤT — ${selectedBrand.toUpperCase()}`])
+    rows.push([`${weekInfo.label} | ${weekInfo.start} – ${weekInfo.end}`])
+    rows.push([`Reported by: ${user?.name || ''} | ${fmtDate(new Date())}`])
+    rows.push([])
+    rows.push(['Metric', 'Tháng (Plan)', 'Luỹ tiến', '% TH', ...wHeaders])
+
+    /* Helpers for combined platform totals */
+    const getHistGmv = (w: number): number | null => {
+      const r = weekHistory.find(h => parseInt(String(h.week_num)) === w)
+      if (w === weekInfo.weekNum) {
+        let g = 0
+        if (shopeeChecked) g += shopeeData.s_cpc_doanh_so + shopeeData.s_nd_gmv + shopeeData.s_live_gmv
+        if (tiktokChecked) g += tiktokData.t_pgm_doanh_so + tiktokData.t_lgm_doanhthu
+        return g
+      }
+      if (!r) return null
+      let g = 0
+      if (shopeeChecked) g += parseFloat(String(r.s_cpc_doanh_so || 0)) + parseFloat(String(r.s_nd_gmv || 0)) + parseFloat(String(r.s_live_gmv || 0))
+      if (tiktokChecked) g += parseFloat(String(r.t_pgm_doanh_so || 0)) + parseFloat(String(r.t_lgm_doanhthu || 0))
+      return g
+    }
+    const getHistCp = (w: number): number | null => {
+      const r = weekHistory.find(h => parseInt(String(h.week_num)) === w)
+      if (w === weekInfo.weekNum) {
+        let c = 0
+        if (shopeeChecked) c += shopeeData.s_cpc_chi_phi + shopeeData.s_nd_chi_phi + shopeeData.s_live_chi_phi
+        if (tiktokChecked) c += tiktokData.t_pgm_chi_phi + tiktokData.t_lgm_chi_phi + tiktokData.t_con_chi_phi + tiktokData.t_brd_chi_phi
+        return c
+      }
+      if (!r) return null
+      let c = 0
+      if (shopeeChecked) c += parseFloat(String(r.s_cpc_chi_phi || 0)) + parseFloat(String(r.s_nd_chi_phi || 0)) + parseFloat(String(r.s_live_chi_phi || 0))
+      if (tiktokChecked) c += parseFloat(String(r.t_pgm_chi_phi || 0)) + parseFloat(String(r.t_lgm_chi_phi || 0)) + parseFloat(String(r.t_con_chi_phi || 0)) + parseFloat(String(r.t_brd_chi_phi || 0))
+      return c
+    }
+    const getPlanGmvW = (w: number): number => {
+      let g = 0
+      if (shopeeChecked) g += pW('s_cpc_doanh_so', w) + pW('s_nd_gmv', w) + pW('s_live_gmv', w)
+      if (tiktokChecked) g += pW('t_pgm_doanh_so', w) + pW('t_lgm_doanhthu', w)
+      return g
+    }
+
+    /* TỔNG 2 SÀN */
+    if (shopeeChecked && tiktokChecked) {
+      const sPlanGmvM = pM('s_cpc_doanh_so')+pM('s_nd_gmv')+pM('s_live_gmv')
+      const tPlanGmvM = pM('t_pgm_doanh_so')+pM('t_lgm_doanhthu')
+      const totPlanGmvM = sPlanGmvM + tPlanGmvM
+      const cpKeys = ['s_cpc_chi_phi','s_nd_chi_phi','s_live_chi_phi','t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi']
+      const totPlanCpM = cpKeys.reduce((a, k) => a + pM(k), 0)
+      const mtdTotCp = getMTD(w => getHistCp(w))
+      const mtdTotGmv = getMTD(w => getHistGmv(w))
+      rows.push([]); rows.push(['━━━ TỔNG 2 SÀN ━━━'])
+      rows.push(vRow('GMV Ads tổng', totPlanGmvM||null, mtdTotGmv, w => getHistGmv(w), w => getPlanGmvW(w)||null))
+      rows.push(vRow('Chi phí tổng', totPlanCpM||null, mtdTotCp, w => getHistCp(w), w => cpKeys.reduce((a,k)=>a+pW(k,w),0)||null))
+      rows.push(dRow('ROAS tổng', totPlanCpM?totPlanGmvM/totPlanCpM:null, mtdTotCp?mtdTotGmv/mtdTotCp:null,
+        w => { const g = getHistGmv(w), c = getHistCp(w); return g!==null && c ? g/c : null },
+        w => { const g = getPlanGmvW(w); const c = cpKeys.reduce((a,k)=>a+pW(k,w),0); return c?g/c:null }))
+    }
+
+    /* SHOPEE */
+    if (shopeeChecked) {
+      const sPlanGmvM = pM('s_cpc_doanh_so')+pM('s_nd_gmv')+pM('s_live_gmv')
+      rows.push([]); rows.push(['━━━ SHOPEE ADS ━━━'])
+      rows.push(vRow('Doanh thu Ads (GMV)', sPlanGmvM||null,
+        getMTD(w => (hRow('s_cpc_doanh_so',w)||0)+(hRow('s_nd_gmv',w)||0)+(hRow('s_live_gmv',w)||0)),
+        w => (hRow('s_cpc_doanh_so',w)||0)+(hRow('s_nd_gmv',w)||0)+(hRow('s_live_gmv',w)||0),
+        w => (pW('s_cpc_doanh_so',w)+pW('s_nd_gmv',w)+pW('s_live_gmv',w))||null))
+      rows.push(vRow('Chi phí Ads tổng', (pM('s_cpc_chi_phi')+pM('s_nd_chi_phi')+pM('s_live_chi_phi'))||null,
+        getMTD(w => (hRow('s_cpc_chi_phi',w)||0)+(hRow('s_nd_chi_phi',w)||0)+(hRow('s_live_chi_phi',w)||0)),
+        w => (hRow('s_cpc_chi_phi',w)||0)+(hRow('s_nd_chi_phi',w)||0)+(hRow('s_live_chi_phi',w)||0),
+        w => (pW('s_cpc_chi_phi',w)+pW('s_nd_chi_phi',w)+pW('s_live_chi_phi',w))||null))
+      rows.push(dRow('ROAS Ads tổng', ratioPM('s_cpc_doanh_so','s_cpc_chi_phi'), ratioMTD('s_cpc_doanh_so','s_cpc_chi_phi'),
+        w => ratioW('s_cpc_doanh_so','s_cpc_chi_phi',w), w => ratioPW('s_cpc_doanh_so','s_cpc_chi_phi',w)))
+      rows.push([]); rows.push(['Ads CPC'])
+      rows.push(vRow('Doanh số Ads', pM('s_cpc_doanh_so')||null, getMTD(w => hRow('s_cpc_doanh_so',w)||0), w => hRow('s_cpc_doanh_so',w), w => pW('s_cpc_doanh_so',w)||null))
+      rows.push(vRow('Chi Phí Dịch vụ hiển thị', pM('s_cpc_chi_phi')||null, getMTD(w => hRow('s_cpc_chi_phi',w)||0), w => hRow('s_cpc_chi_phi',w), w => pW('s_cpc_chi_phi',w)||null))
+      rows.push(dRow('ROAS', ratioPM('s_cpc_doanh_so','s_cpc_chi_phi'), ratioMTD('s_cpc_doanh_so','s_cpc_chi_phi'), w => ratioW('s_cpc_doanh_so','s_cpc_chi_phi',w), w => ratioPW('s_cpc_doanh_so','s_cpc_chi_phi',w)))
+      rows.push(dRow('CPC = Chi phí / Lượt click', ratioPM('s_cpc_chi_phi','s_cpc_luot_click'), ratioMTD('s_cpc_chi_phi','s_cpc_luot_click'), w => ratioW('s_cpc_chi_phi','s_cpc_luot_click',w), w => ratioPW('s_cpc_chi_phi','s_cpc_luot_click',w)))
+      rows.push(dRow('CTR (%)', ratioPM('s_cpc_luot_click','s_cpc_luot_xem')!==null?(ratioPM('s_cpc_luot_click','s_cpc_luot_xem') as number)*100:null, ratioMTD('s_cpc_luot_click','s_cpc_luot_xem')!==null?(ratioMTD('s_cpc_luot_click','s_cpc_luot_xem') as number)*100:null, w => { const v = ratioW('s_cpc_luot_click','s_cpc_luot_xem',w); return v!==null?v*100:null }, w => { const v = ratioPW('s_cpc_luot_click','s_cpc_luot_xem',w); return v!==null?v*100:null }))
+      rows.push(dRow('CR (%)', ratioPM('s_cpc_don_hang','s_cpc_luot_click')!==null?(ratioPM('s_cpc_don_hang','s_cpc_luot_click') as number)*100:null, ratioMTD('s_cpc_don_hang','s_cpc_luot_click')!==null?(ratioMTD('s_cpc_don_hang','s_cpc_luot_click') as number)*100:null, w => { const v = ratioW('s_cpc_don_hang','s_cpc_luot_click',w); return v!==null?v*100:null }, w => { const v = ratioPW('s_cpc_don_hang','s_cpc_luot_click',w); return v!==null?v*100:null }))
+      rows.push(vRow('Số lượt xem', pM('s_cpc_luot_xem')||null, getMTD(w => hRow('s_cpc_luot_xem',w)||0), w => hRow('s_cpc_luot_xem',w), w => pW('s_cpc_luot_xem',w)||null))
+      rows.push(vRow('Số lượt click', pM('s_cpc_luot_click')||null, getMTD(w => hRow('s_cpc_luot_click',w)||0), w => hRow('s_cpc_luot_click',w), w => pW('s_cpc_luot_click',w)||null))
+      rows.push(vRow('Số đơn hàng', pM('s_cpc_don_hang')||null, getMTD(w => hRow('s_cpc_don_hang',w)||0), w => hRow('s_cpc_don_hang',w), w => pW('s_cpc_don_hang',w)||null))
+      rows.push(dRow('AOV', ratioPM('s_cpc_doanh_so','s_cpc_don_hang'), ratioMTD('s_cpc_doanh_so','s_cpc_don_hang'), w => ratioW('s_cpc_doanh_so','s_cpc_don_hang',w), w => ratioPW('s_cpc_doanh_so','s_cpc_don_hang',w)))
+      if (hasSectionData(['s_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click'])) {
+        rows.push([]); rows.push(['Ads nhận diện thương hiệu'])
+        rows.push(vRow('GMV', pM('s_nd_gmv')||null, getMTD(w => hRow('s_nd_gmv',w)||0), w => hRow('s_nd_gmv',w), w => pW('s_nd_gmv',w)||null))
+        rows.push(vRow('Chi phí', pM('s_nd_chi_phi')||null, getMTD(w => hRow('s_nd_chi_phi',w)||0), w => hRow('s_nd_chi_phi',w), w => pW('s_nd_chi_phi',w)||null))
+        rows.push(dRow('ROAS', ratioPM('s_nd_gmv','s_nd_chi_phi'), ratioMTD('s_nd_gmv','s_nd_chi_phi'), w => ratioW('s_nd_gmv','s_nd_chi_phi',w), w => ratioPW('s_nd_gmv','s_nd_chi_phi',w)))
+        rows.push(vRow('Lượt xem', pM('s_nd_luot_xem')||null, getMTD(w => hRow('s_nd_luot_xem',w)||0), w => hRow('s_nd_luot_xem',w), w => pW('s_nd_luot_xem',w)||null))
+        rows.push(vRow('Lượt click', pM('s_nd_luot_click')||null, getMTD(w => hRow('s_nd_luot_click',w)||0), w => hRow('s_nd_luot_click',w), w => pW('s_nd_luot_click',w)||null))
+      }
+      if (hasSectionData(['s_live_gmv','s_live_chi_phi','s_live_luot_xem'])) {
+        rows.push([]); rows.push(['Ads livestream'])
+        rows.push(vRow('GMV', pM('s_live_gmv')||null, getMTD(w => hRow('s_live_gmv',w)||0), w => hRow('s_live_gmv',w), w => pW('s_live_gmv',w)||null))
+        rows.push(vRow('Chi phí', pM('s_live_chi_phi')||null, getMTD(w => hRow('s_live_chi_phi',w)||0), w => hRow('s_live_chi_phi',w), w => pW('s_live_chi_phi',w)||null))
+        rows.push(dRow('ROAS', ratioPM('s_live_gmv','s_live_chi_phi'), ratioMTD('s_live_gmv','s_live_chi_phi'), w => ratioW('s_live_gmv','s_live_chi_phi',w), w => ratioPW('s_live_gmv','s_live_chi_phi',w)))
+        rows.push(vRow('Lượt xem', pM('s_live_luot_xem')||null, getMTD(w => hRow('s_live_luot_xem',w)||0), w => hRow('s_live_luot_xem',w), w => pW('s_live_luot_xem',w)||null))
+      }
+    }
+
+    /* TIKTOK */
+    if (tiktokChecked) {
+      const tPlanGmvM = pM('t_pgm_doanh_so')+pM('t_lgm_doanhthu')
+      const tCpKeys = ['t_pgm_chi_phi','t_lgm_chi_phi','t_con_chi_phi','t_brd_chi_phi']
+      const tPlanCpM = tCpKeys.reduce((a,k) => a+pM(k), 0)
+      rows.push([]); rows.push(['━━━ TIKTOK SHOP ━━━'])
+      rows.push(vRow('Doanh thu Ads (GMV)', tPlanGmvM||null,
+        getMTD(w => (hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0)),
+        w => (hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0),
+        w => (pW('t_pgm_doanh_so',w)+pW('t_lgm_doanhthu',w))||null))
+      rows.push(vRow('Chi phí Ads', tPlanCpM||null,
+        getMTD(w => tCpKeys.reduce((a,k)=>a+(hRow(k,w)||0),0)),
+        w => tCpKeys.reduce((a,k)=>a+(hRow(k,w)||0),0),
+        w => tCpKeys.reduce((a,k)=>a+pW(k,w),0)||null))
+      rows.push(dRow('ROI', tPlanCpM?tPlanGmvM/tPlanCpM:null,
+        (() => { const g = getMTD(w => (hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0)); const c = getMTD(w => tCpKeys.reduce((a,k)=>a+(hRow(k,w)||0),0)); return c?g/c:null })(),
+        w => { const g = (hRow('t_pgm_doanh_so',w)||0)+(hRow('t_lgm_doanhthu',w)||0); const c = tCpKeys.reduce((a,k)=>a+(hRow(k,w)||0),0); return c?g/c:null },
+        w => { const g = pW('t_pgm_doanh_so',w)+pW('t_lgm_doanhthu',w); const c = tCpKeys.reduce((a,k)=>a+pW(k,w),0); return c?g/c:null }))
+      rows.push([]); rows.push(['Ads_PGM'])
+      rows.push(vRow('Doanh số Ads', pM('t_pgm_doanh_so')||null, getMTD(w => hRow('t_pgm_doanh_so',w)||0), w => hRow('t_pgm_doanh_so',w), w => pW('t_pgm_doanh_so',w)||null))
+      rows.push(vRow('Chi phí', pM('t_pgm_chi_phi')||null, getMTD(w => hRow('t_pgm_chi_phi',w)||0), w => hRow('t_pgm_chi_phi',w), w => pW('t_pgm_chi_phi',w)||null))
+      rows.push(dRow('ROAS', ratioPM('t_pgm_doanh_so','t_pgm_chi_phi'), ratioMTD('t_pgm_doanh_so','t_pgm_chi_phi'), w => ratioW('t_pgm_doanh_so','t_pgm_chi_phi',w), w => ratioPW('t_pgm_doanh_so','t_pgm_chi_phi',w)))
+      rows.push(dRow('CPC', ratioPM('t_pgm_chi_phi','t_pgm_luot_click'), ratioMTD('t_pgm_chi_phi','t_pgm_luot_click'), w => ratioW('t_pgm_chi_phi','t_pgm_luot_click',w), w => ratioPW('t_pgm_chi_phi','t_pgm_luot_click',w)))
+      rows.push(dRow('CTR (%)', ratioPM('t_pgm_luot_click','t_pgm_luot_xem')!==null?(ratioPM('t_pgm_luot_click','t_pgm_luot_xem') as number)*100:null, ratioMTD('t_pgm_luot_click','t_pgm_luot_xem')!==null?(ratioMTD('t_pgm_luot_click','t_pgm_luot_xem') as number)*100:null, w => { const v = ratioW('t_pgm_luot_click','t_pgm_luot_xem',w); return v!==null?v*100:null }, w => { const v = ratioPW('t_pgm_luot_click','t_pgm_luot_xem',w); return v!==null?v*100:null }))
+      rows.push(dRow('CR (%)', ratioPM('t_pgm_don_hang','t_pgm_luot_click')!==null?(ratioPM('t_pgm_don_hang','t_pgm_luot_click') as number)*100:null, ratioMTD('t_pgm_don_hang','t_pgm_luot_click')!==null?(ratioMTD('t_pgm_don_hang','t_pgm_luot_click') as number)*100:null, w => { const v = ratioW('t_pgm_don_hang','t_pgm_luot_click',w); return v!==null?v*100:null }, w => { const v = ratioPW('t_pgm_don_hang','t_pgm_luot_click',w); return v!==null?v*100:null }))
+      rows.push(dRow('CPM', ratioPM('t_pgm_chi_phi','t_pgm_luot_xem')!==null?(ratioPM('t_pgm_chi_phi','t_pgm_luot_xem') as number)*1000:null, ratioMTD('t_pgm_chi_phi','t_pgm_luot_xem')!==null?(ratioMTD('t_pgm_chi_phi','t_pgm_luot_xem') as number)*1000:null, w => { const v = ratioW('t_pgm_chi_phi','t_pgm_luot_xem',w); return v!==null?v*1000:null }, w => { const v = ratioPW('t_pgm_chi_phi','t_pgm_luot_xem',w); return v!==null?v*1000:null }))
+      rows.push(vRow('Lượt xem', pM('t_pgm_luot_xem')||null, getMTD(w => hRow('t_pgm_luot_xem',w)||0), w => hRow('t_pgm_luot_xem',w), w => pW('t_pgm_luot_xem',w)||null))
+      rows.push(vRow('Lượt click', pM('t_pgm_luot_click')||null, getMTD(w => hRow('t_pgm_luot_click',w)||0), w => hRow('t_pgm_luot_click',w), w => pW('t_pgm_luot_click',w)||null))
+      rows.push(vRow('Đơn hàng', pM('t_pgm_don_hang')||null, getMTD(w => hRow('t_pgm_don_hang',w)||0), w => hRow('t_pgm_don_hang',w), w => pW('t_pgm_don_hang',w)||null))
+      rows.push(dRow('AOV', ratioPM('t_pgm_doanh_so','t_pgm_don_hang'), ratioMTD('t_pgm_doanh_so','t_pgm_don_hang'), w => ratioW('t_pgm_doanh_so','t_pgm_don_hang',w), w => ratioPW('t_pgm_doanh_so','t_pgm_don_hang',w)))
+      rows.push([]); rows.push(['Ads_LGM'])
+      rows.push(vRow('Doanh thu LGM', pM('t_lgm_doanhthu')||null, getMTD(w => hRow('t_lgm_doanhthu',w)||0), w => hRow('t_lgm_doanhthu',w), w => pW('t_lgm_doanhthu',w)||null))
+      rows.push(vRow('Chi phí', pM('t_lgm_chi_phi')||null, getMTD(w => hRow('t_lgm_chi_phi',w)||0), w => hRow('t_lgm_chi_phi',w), w => pW('t_lgm_chi_phi',w)||null))
+      rows.push(dRow('ROI', ratioPM('t_lgm_doanhthu','t_lgm_chi_phi'), ratioMTD('t_lgm_doanhthu','t_lgm_chi_phi'), w => ratioW('t_lgm_doanhthu','t_lgm_chi_phi',w), w => ratioPW('t_lgm_doanhthu','t_lgm_chi_phi',w)))
+      if (hasSectionData(['t_con_nguoi','t_con_chi_phi'])) {
+        rows.push([]); rows.push(['Consideration_Ads'])
+        rows.push(vRow('Người tiếp cận', pM('t_con_nguoi')||null, getMTD(w => hRow('t_con_nguoi',w)||0), w => hRow('t_con_nguoi',w), w => pW('t_con_nguoi',w)||null))
+        rows.push(vRow('Chi phí', pM('t_con_chi_phi')||null, getMTD(w => hRow('t_con_chi_phi',w)||0), w => hRow('t_con_chi_phi',w), w => pW('t_con_chi_phi',w)||null))
+        rows.push(dRow('CPA', ratioPM('t_con_chi_phi','t_con_nguoi'), ratioMTD('t_con_chi_phi','t_con_nguoi'), w => ratioW('t_con_chi_phi','t_con_nguoi',w), w => ratioPW('t_con_chi_phi','t_con_nguoi',w)))
+      }
+      if (hasSectionData(['t_brd_view','t_brd_follow','t_brd_chi_phi'])) {
+        rows.push([]); rows.push(['Branding_Ads'])
+        rows.push(vRow('View', pM('t_brd_view')||null, getMTD(w => hRow('t_brd_view',w)||0), w => hRow('t_brd_view',w), w => pW('t_brd_view',w)||null))
+        rows.push(vRow('Follow', pM('t_brd_follow')||null, getMTD(w => hRow('t_brd_follow',w)||0), w => hRow('t_brd_follow',w), w => pW('t_brd_follow',w)||null))
+        rows.push(vRow('Chi phí', pM('t_brd_chi_phi')||null, getMTD(w => hRow('t_brd_chi_phi',w)||0), w => hRow('t_brd_chi_phi',w), w => pW('t_brd_chi_phi',w)||null))
+        rows.push(dRow('CPA', ratioPM('t_brd_chi_phi','t_brd_follow'), ratioMTD('t_brd_chi_phi','t_brd_follow'), w => ratioW('t_brd_chi_phi','t_brd_follow',w), w => ratioPW('t_brd_chi_phi','t_brd_follow',w)))
+      }
+    }
+
+    /* HIGHLIGHT / LOWLIGHT */
+    rows.push([]); rows.push(['HIGHLIGHT', 'LOWLIGHT'])
+    rows.push([aiResult.highlight || '—', aiResult.lowlight || '—'])
+
+    /* DARA SUMMARY */
+    rows.push([])
+    rows.push(['Brand', 'Sàn', 'Hạng mục', 'Thực tế', 'Vấn đề', 'Giải pháp/Kế hoạch tới'])
+    ;([shopeeChecked && 'shopee', tiktokChecked && 'tiktok'].filter(Boolean) as Array<'shopee'|'tiktok'>).forEach(p => {
+      rows.push([selectedBrand, p === 'shopee' ? 'Shopee' : 'TikTok', 'Ads',
+        aiResult[`${p}_thuc_trang` as keyof AIResult] || '',
+        aiResult[`${p}_van_de` as keyof AIResult] || '',
+        aiResult[`${p}_giai_phap` as keyof AIResult] || ''])
+    })
+
+    const ws = XLSX.utils.aoa_to_sheet(rows)
+    ws['!cols'] = [{ wch:38 }, { wch:14 }, { wch:14 }, { wch:10 },
+      ...Array(weeksList.length * 3).fill(null).map(() => ({ wch:13 }))]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Report')
+    XLSX.writeFile(wb, `Preview_${selectedBrand||'Brand'}_T${weekInfo.month}_W${weekInfo.weekNum}_${weekInfo.year}.xlsx`)
+    showToast('Đã export Preview XLSX!')
+  }
+
   /* ── Copy HTML ── */
   async function copyMail() {
     const subjectBar = `<b>Subject: ${mailSubject}</b><br><br>`
@@ -939,23 +1177,28 @@ export default function ReportPage() {
     }
   }
 
-  // Plan metric keys — 12 financial keys (match CSV format)
+  // Plan metric keys — full 25 keys (same as Actual)
   const planMetricKeys = [
-    's_cpc_doanh_so','s_cpc_chi_phi',
-    's_nd_gmv','s_nd_chi_phi',
-    's_live_gmv','s_live_chi_phi',
-    't_pgm_doanh_so','t_pgm_chi_phi',
+    's_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
+    's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
+    's_live_gmv','s_live_chi_phi','s_live_luot_xem',
+    't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
     't_lgm_doanhthu','t_lgm_chi_phi',
-    't_con_chi_phi','t_brd_chi_phi',
+    't_con_nguoi','t_con_chi_phi',
+    't_brd_view','t_brd_follow','t_brd_chi_phi',
   ]
 
   const planMetricLabels: Record<string, string> = {
     's_cpc_doanh_so':'[S-CPC] Doanh số','s_cpc_chi_phi':'[S-CPC] Chi phí',
+    's_cpc_luot_xem':'[S-CPC] Lượt xem','s_cpc_luot_click':'[S-CPC] Lượt click','s_cpc_don_hang':'[S-CPC] Đơn hàng',
     's_nd_gmv':'[S-ND] GMV','s_nd_chi_phi':'[S-ND] Chi phí',
-    's_live_gmv':'[S-Live] GMV','s_live_chi_phi':'[S-Live] Chi phí',
+    's_nd_luot_xem':'[S-ND] Lượt xem','s_nd_luot_click':'[S-ND] Lượt click',
+    's_live_gmv':'[S-Live] GMV','s_live_chi_phi':'[S-Live] Chi phí','s_live_luot_xem':'[S-Live] Lượt xem',
     't_pgm_doanh_so':'[T-PGM] Doanh số','t_pgm_chi_phi':'[T-PGM] Chi phí',
+    't_pgm_luot_xem':'[T-PGM] Lượt xem','t_pgm_luot_click':'[T-PGM] Lượt click','t_pgm_don_hang':'[T-PGM] Đơn hàng',
     't_lgm_doanhthu':'[T-LGM] Doanh thu','t_lgm_chi_phi':'[T-LGM] Chi phí',
-    't_con_chi_phi':'[T-Con] Chi phí','t_brd_chi_phi':'[T-Brand] Chi phí',
+    't_con_nguoi':'[T-Con] Người tiếp cận','t_con_chi_phi':'[T-Con] Chi phí',
+    't_brd_view':'[T-Brand] View','t_brd_follow':'[T-Brand] Follow','t_brd_chi_phi':'[T-Brand] Chi phí',
   }
 
   // Filter plan keys based on selected platforms
@@ -965,45 +1208,68 @@ export default function ReportPage() {
     return true
   })
 
-  /* ── Build Chart ── */
+  /* ── Build Chart (10 most recent weeks across all months) ── */
   const buildChart = useCallback(() => {
     if (!chartRef.current || !weekInfo) return
     if (chartInstRef.current) { chartInstRef.current.destroy(); chartInstRef.current = null }
-    const totalWeeks = getWeeksInMonth(weekInfo.month, weekInfo.year)
-    const labels: string[] = []
-    const gmvData: (number|null)[] = []
-    const cpData: (number|null)[] = []
-    const cpDtData: (number|null)[] = []
 
     const curSGmv = shopeeData.s_cpc_doanh_so + shopeeData.s_nd_gmv + shopeeData.s_live_gmv
     const curSCp  = shopeeData.s_cpc_chi_phi + shopeeData.s_nd_chi_phi + shopeeData.s_live_chi_phi
     const curTGmv = tiktokData.t_pgm_doanh_so + tiktokData.t_lgm_doanhthu
     const curTCp  = tiktokData.t_pgm_chi_phi + tiktokData.t_lgm_chi_phi + tiktokData.t_con_chi_phi + tiktokData.t_brd_chi_phi
 
-    for (let w = 1; w <= totalWeeks; w++) {
-      const wi = getWeekInfo(weekInfo.month, weekInfo.year, w)
-      labels.push(`W${w} ${wi.start.substring(0,5)}–${wi.end.substring(0,5)}`)
-      if (w === weekInfo.weekNum) {
-        const g = (shopeeChecked ? curSGmv : 0) + (tiktokChecked ? curTGmv : 0)
-        const c = (shopeeChecked ? curSCp : 0) + (tiktokChecked ? curTCp : 0)
-        gmvData.push(g)
-        cpData.push(c)
-        cpDtData.push(g ? parseFloat(((c/g)*100).toFixed(1)) : null)
-      } else {
-        const row = weekHistory.find(h => parseInt(String(h.week_num)) === w)
-        if (row) {
-          const g = (shopeeChecked?(n(row.s_cpc_doanh_so)+n(row.s_nd_gmv)+n(row.s_live_gmv)):0)
-                  + (tiktokChecked?(n(row.t_pgm_doanh_so)+n(row.t_lgm_doanhthu)):0)
-          const c = (shopeeChecked?(n(row.s_cpc_chi_phi)+n(row.s_nd_chi_phi)+n(row.s_live_chi_phi)):0)
-                  + (tiktokChecked?(n(row.t_pgm_chi_phi)+n(row.t_lgm_chi_phi)+n(row.t_con_chi_phi)+n(row.t_brd_chi_phi)):0)
-          gmvData.push(g || null)
-          cpData.push(c || null)
-          cpDtData.push(g ? parseFloat(((c/g)*100).toFixed(1)) : null)
-        } else {
-          gmvData.push(null); cpData.push(null); cpDtData.push(null)
-        }
-      }
+    /* Gather rows: chartHistory (broad) + current input row, then dedup by year/month/week */
+    type R = Record<string, number|string|null>
+    const allRows: R[] = [...chartHistory]
+    // ensure current week present (replace if exists)
+    const curIdx = allRows.findIndex(r => parseInt(String(r.year))===weekInfo.year && parseInt(String(r.month))===weekInfo.month && parseInt(String(r.week_num))===weekInfo.weekNum)
+    const curRow: R = {
+      year: weekInfo.year, month: weekInfo.month, week_num: weekInfo.weekNum,
+      s_cpc_doanh_so: shopeeData.s_cpc_doanh_so, s_nd_gmv: shopeeData.s_nd_gmv, s_live_gmv: shopeeData.s_live_gmv,
+      s_cpc_chi_phi: shopeeData.s_cpc_chi_phi, s_nd_chi_phi: shopeeData.s_nd_chi_phi, s_live_chi_phi: shopeeData.s_live_chi_phi,
+      t_pgm_doanh_so: tiktokData.t_pgm_doanh_so, t_lgm_doanhthu: tiktokData.t_lgm_doanhthu,
+      t_pgm_chi_phi: tiktokData.t_pgm_chi_phi, t_lgm_chi_phi: tiktokData.t_lgm_chi_phi,
+      t_con_chi_phi: tiktokData.t_con_chi_phi, t_brd_chi_phi: tiktokData.t_brd_chi_phi,
     }
+    if (curIdx >= 0) allRows[curIdx] = curRow; else allRows.push(curRow)
+
+    // Sort newest→oldest, take 10, then reverse to oldest→newest
+    allRows.sort((a, b) => {
+      const ay = parseInt(String(a.year)), by = parseInt(String(b.year))
+      if (ay !== by) return by - ay
+      const am = parseInt(String(a.month)), bm = parseInt(String(b.month))
+      if (am !== bm) return bm - am
+      return parseInt(String(b.week_num)) - parseInt(String(a.week_num))
+    })
+    const recent = allRows.slice(0, 10).reverse()
+
+    const labels: string[] = []
+    const gmvData: (number|null)[] = []
+    const cpData: (number|null)[] = []
+    const cpDtData: (number|null)[] = []
+    recent.forEach(r => {
+      const yr = parseInt(String(r.year)), mo = parseInt(String(r.month)), wk = parseInt(String(r.week_num))
+      let lbl = `W${wk}/T${mo}`
+      try {
+        const wi = getWeekInfo(mo, yr, wk)
+        lbl = `W${wk}/T${mo} ${wi.start.substring(0,5)}`
+      } catch {}
+      labels.push(lbl)
+      const isCur = yr===weekInfo.year && mo===weekInfo.month && wk===weekInfo.weekNum
+      let g = 0, c = 0
+      if (isCur) {
+        g = (shopeeChecked ? curSGmv : 0) + (tiktokChecked ? curTGmv : 0)
+        c = (shopeeChecked ? curSCp : 0) + (tiktokChecked ? curTCp : 0)
+      } else {
+        g = (shopeeChecked?(n(r.s_cpc_doanh_so)+n(r.s_nd_gmv)+n(r.s_live_gmv)):0)
+          + (tiktokChecked?(n(r.t_pgm_doanh_so)+n(r.t_lgm_doanhthu)):0)
+        c = (shopeeChecked?(n(r.s_cpc_chi_phi)+n(r.s_nd_chi_phi)+n(r.s_live_chi_phi)):0)
+          + (tiktokChecked?(n(r.t_pgm_chi_phi)+n(r.t_lgm_chi_phi)+n(r.t_con_chi_phi)+n(r.t_brd_chi_phi)):0)
+      }
+      gmvData.push(g || null)
+      cpData.push(c || null)
+      cpDtData.push(g ? parseFloat(((c/g)*100).toFixed(1)) : null)
+    })
 
     chartInstRef.current = new Chart(chartRef.current, {
       data: {
@@ -1021,9 +1287,15 @@ export default function ReportPage() {
           y: { ticks: { callback: (v: unknown) => (Number(v)/1e6).toFixed(0)+'M', font: { size: 11 } } },
           y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: (v: unknown) => v+'%', font: { size: 11 } }, suggestedMax: 100 }
         }
-      }
+      },
+      plugins: [{
+        id: 'capture-dataurl',
+        afterRender: (c: Chart) => {
+          try { setChartDataUrl(c.canvas.toDataURL('image/png')) } catch {}
+        }
+      }]
     })
-  }, [weekInfo, weekHistory, shopeeChecked, tiktokChecked, shopeeData, tiktokData])
+  }, [weekInfo, chartHistory, shopeeChecked, tiktokChecked, shopeeData, tiktokData])
 
   /* ── Build chart when step 3 mounts ── */
   useEffect(() => {
@@ -1035,25 +1307,72 @@ export default function ReportPage() {
     }
   }, [step, buildChart])
 
+  /* ── Re-render mail HTML when chart dataURL becomes available ── */
+  useEffect(() => {
+    if (step === 3 && chartDataUrl) {
+      setMailHTML(buildMailHTML())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartDataUrl, step])
+
   /* ── XLSX helpers ── */
-  function downloadPlanTemplate() {
+  /* Plan template: header [Metric, Tháng, W1..W5, key], 1 row per active metric */
+  function downloadPlanTemplateXlsx() {
     if (!weekInfo) return
-    const periods = ['plan_month','plan_w1','plan_w2','plan_w3','plan_w4','plan_w5']
-    const headers = ['Metric', 'Tháng', 'W1', 'W2', 'W3', 'W4', 'W5']
+    const headers = ['Metric', 'Tháng', 'W1', 'W2', 'W3', 'W4', 'W5', 'key']
     const rows: (string|number)[][] = [headers]
     activePlanKeys.forEach(mk => {
       const label = planMetricLabels[mk] || mk
+      const plat = mk.startsWith('s_') ? 'shopee' : 'tiktok'
+      const get = (w: string) => parseVN(planRawInputs[`${plat}_${mk}_${w}`] ?? planInputs[`${plat}_${mk}_${w}`] ?? '')
       const existing = mk.startsWith('s_') ? shopeePlan : tiktokPlan
-      rows.push([label, ...periods.map(p => {
-        const w = p.replace('plan_','') as 'w1'
-        return existing?.[mk]?.[w] || 0
-      }), mk])
+      const v = (w: string) => {
+        const inp = get(w)
+        if (inp) return inp
+        return existing?.[mk]?.[w as 'w1'] || 0
+      }
+      rows.push([label, v('month'), v('w1'), v('w2'), v('w3'), v('w4'), v('w5'), mk])
     })
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.aoa_to_sheet(rows)
+    ws['!cols'] = [{ wch:30 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:20 }]
     XLSX.utils.book_append_sheet(wb, ws, 'Plan')
     XLSX.writeFile(wb, `Plan_${selectedBrand}_T${weekInfo.month}_${weekInfo.year}.xlsx`)
     showToast('Đã export Plan XLSX!')
+  }
+
+  /* Plan upload: parse XLSX → fill planInputs / planRawInputs */
+  function uploadPlanXlsx(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(ev.target?.result, { type: 'binary' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const data = XLSX.utils.sheet_to_json<(string|number)[]>(ws, { header: 1, defval: '' }) as (string|number)[][]
+        const newInp = { ...planInputs }
+        const newRaw = { ...planRawInputs }
+        data.slice(1).forEach(row => {
+          const key = String(row[7] || '').trim()
+          if (!planMetricKeys.includes(key)) return
+          const plat = key.startsWith('s_') ? 'shopee' : 'tiktok'
+          const periods = ['month','w1','w2','w3','w4','w5']
+          // columns: 0 label, 1 month, 2 w1, 3 w2, 4 w3, 5 w4, 6 w5
+          periods.forEach((p, i) => {
+            const cellVal = row[i + 1]
+            const num = parseInt(String(cellVal).replace(/[^\d-]/g, ''), 10) || 0
+            newInp[`${plat}_${key}_${p}`] = String(num)
+            newRaw[`${plat}_${key}_${p}`] = num ? num.toLocaleString('vi-VN') : ''
+          })
+        })
+        setPlanInputs(newInp)
+        setPlanRawInputs(newRaw)
+        showToast('Đã import Plan XLSX!')
+      } catch(err) { showToast('Lỗi đọc file: ' + String(err), 'error') }
+    }
+    reader.readAsBinaryString(file)
+    e.target.value = ''
   }
 
   function downloadActualTemplate() {
@@ -1193,6 +1512,36 @@ export default function ReportPage() {
       setPlanInputs(prev => ({ ...prev, [key]: String(evald) }))
     }
   }
+  /* Plan paste: vertical fills metrics down (in active keys for that platform), horizontal fills periods (w1→w2→...→month) */
+  const PLAN_PERIOD_ORDER_PASTE = ['w1','w2','w3','w4','w5','month'] as const
+  function handlePlanPaste(e: React.ClipboardEvent<HTMLInputElement>, plat: string, mk: string, w: string) {
+    const text = e.clipboardData.getData('text')
+    const lines = text.split(/\r?\n/).filter(l => l !== '')
+    const grid = lines.map(l => l.split('\t'))
+    if (grid.length === 1 && grid[0].length === 1) return
+    e.preventDefault()
+    const platKeys = activePlanKeys.filter(k => k.startsWith(plat === 'shopee' ? 's_' : 't_'))
+    const startMetricIdx = platKeys.indexOf(mk)
+    const startPeriodIdx = PLAN_PERIOD_ORDER_PASTE.indexOf(w as typeof PLAN_PERIOD_ORDER_PASTE[number])
+    if (startMetricIdx === -1 || startPeriodIdx === -1) return
+    const newInp = { ...planInputs }
+    const newRaw = { ...planRawInputs }
+    grid.forEach((cols, dr) => {
+      const tgtMk = platKeys[startMetricIdx + dr]
+      if (!tgtMk) return
+      cols.forEach((cell, dc) => {
+        const tgtPeriod = PLAN_PERIOD_ORDER_PASTE[startPeriodIdx + dc]
+        if (!tgtPeriod) return
+        const num = parseInt(String(cell).replace(/[^\d-]/g, ''), 10) || 0
+        const cellKey = `${plat}_${tgtMk}_${tgtPeriod}`
+        newInp[cellKey] = String(num)
+        newRaw[cellKey] = num ? num.toLocaleString('vi-VN') : ''
+      })
+    })
+    setPlanInputs(newInp)
+    setPlanRawInputs(newRaw)
+  }
+
   /* Sum W1..W5 for a metric to show alongside Month */
   function sumWeeksForMetric(plat: string, mk: string): number {
     let s = 0
@@ -1363,6 +1712,18 @@ export default function ReportPage() {
       {/* ══════════════ STEP 2 ══════════════ */}
       {step === 2 && weekInfo && (
         <div>
+          {/* Actual XLSX Tools (top) */}
+          <div className="rc">
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+              <span style={{ fontSize:'.82rem', color:'var(--muted)', fontWeight:600 }}>XLSX Actual:</span>
+              <button className="btn-s" style={{ fontSize:'.78rem' }} onClick={downloadActualTemplate}>⬇ Tải template Actual</button>
+              <label className="btn-s" style={{ fontSize:'.78rem', cursor:'pointer' }}>
+                ⬆ Upload Actual
+                <input type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={handleActualUpload} />
+              </label>
+            </div>
+          </div>
+
           {/* Plan warning / edit */}
           {!hasPlan ? (
             <div className="plan-warn">
@@ -1709,19 +2070,6 @@ export default function ReportPage() {
             </div>
           )}
 
-          {/* ── XLSX Tools ── */}
-          <div className="rc">
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-              <span style={{ fontSize:'.82rem', color:'var(--muted)', fontWeight:600 }}>XLSX:</span>
-              <button className="btn-s" style={{ fontSize:'.78rem' }} onClick={downloadActualTemplate}>⬇ Tải template Actual</button>
-              <label className="btn-s" style={{ fontSize:'.78rem', cursor:'pointer' }}>
-                ⬆ Import Actual
-                <input type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={handleActualUpload} />
-              </label>
-              <button className="btn-s" style={{ fontSize:'.78rem' }} onClick={downloadPlanTemplate}>⬇ Tải template Plan</button>
-            </div>
-          </div>
-
           {/* ── AI Section ── */}
           <div className="rc">
             <h2>AI Nhận xét (DARA)</h2>
@@ -1832,7 +2180,8 @@ export default function ReportPage() {
           <div className="pv-wrap">
             <div className="pv-bar">
               <span className="pv-bar-lbl">Mail Preview</span>
-              <div className="pv-acts">
+              <div className="pv-acts" style={{ display:'flex', gap:8 }}>
+                <button className="btn-s" onClick={exportPreviewXlsx}>⬇ Export XLSX</button>
                 <button className={`btn-copy ${copied ? 'copied' : ''}`} onClick={copyMail}>
                   {copied ? '✓ Đã copy!' : 'Copy → Lark'}
                 </button>
@@ -1925,6 +2274,15 @@ export default function ReportPage() {
             <button className="mo-close" onClick={() => setPlanModal(false)}>×</button>
           </div>
           <div className="mo-body">
+            {/* Plan XLSX Tools */}
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:10, paddingBottom:8, borderBottom:'1px solid var(--border)' }}>
+              <span style={{ fontSize:'.78rem', color:'var(--muted)', fontWeight:600 }}>XLSX:</span>
+              <button type="button" className="btn-s" style={{ fontSize:'.74rem' }} onClick={downloadPlanTemplateXlsx}>⬇ Tải template Plan</button>
+              <label className="btn-s" style={{ fontSize:'.74rem', cursor:'pointer' }}>
+                ⬆ Upload Plan
+                <input type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={uploadPlanXlsx} />
+              </label>
+            </div>
             {/* Plan grid header */}
             <div className="pg6" style={{ marginBottom:8 }}>
               <div className="pg-head" style={{ textAlign:'left' }}>Metric</div>
@@ -1950,6 +2308,7 @@ export default function ReportPage() {
                             <input key={w} className="pg-inp" type="text" inputMode="numeric" placeholder="0"
                               value={planRawInputs[`${plat}_${mk}_${w}`] ?? ''}
                               onChange={e => setPlanRaw(plat, mk, w, e.target.value)}
+                              onPaste={e => handlePlanPaste(e, plat, mk, w)}
                               onBlur={() => blurPlanRaw(plat, mk, w)} />
                           ))}
                         </div>

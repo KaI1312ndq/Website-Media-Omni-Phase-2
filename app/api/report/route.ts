@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
-/* ── Plan metric keys (12 financial keys, match CSV) ── */
+/* ── Plan metric keys (full 25 keys = same as actual) ── */
 const SHOPEE_PLAN_KEYS = [
-  's_cpc_doanh_so','s_cpc_chi_phi',
-  's_nd_gmv','s_nd_chi_phi',
-  's_live_gmv','s_live_chi_phi',
+  's_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
+  's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
+  's_live_gmv','s_live_chi_phi','s_live_luot_xem',
 ]
 const TIKTOK_PLAN_KEYS = [
-  't_pgm_doanh_so','t_pgm_chi_phi',
+  't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
   't_lgm_doanhthu','t_lgm_chi_phi',
-  't_con_chi_phi','t_brd_chi_phi',
+  't_con_nguoi','t_con_chi_phi',
+  't_brd_view','t_brd_follow','t_brd_chi_phi',
 ]
 const ALL_PLAN_KEYS = [...SHOPEE_PLAN_KEYS, ...TIKTOK_PLAN_KEYS]
 const PLAN_PERIODS = ['month','w1','w2','w3','w4','w5'] as const
@@ -66,15 +67,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: flatToJsonb(data, platform) })
   }
 
-  /* GET weekly history rows for a brand/platform in a month */
+  /* GET weekly history rows for a brand. If month+year given → that month only; else last 10 weeks across history */
   if (action === 'history') {
+    if (month && year) {
+      const { data, error } = await supabaseAdmin
+        .from('weekly_reports')
+        .select('*')
+        .eq('brand_name', brand)
+        .eq('month', month)
+        .eq('year', year)
+        .order('week_num', { ascending: true })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ data: data || [] })
+    }
+    // Broader history: last 10 weeks for chart
     const { data, error } = await supabaseAdmin
       .from('weekly_reports')
       .select('*')
       .eq('brand_name', brand)
-      .eq('month', month)
-      .eq('year', year)
-      .order('week_num', { ascending: true })
+      .order('year', { ascending: false })
+      .order('month', { ascending: false })
+      .order('week_num', { ascending: false })
+      .limit(10)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data: data || [] })
   }
