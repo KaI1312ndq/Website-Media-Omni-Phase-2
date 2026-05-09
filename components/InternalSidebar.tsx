@@ -40,6 +40,9 @@ const I = {
   sop: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
   ),
+  leads: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
+  ),
   logout: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
   ),
@@ -74,6 +77,7 @@ export default function InternalSidebar({ user, onLogout, open, onClose, collaps
     ...(isAdmin ? [{ href: '/hub/users', label: 'Quản lý thành viên', icon: I.users } as Item] : []),
     { href: '/hub/report', label: 'Weekly Report', icon: I.report },
     { href: '/hub/analytics', label: 'Analytics', icon: I.analytics },
+    ...(isAdmin ? [{ href: '/admin/leads', label: 'Leads', icon: I.leads } as Item] : []),
     { label: 'SOP & Resources', icon: I.sop, disabled: true, badge: 'Phase 4' },
   ]
 

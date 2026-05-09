@@ -12,6 +12,7 @@ const TITLES: Record<string, { greeting: string; subline: string }> = {
   '/hub/tasks':     { greeting: 'Daily Tasks', subline: 'Quản lý task hàng ngày của bạn và team.' },
   '/hub/users':     { greeting: 'Quản lý thành viên', subline: 'Phân quyền tính năng cho từng thành viên Media Omni.' },
   '/hub/report':    { greeting: 'Weekly Report Tool', subline: 'Nhập data → AI nhận xét → Copy Lark.' },
+  '/admin/leads':   { greeting: 'Lead Management', subline: 'Quản lý leads từ form audit miễn phí — filter, export, theo dõi pipeline.' },
   '/quiz':          { greeting: 'Quiz Hub', subline: 'Kiểm tra kiến thức benchmark Ads & chỉ số.' },
 }
 

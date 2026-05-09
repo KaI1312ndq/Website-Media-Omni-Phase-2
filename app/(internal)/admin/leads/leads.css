@@ -1,0 +1,191 @@
+/* ========== Admin Leads Page ========== */
+.leads-page { padding: 24px 0; color: #e2e8f0; }
+
+.leads-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+@media (max-width: 760px) { .leads-stats { grid-template-columns: repeat(2, 1fr); } }
+
+.leads-stat-card {
+  background: linear-gradient(180deg, rgba(15, 30, 61, 0.7), rgba(10, 22, 40, 0.7));
+  border: 1px solid rgba(96, 165, 250, 0.12);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.lsc-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.lsc-blue   .lsc-icon { background: rgba(37, 99, 235, .15); color: #60a5fa; }
+.lsc-cyan   .lsc-icon { background: rgba(6, 182, 212, .15); color: #22d3ee; }
+.lsc-yellow .lsc-icon { background: rgba(234, 179, 8, .15);  color: #facc15; }
+.lsc-green  .lsc-icon { background: rgba(52, 211, 153, .15); color: #34d399; }
+.lsc-val { font-size: 1.7rem; font-weight: 800; color: #fff; line-height: 1; }
+.lsc-lbl { font-size: .78rem; color: #94a3b8; margin-top: 4px; letter-spacing: .02em; }
+
+.leads-filter {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  background: rgba(15, 30, 61, 0.5);
+  border: 1px solid rgba(96, 165, 250, 0.1);
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.leads-filter select,
+.leads-filter input {
+  background: rgba(10, 22, 40, .8);
+  border: 1px solid rgba(96, 165, 250, .15);
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: .88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+}
+.leads-filter select:focus,
+.leads-filter input:focus { border-color: #06b6d4; }
+.leads-filter input[type="search"] { flex: 1; min-width: 200px; }
+.lp-btn {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(96, 165, 250, .2);
+  color: #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: .88rem;
+  cursor: pointer;
+  transition: all .15s;
+}
+.lp-btn:hover { background: rgba(96, 165, 250, .1); }
+.lp-btn-primary {
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  border-color: transparent;
+  color: #fff;
+}
+.lp-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.leads-table-wrap {
+  background: rgba(15, 30, 61, .5);
+  border: 1px solid rgba(96, 165, 250, .1);
+  border-radius: 12px;
+  overflow: auto;
+}
+.leads-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .88rem;
+}
+.leads-table thead th {
+  text-align: left;
+  padding: 12px 14px;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: .74rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(96, 165, 250, .1);
+  background: rgba(10, 22, 40, .6);
+}
+.leads-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(96, 165, 250, .06);
+  vertical-align: middle;
+}
+.lp-row { cursor: pointer; transition: background .15s; }
+.lp-row:hover { background: rgba(96, 165, 250, .04); }
+
+.lp-date { font-size: .78rem; color: #94a3b8; }
+.lp-date span { font-size: .72rem; color: #64748b; }
+.lp-name { font-weight: 600; color: #fff; }
+.lp-contact { font-size: .82rem; }
+.lp-phone { color: #94a3b8; font-size: .76rem; margin-top: 2px; }
+.lp-budget { font-family: var(--f-mono, monospace); font-size: .8rem; color: #cbd5e1; }
+
+.lp-chans { display: flex; flex-wrap: wrap; gap: 4px; }
+.lp-chan {
+  font-size: .68rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: rgba(96, 165, 250, .15);
+  color: #93c5fd;
+}
+.lp-chan.lc-shopee { background: rgba(238, 77, 45, .18); color: #ff8a6c; }
+.lp-chan.lc-tiktok { background: rgba(236, 72, 153, .18); color: #f472b6; }
+.lp-chan.lc-meta   { background: rgba(8, 102, 255, .18); color: #60a5fa; }
+.lp-chan.lc-google { background: rgba(239, 68, 68, .18); color: #fb7185; }
+.lp-chan.lc-live   { background: rgba(168, 85, 247, .18); color: #c084fc; }
+
+.lp-status {
+  background: rgba(10, 22, 40, .8);
+  border: 1px solid rgba(96, 165, 250, .2);
+  color: #e2e8f0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: .78rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.lp-st-new       { color: #60a5fa; border-color: rgba(96, 165, 250, .35); }
+.lp-st-contacted { color: #facc15; border-color: rgba(234, 179, 8, .35); }
+.lp-st-qualified { color: #34d399; border-color: rgba(52, 211, 153, .35); }
+.lp-st-closed    { color: #94a3b8; border-color: rgba(148, 163, 184, .25); }
+
+.lp-note-preview { color: #94a3b8; font-size: .82rem; max-width: 200px; }
+
+.lp-actions { display: flex; gap: 6px; }
+.lp-act {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(96, 165, 250, .15);
+  color: #cbd5e1;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s;
+}
+.lp-act:hover { background: rgba(52, 211, 153, .15); color: #34d399; border-color: rgba(52, 211, 153, .3); }
+.lp-act-danger:hover { background: rgba(239, 68, 68, .15); color: #fb7185; border-color: rgba(239, 68, 68, .3); }
+
+.lp-expand-row td { background: rgba(10, 22, 40, .55); padding: 0; }
+.lp-expand {
+  padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: .82rem;
+  color: #cbd5e1;
+}
+.lp-expand strong { color: #fff; margin-right: 4px; }
+.lp-ua { font-family: var(--f-mono, monospace); font-size: .72rem; color: #94a3b8; word-break: break-all; }
+
+.lp-loading, .lp-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: .92rem;
+}
+
+.leads-pager {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 18px;
+  font-size: .86rem;
+  color: #cbd5e1;
+}
+.leads-pager button {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(96, 165, 250, .2);
+  color: #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.leads-pager button:disabled { opacity: .4; cursor: not-allowed; }

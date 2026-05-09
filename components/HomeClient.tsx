@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import LeadForm from './LeadForm'
 
 interface TickerItem { val?: string; lbl?: string; sub?: string }
 interface ServiceItem { name?: string; desc?: string; icon?: string }
@@ -405,6 +406,9 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
           </div>
         </div>
       </section>
+
+      {/* LEAD CAPTURE */}
+      <LeadForm />
 
       {/* CONTACT */}
       <section id="contact">
