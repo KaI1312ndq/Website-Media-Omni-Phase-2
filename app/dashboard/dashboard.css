@@ -37,26 +37,27 @@
 .isb-top { position: relative; }
 .isb-toggle {
   position: absolute;
-  top: 50%;
-  right: -12px;
-  transform: translateY(-50%);
-  width: 24px; height: 24px;
+  top: 28px;
+  right: -16px;
+  width: 32px; height: 32px;
   border-radius: 50%;
-  border: 0;
-  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  border: 2px solid #0a1628;
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
   color: #fff;
-  font-size: 13px;
-  line-height: 1;
-  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.55), 0 0 0 1px rgba(255,255,255,0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 51;
-  transition: transform 0.18s ease;
+  z-index: 100;
+  transition: all 0.2s ease;
 }
-.isb-toggle:hover { transform: translateY(-50%) scale(1.1); }
+.isb-toggle:hover {
+  transform: scale(1.12);
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.75), 0 0 0 1px rgba(255,255,255,0.12);
+  background: linear-gradient(135deg, #2563eb, #0891b2);
+}
+.isb-toggle:active { transform: scale(0.95); }
 .isb.collapsed .isb-brand-text { display: none; }
 .isb.collapsed .isb-brand { justify-content: center; }
 .isb.collapsed .isb-top { padding: 22px 12px 18px; display: flex; justify-content: center; }

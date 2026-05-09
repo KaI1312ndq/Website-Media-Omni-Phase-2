@@ -97,7 +97,9 @@ export default function InternalSidebar({ user, onLogout, open, onClose, collaps
               aria-label={isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
               title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
             >
-              {isCollapsed ? '→' : '←'}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }}>
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
             </button>
           )}
         </div>
