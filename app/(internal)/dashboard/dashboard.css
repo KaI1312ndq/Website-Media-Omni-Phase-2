@@ -801,17 +801,32 @@
   color: #e2e8f0 !important;
 }
 
-/* ── Preview email body (table tự render với inline styles, scope tách khỏi .il-main override) ── */
+/* ── Platform section headers (Shopee Ads / TikTok Shop Ads) ── */
+.il-main .plat-sec-hdr { color: #f8fafc; }
+.il-main .plat-sec-hdr.shopee {
+  background: linear-gradient(135deg, rgba(238,77,45,0.18), rgba(238,77,45,0.06));
+  border: 1.5px solid rgba(238,77,45,0.4);
+  color: #fb923c;
+}
+.il-main .plat-sec-hdr.tiktok {
+  background: linear-gradient(135deg, rgba(236,72,153,0.18), rgba(236,72,153,0.06));
+  border: 1.5px solid rgba(236,72,153,0.4);
+  color: #f472b6;
+}
+.il-main .sub-h {
+  color: #94a3b8;
+  border-bottom-color: rgba(96,165,250,0.15);
+}
+
+/* ── Preview email body — preserve inline styles của HTML email gốc ── */
 .il-main .pv-body { background: #fff; color: #000; padding: 22px; }
-.il-main .pv-body table,
-.il-main .pv-body table th,
-.il-main .pv-body table td,
+.il-main .pv-body table th { color: #fff; background-color: #1a2e5c; }
+.il-main .pv-body table td { color: #000; border-color: #ccc; }
 .il-main .pv-body p,
 .il-main .pv-body div,
 .il-main .pv-body span,
-.il-main .pv-body strong { color: revert !important; }
-.il-main .pv-body table th { background: revert; }
-.il-main .pv-body table td { border-color: revert; }
+.il-main .pv-body strong,
+.il-main .pv-body td { color: inherit; }
 .il-main .pv-wrap { background: rgba(255,255,255,0.02); }
 .il-main .pv-bar,
 .il-main .pv-subj { color: #cbd5e1; }
