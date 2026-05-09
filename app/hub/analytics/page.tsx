@@ -1,238 +1,237 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { Fragment, useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { getSession } from '@/lib/auth'
+import { Skeleton } from '@/components/Skeleton'
 
 /* ─── Types ─── */
-interface WeekDef { w: number; start: Date; end: Date }
-interface WeekHistory { week_num: number | string; created_at?: string; updated_at?: string;
-  s_cpc_doanh_so?: number; s_nd_gmv?: number; s_live_gmv?: number; t_pgm_doanh_so?: number; t_lgm_doanhthu?: number;
-  s_cpc_chi_phi?: number; s_nd_chi_phi?: number; s_live_chi_phi?: number; t_pgm_chi_phi?: number;
-  t_lgm_chi_phi?: number; t_con_chi_phi?: number; t_brd_chi_phi?: number }
-interface Plan { [key: string]: { plan_month?: number } }
-interface BrandData { plan: Plan | null; history: WeekHistory[]; weeks: WeekDef[] }
+type Platform = 'all' | 'shopee' | 'tiktok'
+type Metric = 'gmv' | 'cp' | 'roas'
 
-/* ─── Constants ─── */
-const API = 'https://script.google.com/macros/s/AKfycbwmLt2SFY5iMg22qrUmvxmgI5Njwje5wRYGdHIwxizQvELMAHKmVlahHj0XJVOMuYMu/exec'
-const COLORS = ['#2563EB','#06B6D4','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6']
+interface BrandSummary {
+  brand: string
+  gmv: number
+  cp: number
+  roas: number
+  planGmv: number
+  planCp: number
+  pctGmv: number | null
+  pctCp: number | null
+  prevGmv: number
+  prevCp: number
+  prevRoas: number
+  weeksReported: number
+}
+interface Totals { gmv: number; cp: number; roas: number; activeBrands: number }
+interface SummaryResp { brands: BrandSummary[]; totals: Totals | null; prevTotals: Totals | null }
+interface TrendResp { months: string[]; series: Record<string, { gmv: number[]; cp: number[]; roas: number[] }> }
+interface WeeklyRow {
+  brand_name: string; week_num: number; month: number; year: number
+  s_cpc_doanh_so?: number; s_nd_gmv?: number; s_live_gmv?: number; t_pgm_doanh_so?: number; t_lgm_doanhthu?: number
+  s_cpc_chi_phi?: number; s_nd_chi_phi?: number; s_live_chi_phi?: number; t_pgm_chi_phi?: number
+  t_lgm_chi_phi?: number; t_con_chi_phi?: number; t_brd_chi_phi?: number
+}
+
+/* ─── Const ─── */
+const COLORS = ['#2563EB', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6']
 
 /* ─── Utils ─── */
-function getWeeksOfMonth(year: number, month: number): WeekDef[] {
-  const weeks: WeekDef[] = []
-  let d = new Date(year, month - 1, 1)
-  let w = 1
-  while (d.getMonth() === month - 1) {
-    const start = new Date(d)
-    const end   = new Date(d)
-    while (end.getMonth() === month - 1 && end.getDay() !== 0) end.setDate(end.getDate() + 1)
-    if (end.getMonth() !== month - 1) end.setDate(end.getDate() - 1)
-    weeks.push({ w, start: new Date(start), end: new Date(end) })
-    end.setDate(end.getDate() + 1)
-    d = new Date(end)
-    w++
-  }
-  return weeks
-}
-
 function fmtNum(v: number | null | undefined): string {
-  if (v === null || v === undefined || isNaN(v as number)) return '—'
-  const n = Math.round(parseFloat(String(v)))
-  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B'
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'
-  if (n >= 1e4) return Math.round(n / 1e3) + 'K'
+  if (v === null || v === undefined || isNaN(Number(v))) return '—'
+  const n = Math.round(Number(v))
+  if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(1) + 'B'
+  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + 'M'
+  if (Math.abs(n) >= 1e4) return Math.round(n / 1e3) + 'K'
   return n.toLocaleString('en-US')
 }
-
-function fmtDate(d?: string): string {
-  if (!d) return '—'
-  const dt = new Date(d)
-  if (isNaN(dt.getTime())) return '—'
-  return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+function fmtPct(v: number | null | undefined, digits = 0): string {
+  if (v === null || v === undefined || isNaN(Number(v))) return '—'
+  return `${Number(v).toFixed(digits)}%`
 }
-
-function fmtDay(d?: string): string {
-  if (!d) return ''
-  const dt = new Date(d)
-  if (isNaN(dt.getTime())) return ''
-  return ['CN','T2','T3','T4','T5','T6','T7'][dt.getDay()]
-}
-
-function fmtShort(d: Date): string { return `${d.getDate()}/${d.getMonth()+1}` }
-
-function pctColor(pct: number | null): string {
-  if (pct === null || pct === undefined) return 'pct-none'
-  if (pct >= 100) return 'pct-good'
-  if (pct >= 70)  return 'pct-warn'
+function pctClass(p: number | null): string {
+  if (p === null || p === undefined) return ''
+  if (p >= 100) return 'pct-good'
+  if (p >= 70) return 'pct-warn'
   return 'pct-bad'
 }
-
-function gmvOf(h: WeekHistory) {
-  return (parseFloat(String(h.s_cpc_doanh_so??0))+parseFloat(String(h.s_nd_gmv??0))+parseFloat(String(h.s_live_gmv??0))+parseFloat(String(h.t_pgm_doanh_so??0))+parseFloat(String(h.t_lgm_doanhthu??0)))
+function delta(cur: number, prev: number): { sign: '+' | '-' | '='; pct: number } {
+  if (!prev) return { sign: cur > 0 ? '+' : '=', pct: 0 }
+  const d = ((cur - prev) / prev) * 100
+  return { sign: d > 0.5 ? '+' : d < -0.5 ? '-' : '=', pct: Math.abs(d) }
 }
-function cpOf(h: WeekHistory) {
-  return (parseFloat(String(h.s_cpc_chi_phi??0))+parseFloat(String(h.s_nd_chi_phi??0))+parseFloat(String(h.s_live_chi_phi??0))+parseFloat(String(h.t_pgm_chi_phi??0))+parseFloat(String(h.t_lgm_chi_phi??0))+parseFloat(String(h.t_con_chi_phi??0))+parseFloat(String(h.t_brd_chi_phi??0)))
+function gmvW(r: WeeklyRow, p: Platform = 'all'): number {
+  const s = Number(r.s_cpc_doanh_so || 0) + Number(r.s_nd_gmv || 0) + Number(r.s_live_gmv || 0)
+  const t = Number(r.t_pgm_doanh_so || 0) + Number(r.t_lgm_doanhthu || 0)
+  return p === 'shopee' ? s : p === 'tiktok' ? t : s + t
+}
+function cpW(r: WeeklyRow, p: Platform = 'all'): number {
+  const s = Number(r.s_cpc_chi_phi || 0) + Number(r.s_nd_chi_phi || 0) + Number(r.s_live_chi_phi || 0)
+  const t = Number(r.t_pgm_chi_phi || 0) + Number(r.t_lgm_chi_phi || 0) + Number(r.t_con_chi_phi || 0) + Number(r.t_brd_chi_phi || 0)
+  return p === 'shopee' ? s : p === 'tiktok' ? t : s + t
 }
 
-/* ─── Main page ─── */
+/* ─── Page ─── */
 export default function AnalyticsPage() {
-  const router   = useRouter()
-  const now      = new Date()
-  const [month, setMonth]     = useState(now.getMonth() + 1)
-  const [year,  setYear]      = useState(now.getFullYear())
-  const [allBrands, setAllBrands]   = useState<string[]>([])
-  const [selBrands, setSelBrands]   = useState<string[]>([])
-  const [ddOpen, setDdOpen]         = useState(false)
-  const [ddSearch, setDdSearch]     = useState('')
-  const [loading, setLoading]       = useState(false)
-  const [data, setData]             = useState<Record<string, BrandData>>({})
-  const [rendered, setRendered]     = useState(false)
-  const chartGmvRef = useRef<HTMLCanvasElement>(null)
-  const chartCpRef  = useRef<HTMLCanvasElement>(null)
-  const chartInstGmv = useRef<unknown>(null)
-  const chartInstCp  = useRef<unknown>(null)
-  const ddRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const now = new Date()
+  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [year, setYear] = useState(now.getFullYear())
+  const [allBrands, setAllBrands] = useState<string[]>([])
+  const [selBrands, setSelBrands] = useState<string[]>([])
+  const [ddOpen, setDdOpen] = useState(false)
+  const [ddSearch, setDdSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [summary, setSummary] = useState<SummaryResp | null>(null)
+  const [trend, setTrend] = useState<TrendResp | null>(null)
+  const [trendMetric, setTrendMetric] = useState<Metric>('gmv')
+  const [trendPlatform, setTrendPlatform] = useState<Platform>('all')
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [expandData, setExpandData] = useState<Record<string, WeeklyRow[]>>({})
 
-  /* auth guard */
+  const ddRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<HTMLCanvasElement>(null)
+  const chartInst = useRef<unknown>(null)
+
+  /* auth */
   useEffect(() => {
-    const user = typeof window !== 'undefined' ? localStorage.getItem('mo_user') : null
-    if (!user) { router.replace('/') }
+    const u = getSession()
+    if (!u) { router.replace('/'); return }
+    setAuthChecked(true)
   }, [router])
 
-  /* fetch brands on mount */
+  /* load brands once */
   useEffect(() => {
-    fetch(`${API}?action=getBrands`)
+    if (!authChecked) return
+    fetch('/api/analytics?action=brands', { credentials: 'include' })
       .then(r => r.json())
-      .then(j => { if (j.ok && j.data) setAllBrands(j.data) })
-      .catch(() => {})
-  }, [])
+      .then(j => setAllBrands(j.data || []))
+      .catch(() => setAllBrands([]))
+  }, [authChecked])
 
-  /* close dropdown on outside click */
+  /* close dropdown on outside */
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const h = (e: MouseEvent) => {
       if (ddRef.current && !ddRef.current.contains(e.target as Node)) setDdOpen(false)
     }
-    document.addEventListener('click', handler)
-    return () => document.removeEventListener('click', handler)
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
   }, [])
 
-  /* load data */
-  const loadData = useCallback(async () => {
-    const brands = selBrands.length > 0 ? selBrands : allBrands
-    if (!brands.length) return
+  /* fetch summary + trend whenever filters change */
+  const reload = useCallback(async () => {
+    if (!authChecked) return
     setLoading(true)
-    setRendered(false)
-    const weeks = getWeeksOfMonth(year, month)
-    const newData: Record<string, BrandData> = {}
-    await Promise.all(brands.map(async brand => {
-      const [pj, hj] = await Promise.race([
-        Promise.all([
-          fetch(`${API}?action=getPlan&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).then(r=>r.json()).catch(()=>({ok:false})),
-          fetch(`${API}?action=getWeeklyHistory&brand_name=${encodeURIComponent(brand)}&month=${month}&year=${year}`).then(r=>r.json()).catch(()=>({ok:false})),
-        ]),
-        new Promise<[{ok:false},{ok:false}]>(res => setTimeout(() => res([{ok:false},{ok:false}]), 20000))
+    const brandsQs = selBrands.length ? `&brands=${encodeURIComponent(selBrands.join(','))}` : ''
+    try {
+      const [sRes, tRes] = await Promise.all([
+        fetch(`/api/analytics?action=summary&month=${month}&year=${year}&platform=${trendPlatform}`, { credentials: 'include' }).then(r => r.json()),
+        fetch(`/api/analytics?action=trend&month=${month}&year=${year}${brandsQs}`, { credentials: 'include' }).then(r => r.json()),
       ])
-      newData[brand] = {
-        plan:    (pj as {ok:boolean;data?:Plan}).ok ? ((pj as {ok:boolean;data?:Plan}).data ?? null) : null,
-        history: (hj as {ok:boolean;data?:WeekHistory[]}).ok ? ((hj as {ok:boolean;data?:WeekHistory[]}).data ?? []) : [],
-        weeks,
-      }
-    }))
-    setData(newData)
-    setLoading(false)
-    setRendered(true)
-  }, [allBrands, selBrands, month, year])
-
-  /* draw charts after render */
-  useEffect(() => {
-    if (!rendered) return
-    drawCharts()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rendered, data])
-
-  async function drawCharts() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Chart = (await import('chart.js/auto')).default
-    const brands   = selBrands.length > 0 ? selBrands : allBrands
-    const weeks    = getWeeksOfMonth(year, month)
-    const labels   = weeks.map(w => `W${w.w}`)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (chartInstGmv.current) (chartInstGmv.current as any).destroy()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (chartInstCp.current)  (chartInstCp.current  as any).destroy()
-
-    if (!chartGmvRef.current || !chartCpRef.current) return
-
-    const mkDatasets = (fn: (h: WeekHistory) => number) => brands.map((b, i) => ({
-      label: b,
-      data:  weeks.map(w => { const h = data[b]?.history.find(r => parseInt(String(r.week_num)) === w.w); return h ? fn(h) : 0 }),
-      backgroundColor: COLORS[i % COLORS.length] + 'cc',
-      borderColor:     COLORS[i % COLORS.length],
-      borderWidth: 1, borderRadius: 4,
-    }))
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const opts: any = {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom', labels: { font: { family: 'Be Vietnam Pro', size: 11 }, boxWidth: 12, padding: 12 } },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tooltip: { callbacks: { label: (ctx: any) => `${ctx.dataset.label ?? ''}: ${fmtNum(ctx.raw)}` } },
-      },
-      scales: {
-        x: { stacked: true, grid: { display: false } },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        y: { stacked: true, grid: { color: 'rgba(37,99,235,.07)' }, ticks: { callback: (v: any) => fmtNum(v) } },
-      },
+      setSummary(sRes.data || null)
+      setTrend(tRes.data || null)
+    } finally {
+      setLoading(false)
     }
+  }, [authChecked, month, year, selBrands, trendPlatform])
 
-    chartInstGmv.current = new Chart(chartGmvRef.current, { type: 'bar', data: { labels, datasets: mkDatasets(gmvOf) }, options: opts })
-    chartInstCp.current  = new Chart(chartCpRef.current,  { type: 'bar', data: { labels, datasets: mkDatasets(cpOf)  }, options: opts })
+  useEffect(() => { reload() }, [reload])
+
+  /* draw chart */
+  useEffect(() => {
+    if (!trend || !chartRef.current) return
+    let cancelled = false
+    ;(async () => {
+      const Chart = (await import('chart.js/auto')).default
+      if (cancelled) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (chartInst.current) (chartInst.current as any).destroy()
+
+      // Default to top 5 by current month GMV if no selection
+      let series = trend.series
+      let displayBrands = Object.keys(series)
+      if (!selBrands.length && summary) {
+        const top5 = summary.brands.slice(0, 5).map(b => b.brand)
+        displayBrands = top5.filter(b => series[b])
+      } else if (selBrands.length) {
+        displayBrands = selBrands.filter(b => series[b])
+      }
+
+      const datasets = displayBrands.map((b, i) => ({
+        label: b,
+        data: series[b][trendMetric],
+        borderColor: COLORS[i % COLORS.length],
+        backgroundColor: COLORS[i % COLORS.length] + '22',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 3,
+      }))
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const opts: any = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Be Vietnam Pro', size: 11 }, boxWidth: 12, padding: 10 } },
+          tooltip: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            callbacks: { label: (ctx: any) => `${ctx.dataset.label}: ${trendMetric === 'roas' ? Number(ctx.raw).toFixed(2) + 'x' : fmtNum(ctx.raw)}` },
+          },
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            grid: { color: 'rgba(37,99,235,.07)' },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ticks: { callback: (v: any) => trendMetric === 'roas' ? Number(v).toFixed(1) + 'x' : fmtNum(Number(v)) },
+          },
+        },
+      }
+      chartInst.current = new Chart(chartRef.current!, {
+        type: 'line',
+        data: { labels: trend.months, datasets },
+        options: opts,
+      })
+    })()
+    return () => { cancelled = true }
+  }, [trend, summary, trendMetric, selBrands])
+
+  /* expand brand row */
+  async function toggleExpand(brand: string) {
+    if (expanded === brand) { setExpanded(null); return }
+    setExpanded(brand)
+    if (!expandData[brand]) {
+      const r = await fetch(`/api/analytics?action=compare&month=${month}&year=${year}&brands=${encodeURIComponent(brand)}`, { credentials: 'include' }).then(x => x.json())
+      const weekly: WeeklyRow[] = r.data?.weekly || []
+      setExpandData(prev => ({ ...prev, [brand]: weekly.sort((a, b) => a.week_num - b.week_num) }))
+    }
   }
 
-  /* derived brand data for tables */
-  const brands  = selBrands.length > 0 ? selBrands : allBrands
-  const weeks   = getWeeksOfMonth(year, month)
-  const today   = new Date()
-  const currentWeek = weeks.find(w => today >= w.start && today <= w.end)?.w ?? (weeks.at(-1)?.w ?? null)
-
-  const bData = brands.map(brand => {
-    const { plan, history } = data[brand] ?? { plan: null, history: [] }
-    const weekMap: Record<number, WeekHistory> = {}
-    ;(history ?? []).forEach(h => { weekMap[parseInt(String(h.week_num))] = h })
-
-    const gmvTotal = weeks.reduce((a, w) => { const h = weekMap[w.w]; return h ? a + gmvOf(h) : a }, 0)
-    const cpTotal  = weeks.reduce((a, w) => { const h = weekMap[w.w]; return h ? a + cpOf(h)  : a }, 0)
-    const roas     = cpTotal > 0 ? gmvTotal / cpTotal : null
-
-    const planGmv = plan ? (parseFloat(String((plan as Plan).s_cpc_doanh_so?.plan_month??0))+parseFloat(String((plan as Plan).s_nd_gmv?.plan_month??0))+parseFloat(String((plan as Plan).s_live_gmv?.plan_month??0))+parseFloat(String((plan as Plan).t_pgm_doanh_so?.plan_month??0))+parseFloat(String((plan as Plan).t_lgm_doanhthu?.plan_month??0))) : null
-    const planCp  = plan ? (parseFloat(String((plan as Plan).s_cpc_chi_phi?.plan_month??0))+parseFloat(String((plan as Plan).s_nd_chi_phi?.plan_month??0))+parseFloat(String((plan as Plan).s_live_chi_phi?.plan_month??0))+parseFloat(String((plan as Plan).t_pgm_chi_phi?.plan_month??0))+parseFloat(String((plan as Plan).t_lgm_chi_phi?.plan_month??0))+parseFloat(String((plan as Plan).t_con_chi_phi?.plan_month??0))+parseFloat(String((plan as Plan).t_brd_chi_phi?.plan_month??0))) : null
-
-    const reportedWeeks = weeks.filter(w => weekMap[w.w]).map(w => w.w)
-    const pctGmv = planGmv && gmvTotal ? Math.round(gmvTotal / planGmv * 100) : null
-    const pctCp  = planCp  && cpTotal  ? Math.round(cpTotal  / planCp  * 100) : null
-    const hasPlan = !!plan
-
-    return { brand, hasPlan, weekMap, gmvTotal, cpTotal, roas, planGmv, planCp, pctGmv, pctCp, reportedWeeks }
-  })
-
-  const totalBrands         = brands.length
-  const brandsWithPlan      = bData.filter(d => d.hasPlan).length
-  const brandsWithAnyReport = bData.filter(d => d.reportedWeeks.length > 0).length
-  const brandsThisWeek      = bData.filter(d => currentWeek && d.weekMap[currentWeek]).length
-  const missingThisWeek     = totalBrands - brandsThisWeek
-
-  /* brand dropdown helpers */
-  const toggleBrand = (b: string) => setSelBrands(prev => prev.includes(b) ? prev.filter(x=>x!==b) : [...prev, b])
-  const filtered = allBrands.filter(b => b.toLowerCase().includes(ddSearch.toLowerCase()))
-
+  /* derived */
   const yearsOpts = []
   for (let y = 2024; y <= now.getFullYear() + 1; y++) yearsOpts.push(y)
+  const filteredDD = allBrands.filter(b => b.toLowerCase().includes(ddSearch.toLowerCase()))
+  const toggleBrand = (b: string) => setSelBrands(p => p.includes(b) ? p.filter(x => x !== b) : [...p, b])
+
+  const sBrands = summary?.brands || []
+  const top5Gmv = [...sBrands].sort((a, b) => b.gmv - a.gmv).slice(0, 5)
+  const top5Roas = [...sBrands].filter(b => b.cp > 0).sort((a, b) => b.roas - a.roas).slice(0, 5)
+  const bottom5Plan = [...sBrands].filter(b => b.pctGmv !== null).sort((a, b) => (a.pctGmv || 0) - (b.pctGmv || 0)).slice(0, 5)
+
+  const totals = summary?.totals
+  const prevTotals = summary?.prevTotals
+
+  const renderArrow = (cur: number, prev: number) => {
+    const d = delta(cur, prev)
+    if (d.sign === '=') return <span style={{ color: 'var(--faint)', fontSize: '.78rem' }}>= 0%</span>
+    const color = d.sign === '+' ? 'var(--success)' : 'var(--error)'
+    return <span style={{ color, fontSize: '.78rem', fontWeight: 600 }}>{d.sign === '+' ? '↑' : '↓'} {d.pct.toFixed(1)}% MoM</span>
+  }
 
   return (
-    <div className="an" style={{ maxWidth: 1100, margin: '0 auto', padding: '88px 20px 80px' }}>
-      {/* Back */}
+    <div className="an" style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 20px 80px' }}>
       <div style={{ marginBottom: 6 }}>
         <Link href="/dashboard" style={{ fontSize: '.82rem', color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
@@ -241,7 +240,7 @@ export default function AnalyticsPage() {
       </div>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--ink)' }}>Analytics</h1>
-        <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginTop: 4 }}>Tổng quan hiệu suất, tiến độ report và số liệu theo brand.</p>
+        <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginTop: 4 }}>Tổng quan hiệu suất multi-brand từ Supabase weekly_reports + monthly_plans.</p>
       </div>
 
       {/* FILTERS */}
@@ -249,7 +248,7 @@ export default function AnalyticsPage() {
         <div>
           <label className="an-label">Tháng</label>
           <select className="an-sel" value={month} onChange={e => setMonth(Number(e.target.value))}>
-            {Array.from({length:12},(_,i)=>i+1).map(m => <option key={m} value={m}>Tháng {m}</option>)}
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>Tháng {m}</option>)}
           </select>
         </div>
         <div>
@@ -258,20 +257,20 @@ export default function AnalyticsPage() {
             {yearsOpts.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
           <label className="an-label">Brand</label>
-          <div className="filter-brand-wrap" ref={ddRef}>
+          <div className="filter-brand-wrap" ref={ddRef} style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
             <div
               className="brand-tag-list"
               onClick={() => setDdOpen(o => !o)}
-              style={{ cursor: 'pointer', minWidth: 140, padding: '4px 10px', border: '1.5px solid var(--border)', borderRadius: 8, background: '#fff' }}
+              style={{ cursor: 'pointer', minHeight: 36, padding: '4px 10px', border: '1.5px solid var(--border)', borderRadius: 8, background: '#fff' }}
             >
               {selBrands.length === 0
-                ? <span className="brand-tag brand-tag-all">Tất cả</span>
+                ? <span className="brand-tag brand-tag-all">Tất cả ({allBrands.length})</span>
                 : selBrands.map(b => (
                   <span key={b} className="brand-tag">
                     {b}
-                    <button className="brand-tag-rm" onClick={e => { e.stopPropagation(); setSelBrands(p => p.filter(x=>x!==b)) }}>×</button>
+                    <button className="brand-tag-rm" onClick={e => { e.stopPropagation(); setSelBrands(p => p.filter(x => x !== b)) }}>×</button>
                   </span>
                 ))}
             </div>
@@ -290,7 +289,7 @@ export default function AnalyticsPage() {
                     <input type="checkbox" id="chk-all" checked={selBrands.length === 0} onChange={() => setSelBrands([])} />
                     <label htmlFor="chk-all" style={{ cursor: 'pointer' }}>Tất cả</label>
                   </div>
-                  {filtered.map(b => (
+                  {filteredDD.map(b => (
                     <div key={b} className="brand-dd-opt">
                       <input type="checkbox" id={`chk-${b}`} checked={selBrands.includes(b)} onChange={() => toggleBrand(b)} />
                       <label htmlFor={`chk-${b}`} style={{ cursor: 'pointer' }}>{b}</label>
@@ -301,176 +300,175 @@ export default function AnalyticsPage() {
             )}
           </div>
         </div>
-        <button
-          className="an-sel filter-refresh"
-          onClick={loadData}
-          style={{ marginLeft: 'auto', background: 'var(--blue)', color: '#fff', borderColor: 'var(--blue)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
-          Tải dữ liệu
-        </button>
       </div>
 
       {/* CONTENT */}
       {loading ? (
-        <div className="an-loading">
-          <div className="spin" />
-          <br /><br />
-          Đang tải dữ liệu {brands.length} brand...
-        </div>
-      ) : !rendered ? (
-        <div className="an-loading" style={{ color: 'var(--faint)' }}>
-          Chọn filter và nhấn <b>Tải dữ liệu</b> để xem Analytics.
+        <>
+          <div className="an-cards">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="an-card"><Skeleton width="60%" height={32} /><Skeleton width="80%" height={12} style={{ marginTop: 10 }} /></div>
+            ))}
+          </div>
+          <div className="an-block" style={{ padding: 18 }}><Skeleton width="100%" height={220} /></div>
+        </>
+      ) : !allBrands.length ? (
+        <div className="an-block" style={{ padding: 30, textAlign: 'center' }}>
+          <p style={{ color: 'var(--muted)' }}>Bạn chưa được assign brand nào. Liên hệ Admin để được phân quyền.</p>
         </div>
       ) : (
         <>
-          {/* COVERAGE CARDS */}
+          {/* SUMMARY CARDS */}
           <div className="an-cards">
             <div className="an-card">
-              <div className="an-card-val">{totalBrands}</div>
-              <div className="an-card-lbl">Brand đang theo dõi</div>
-              <div className="an-card-sub">Tháng {month}/{year}</div>
+              <div className="an-card-val">{fmtNum(totals?.gmv || 0)}</div>
+              <div className="an-card-lbl">Tổng GMV ({trendPlatform === 'all' ? 'all' : trendPlatform})</div>
+              <div className="an-card-sub">{prevTotals ? renderArrow(totals?.gmv || 0, prevTotals.gmv) : null}</div>
             </div>
-            <div className={`an-card ${brandsWithPlan === totalBrands ? 'ok' : brandsWithPlan > 0 ? 'warn' : 'err'}`}>
-              <div className="an-card-val">{brandsWithPlan}/{totalBrands}</div>
-              <div className="an-card-lbl">Brand đã có Plan tháng</div>
-              <div className="an-card-sub">{totalBrands - brandsWithPlan > 0 ? `Còn ${totalBrands - brandsWithPlan} chưa set plan` : 'Tất cả đã có plan ✓'}</div>
+            <div className="an-card">
+              <div className="an-card-val">{fmtNum(totals?.cp || 0)}</div>
+              <div className="an-card-lbl">Tổng Chi phí</div>
+              <div className="an-card-sub">{prevTotals ? renderArrow(totals?.cp || 0, prevTotals.cp) : null}</div>
             </div>
-            <div className={`an-card ${brandsWithAnyReport === totalBrands ? 'ok' : brandsWithAnyReport > 0 ? 'warn' : 'err'}`}>
-              <div className="an-card-val">{brandsWithAnyReport}/{totalBrands}</div>
-              <div className="an-card-lbl">Brand đã nộp Report</div>
-              <div className="an-card-sub">Ít nhất 1 tuần trong tháng</div>
+            <div className="an-card">
+              <div className="an-card-val">{(totals?.roas || 0).toFixed(2)}x</div>
+              <div className="an-card-lbl">ROAS trung bình</div>
+              <div className="an-card-sub">{prevTotals ? renderArrow(totals?.roas || 0, prevTotals.roas) : null}</div>
             </div>
-            <div className={`an-card ${missingThisWeek === 0 ? 'ok' : 'err'}`}>
-              <div className="an-card-val">{missingThisWeek}</div>
-              <div className="an-card-lbl">Chưa nộp{currentWeek ? ` W${currentWeek}` : ''}</div>
-              <div className="an-card-sub">
-                {missingThisWeek > 0
-                  ? bData.filter(d => currentWeek && !d.weekMap[currentWeek]).map(d=>d.brand).join(', ')
-                  : 'Đã đủ ✓'}
-              </div>
+            <div className="an-card">
+              <div className="an-card-val">{totals?.activeBrands || 0}</div>
+              <div className="an-card-lbl">Brand active</div>
+              <div className="an-card-sub">{prevTotals ? `Tháng trước: ${prevTotals.activeBrands}` : ''}</div>
             </div>
           </div>
 
-          {/* STATUS MATRIX */}
-          <div className="an-sec"><h2>Trạng thái Report theo tuần</h2><p>✅ Đã nộp &nbsp;❌ Chưa nộp &nbsp;— Tuần chưa đến</p></div>
-          <div className="an-block">
-            <div className="matrix-wrap">
-              <table className="matrix-tbl">
-                <thead>
-                  <tr>
-                    <th>Brand</th>
-                    {weeks.map(w => <th key={w.w}>W{w.w}<br /><span style={{fontWeight:400,fontSize:'.7rem'}}>{fmtShort(w.start)}–{fmtShort(w.end)}</span></th>)}
-                    <th>Plan?</th>
-                    <th>% nộp</th>
-                  </tr>
-                </thead>
+          {/* TOP / BOTTOM */}
+          <div className="an-sec"><h2>Top &amp; Bottom Performers</h2><p>Tháng {month}/{year}</p></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 28 }}>
+            <div className="an-block" style={{ padding: 14 }}>
+              <h3 style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Top 5 GMV</h3>
+              <table className="metrics-tbl">
+                <thead><tr><th>Brand</th><th>GMV</th></tr></thead>
                 <tbody>
-                  {bData.map(d => {
-                    const pctRpt = Math.round(d.reportedWeeks.length / weeks.length * 100)
-                    return (
-                      <tr key={d.brand}>
-                        <td>{d.brand}</td>
-                        {weeks.map(w => {
-                          const has    = !!d.weekMap[w.w]
-                          const future = w.start > today
-                          return (
-                            <td key={w.w}>
-                              {future && !has
-                                ? <span className="badge badge-none">–</span>
-                                : has
-                                ? <span className="badge badge-ok">✅</span>
-                                : <span className="badge badge-miss">❌</span>}
-                            </td>
-                          )
-                        })}
-                        <td><span className={`plan-badge ${d.hasPlan ? 'plan-yes' : 'plan-no'}`}>{d.hasPlan ? 'Có' : 'Chưa có'}</span></td>
-                        <td><span className={pctColor(pctRpt)}>{pctRpt}%</span></td>
-                      </tr>
-                    )
-                  })}
+                  {top5Gmv.length === 0
+                    ? <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--faint)' }}>—</td></tr>
+                    : top5Gmv.map(b => <tr key={b.brand}><td>{b.brand}</td><td>{fmtNum(b.gmv)}</td></tr>)}
+                </tbody>
+              </table>
+            </div>
+            <div className="an-block" style={{ padding: 14 }}>
+              <h3 style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Top 5 ROAS</h3>
+              <table className="metrics-tbl">
+                <thead><tr><th>Brand</th><th>ROAS</th></tr></thead>
+                <tbody>
+                  {top5Roas.length === 0
+                    ? <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--faint)' }}>—</td></tr>
+                    : top5Roas.map(b => <tr key={b.brand}><td>{b.brand}</td><td>{b.roas.toFixed(2)}x</td></tr>)}
+                </tbody>
+              </table>
+            </div>
+            <div className="an-block" style={{ padding: 14 }}>
+              <h3 style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Bottom 5 % Plan GMV</h3>
+              <table className="metrics-tbl">
+                <thead><tr><th>Brand</th><th>% Plan</th></tr></thead>
+                <tbody>
+                  {bottom5Plan.length === 0
+                    ? <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--faint)' }}>Chưa có plan</td></tr>
+                    : bottom5Plan.map(b => <tr key={b.brand}><td>{b.brand}</td><td><span className={pctClass(b.pctGmv)}>{fmtPct(b.pctGmv)}</span></td></tr>)}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* TIMING TABLE */}
-          <div className="an-sec"><h2>Thời gian nộp Report</h2><p>Ngày giờ brand submit weekly report vào hệ thống</p></div>
-          <div className="an-block">
-            <div className="matrix-wrap">
-              <table className="timing-tbl">
-                <thead>
-                  <tr>
-                    <th>Brand</th>
-                    {weeks.map(w => <th key={w.w}>W{w.w}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {bData.map(d => (
-                    <tr key={d.brand}>
-                      <td>{d.brand}</td>
-                      {weeks.map(w => {
-                        const h  = d.weekMap[w.w]
-                        const ts = h?.created_at ?? h?.updated_at
-                        return (
-                          <td key={w.w}>
-                            {h ? <>{fmtDate(ts)}<span className="t-day">{fmtDay(ts)}</span></> : '—'}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* TREND */}
+          <div className="an-sec" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 8 }}>
+            <div><h2>Trend 12 tháng</h2><p>{selBrands.length ? `${selBrands.length} brand được chọn` : 'Top 5 brand theo GMV'}</p></div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select className="an-sel" value={trendMetric} onChange={e => setTrendMetric(e.target.value as Metric)}>
+                <option value="gmv">GMV</option>
+                <option value="cp">Chi phí</option>
+                <option value="roas">ROAS</option>
+              </select>
+              <select className="an-sel" value={trendPlatform} onChange={e => setTrendPlatform(e.target.value as Platform)}>
+                <option value="all">Tất cả</option>
+                <option value="shopee">Shopee</option>
+                <option value="tiktok">TikTok</option>
+              </select>
+            </div>
+          </div>
+          <div className="an-block" style={{ padding: 18, marginBottom: 28 }}>
+            <div style={{ position: 'relative', height: 320 }}>
+              <canvas ref={chartRef} />
             </div>
           </div>
 
-          {/* METRICS TABLE */}
-          <div className="an-sec"><h2>Tổng hợp chỉ số theo Brand</h2><p>Lũy tiến MTD từ các tuần đã nộp</p></div>
+          {/* COMPARISON TABLE */}
+          <div className="an-sec"><h2>Bảng so sánh Brand</h2><p>Click vào brand để xem chi tiết theo tuần</p></div>
           <div className="an-block">
-            <div className="matrix-wrap">
+            <div className="matrix-wrap" style={{ overflowX: 'auto' }}>
               <table className="metrics-tbl">
                 <thead>
                   <tr>
-                    <th>Brand</th><th>Tuần gần nhất</th>
-                    <th>GMV Ads (MTD)</th><th>Plan GMV</th><th>% Plan GMV</th>
-                    <th>Chi phí (MTD)</th><th>Plan CP</th><th>% Plan CP</th>
-                    <th>ROAS/ROI</th>
+                    <th>Brand</th><th>Plan GMV</th><th>Actual GMV</th><th>%</th>
+                    <th>Plan CP</th><th>Actual CP</th><th>%</th>
+                    <th>ROAS</th><th>Δ MoM</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bData.length === 0 ? (
-                    <tr><td colSpan={9} style={{textAlign:'center',color:'var(--faint)',fontStyle:'italic',padding:20}}>Không có dữ liệu</td></tr>
-                  ) : bData.map(d => {
-                    const lastW = d.reportedWeeks.length > 0 ? `W${Math.max(...d.reportedWeeks)}` : '—'
-                    return (
-                      <tr key={d.brand}>
-                        <td>{d.brand}</td>
-                        <td>{lastW}</td>
-                        <td>{fmtNum(d.gmvTotal)}</td>
-                        <td>{d.planGmv ? fmtNum(d.planGmv) : '—'}</td>
-                        <td><span className={pctColor(d.pctGmv)}>{d.pctGmv !== null ? `${d.pctGmv}%` : '—'}</span></td>
-                        <td>{fmtNum(d.cpTotal)}</td>
-                        <td>{d.planCp ? fmtNum(d.planCp) : '—'}</td>
-                        <td><span className={pctColor(d.pctCp)}>{d.pctCp !== null ? `${d.pctCp}%` : '—'}</span></td>
-                        <td>{d.roas !== null ? `${d.roas.toFixed(2)}x` : '—'}</td>
-                      </tr>
-                    )
-                  })}
+                  {sBrands.length === 0
+                    ? <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--faint)', fontStyle: 'italic', padding: 20 }}>Không có dữ liệu</td></tr>
+                    : sBrands.map(b => (
+                      <Fragment key={b.brand}>
+                        <tr style={{ cursor: 'pointer' }} onClick={() => toggleExpand(b.brand)}>
+                          <td>{expanded === b.brand ? '▼ ' : '▶ '}{b.brand}</td>
+                          <td>{b.planGmv ? fmtNum(b.planGmv) : '—'}</td>
+                          <td>{fmtNum(b.gmv)}</td>
+                          <td><span className={pctClass(b.pctGmv)}>{fmtPct(b.pctGmv)}</span></td>
+                          <td>{b.planCp ? fmtNum(b.planCp) : '—'}</td>
+                          <td>{fmtNum(b.cp)}</td>
+                          <td><span className={pctClass(b.pctCp)}>{fmtPct(b.pctCp)}</span></td>
+                          <td>{b.cp > 0 ? b.roas.toFixed(2) + 'x' : '—'}</td>
+                          <td>
+                            {(() => {
+                              const d = delta(b.gmv, b.prevGmv)
+                              if (d.sign === '=') return <span style={{ color: 'var(--faint)' }}>=</span>
+                              return <span style={{ color: d.sign === '+' ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{d.sign === '+' ? '↑' : '↓'} {d.pct.toFixed(0)}%</span>
+                            })()}
+                          </td>
+                        </tr>
+                        {expanded === b.brand && (
+                          <tr>
+                            <td colSpan={9} style={{ background: 'var(--paper)', padding: 12 }}>
+                              {!expandData[b.brand]
+                                ? <Skeleton width="100%" height={60} />
+                                : expandData[b.brand].length === 0
+                                ? <span style={{ color: 'var(--faint)', fontStyle: 'italic' }}>Chưa có weekly report tháng này</span>
+                                : (
+                                  <table className="metrics-tbl" style={{ background: '#fff', borderRadius: 8 }}>
+                                    <thead><tr><th>Tuần</th><th>GMV</th><th>Chi phí</th><th>ROAS</th></tr></thead>
+                                    <tbody>
+                                      {expandData[b.brand].map(w => {
+                                        const g = gmvW(w, trendPlatform)
+                                        const c = cpW(w, trendPlatform)
+                                        return (
+                                          <tr key={w.week_num}>
+                                            <td>W{w.week_num}</td>
+                                            <td>{fmtNum(g)}</td>
+                                            <td>{fmtNum(c)}</td>
+                                            <td>{c > 0 ? (g / c).toFixed(2) + 'x' : '—'}</td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          {/* CHARTS */}
-          <div className="chart-row">
-            <div className="chart-box">
-              <h3>GMV Ads theo tuần (MTD)</h3>
-              <canvas ref={chartGmvRef} height={180} />
-            </div>
-            <div className="chart-box">
-              <h3>Chi phí Ads theo tuần</h3>
-              <canvas ref={chartCpRef} height={180} />
             </div>
           </div>
         </>

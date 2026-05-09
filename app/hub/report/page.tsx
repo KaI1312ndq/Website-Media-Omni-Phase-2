@@ -327,8 +327,12 @@ export default function ReportPage() {
 
   /* ── Load brands ── */
   useEffect(() => {
-    fetch('/api/brands').then(r => r.json()).then(j => setBrands(j.data || j.brands || []))
-  }, [])
+    if (!user) return
+    const qs = user.username ? `?username=${encodeURIComponent(user.username)}` : ''
+    fetch(`/api/brands${qs}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(j => setBrands(j.data || j.brands || []))
+  }, [user])
 
   /* ── Update week options when month changes ── */
   useEffect(() => {
@@ -1751,6 +1755,11 @@ export default function ReportPage() {
               <button className="btn-s" onClick={addBrand}>Thêm</button>
             </div>
             {selectedBrand && <p style={{ marginTop:6, fontSize:'.82rem', color:'var(--blue)', fontWeight:700 }}>Đã chọn: {selectedBrand}</p>}
+            {user && brands.length === 0 && (
+              <p style={{ marginTop:6, fontSize:'.82rem', color:'var(--warning)', fontWeight:600 }}>
+                Bạn chưa được assign brand nào. Liên hệ Admin để được phân quyền.
+              </p>
+            )}
           </div>
 
           {/* Platform checkboxes */}
