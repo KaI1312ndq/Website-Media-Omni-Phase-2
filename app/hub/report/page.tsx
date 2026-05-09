@@ -14,15 +14,28 @@ Nhiệm vụ: Phân tích data báo cáo tuần và trả về JSON (không thê
 {
   "highlight": "2–3 điểm sáng tuần này (tổng hợp cả 2 sàn nếu có). Mỗi bullet bắt đầu bằng •, nêu metric cụ thể và mức vượt plan hoặc cải thiện so tuần trước",
   "lowlight": "2–3 điểm cần xử lý (tổng hợp). Mỗi bullet bắt đầu bằng •, chỉ rõ mức lệch plan, xu hướng xấu hoặc rủi ro cụ thể",
-  "shopee_thuc_trang": "2–3 câu đánh giá thực trạng Shopee tuần này. Bắt buộc có số liệu. Để trống nếu không có data",
-  "shopee_van_de": "2–3 vấn đề cốt lõi Shopee. Mỗi bullet bắt đầu bằng •, chẩn đoán theo đúng cơ chế kỹ thuật từng loại Shopee Ads. Để trống nếu không có data",
-  "shopee_giai_phap": "2–3 action kỹ thuật cụ thể cho Shopee tuần tới. Mỗi bullet bắt đầu bằng •. Để trống nếu không có data",
-  "tiktok_thuc_trang": "2–3 câu đánh giá thực trạng TikTok tuần này. Bắt buộc có số liệu. Để trống nếu không có data",
-  "tiktok_van_de": "2–3 vấn đề cốt lõi TikTok. Mỗi bullet bắt đầu bằng •, chẩn đoán theo đúng cơ chế thuật toán AI-driven từng loại TikTok Ads. Để trống nếu không có data",
-  "tiktok_giai_phap": "2–3 action kỹ thuật cụ thể cho TikTok tuần tới. Mỗi bullet bắt đầu bằng •. Để trống nếu không có data"
+
+  "shopee_thuc_trang": "2–3 câu đánh giá thực trạng Shopee tuần này. Bắt buộc có số liệu từ các chỉ số: Doanh thu Ads GMV (tổng + theo từng loại Ads CPC / Ads nhận diện thương hiệu / Ads livestream), Chi phí ads, ROAS ads, CPC, CTR, CR, AOV, Số lượt click, Số lượt xem ads. Để trống nếu không có data",
+
+  "shopee_van_de": "2–3 vấn đề cốt lõi Shopee. Mỗi bullet bắt đầu bằng •, chẩn đoán theo đúng cơ chế kỹ thuật từng loại Shopee Ads:\\n• Ads CPC (Search Ads): max bid thấp → thua impression share; keyword match type rộng → traffic intent thấp → CR thấp; CPC thực tế vượt target do cạnh tranh auction leo thang; phân bổ ngân sách chưa đúng theo ROAS thực tế từng campaign\\n• Ads nhận diện thương hiệu (Display/Brand Ads): CPM cao → chi phí reach tăng; CTR thấp do bid không đủ cạnh tranh vị trí hiển thị\\n• Ads livestream: ROAS livestream thấp do bid không cạnh tranh trong khung giờ live; lượt xem thấp do budget chưa đủ phân phối đúng thời điểm\\n• Chung: tỉ lệ phân bổ ngân sách giữa Ads CPC / Ads nhận diện / Ads livestream chưa tối ưu theo ROAS thực tế từng loại. Để trống nếu không có data",
+
+  "shopee_giai_phap": "2–3 action kỹ thuật cụ thể cho Shopee tuần tới. Mỗi bullet bắt đầu bằng •:\\n• Ads CPC: điều chỉnh max bid về đúng CPC target (CPC target = budget / clicks cần thiết); chuyển keyword broad → exact nếu CR thấp; thêm negative keyword để loại query không liên quan; tăng ngân sách campaign ROAS cao, cắt campaign ROAS thấp hơn target\\n• Ads nhận diện thương hiệu: tăng bid nếu CTR thấp do thua vị trí auction; kiểm tra CPM thực tế so với sàn thị trường\\n• Ads livestream: tăng budget và bid trước khung giờ live để cạnh tranh impression; đảm bảo campaign active đúng thời điểm live bắt đầu\\n• Budget reallocation: shift ngân sách từ loại Ads ROAS thấp nhất sang loại ROAS cao nhất trong tuần. Để trống nếu không có data",
+
+  "tiktok_thuc_trang": "2–3 câu đánh giá thực trạng TikTok tuần này. Bắt buộc có số liệu từ các chỉ số: Doanh thu Ads GMV tổng, GMV Ads_PGM, GMV Ads_LGM, Chi phí Ads, ROI tổng, ROI PGM, ROI LGM, CPP Consideration, CPA Branding, CTR, CR, CPC, CPM, Số lượt xem, Số lượt click, Số đơn hàng, AOV. Để trống nếu không có data",
+
+  "tiktok_van_de": "2–3 vấn đề cốt lõi TikTok. Mỗi bullet bắt đầu bằng •, chẩn đoán theo đúng cơ chế thuật toán AI-driven từng loại TikTok Ads:\\n• Ads_PGM: ROI target cao hơn khả năng thực tế → thuật toán hạn chế delivery để bảo vệ target; CPC bid không cạnh tranh → thua impression auction; CTR thấp → Quality Score thấp → chi phí đấu giá tăng; audience overlap giữa các campaign PGM cùng chạy song song\\n• Ads_LGM: budget dưới ngưỡng thoát learning phase (cần tối thiểu 50–100 đơn/ngày để thuật toán ổn định); thay đổi campaign (budget, targeting, bid) trong learning phase → reset, kéo dài chi phí không hiệu quả; GMV Boost / View Boost chưa được bật đúng thời điểm trước live; lượt xem thấp do bid chưa đủ cạnh tranh traffic vào live\\n• Consideration_Ads: CPP cao do audience pool hẹp hoặc bid thấp; overlap với PGM campaign làm tăng giá đấu giá nội bộ\\n• Branding_Ads: CPA cao do bid thấp thua impression; phân bổ ngân sách chưa đủ để đạt frequency cần thiết. Để trống nếu không có data",
+
+  "tiktok_giai_phap": "2–3 action kỹ thuật cụ thể cho TikTok tuần tới. Mỗi bullet bắt đầu bằng •:\\n• Ads_PGM: nếu ROI thực tế < target → hạ ROI target 10–15% để tăng delivery volume; dùng day-parting tập trung budget vào khung giờ có CR cao (thường 20h–23h); kiểm tra và tách audience overlap giữa các campaign PGM đang chạy song song\\n• Ads_LGM: không thay đổi budget hoặc bid quá 20% trong 3 ngày đầu sau khi reset campaign để tránh kéo dài learning phase; tăng budget tối thiểu 20% nếu số đơn/ngày dưới 50; bật GMV Boost + View Boost 30–60 phút trước live; nếu ROI LGM thấp hơn PGM → shift budget sang PGM\\n• Consideration & Branding: tăng bid nếu CPP / CPA vượt ngưỡng do thua auction; mở rộng audience pool nếu reach đang bão hòa\\n• Budget reallocation tổng: shift budget từ ad type ROI thấp nhất sang ad type ROI cao nhất; ưu tiên scale campaign đang ổn định thay vì tạo mới. Để trống nếu không có data"
 }
 
-Nguyên tắc: Tiếng Việt, mix English term đúng chỗ. Chỉ phân tích technical ads. Không đề cập creative, content, video, banner, KOC. Không thêm markdown ngoài JSON.`
+Nguyên tắc viết:
+— Tiếng Việt tự nhiên, mix English term đúng chỗ: ROI, ROAS, CTR, CR, CPC, CPM, CPP, CPA, GMV, AOV, PGM, LGM, day-parting, learning phase, impression share, max bid, negative keyword, keyword match type, GMV Boost, View Boost, audience overlap, Quality Score, delivery, auction, frequency
+— Chỉ phân tích technical ads: bid, budget, targeting, thuật toán, cơ chế phân phối — tuyệt đối không đề cập creative, content, video, banner, thumbnail, KOC
+— TUYỆT ĐỐI không áp logic TikTok (learning phase, ROI target, audience overlap) vào phân tích Shopee và ngược lại
+— ROI và ROAS là số thuần, không viết thêm ký hiệu đơn vị
+— Số liệu dùng định dạng 100,000 (không dùng ký hiệu ₫)
+— Mỗi bullet point trên một dòng riêng (dùng \\n giữa các bullet)
+— Không thêm markdown, không thêm text nào ngoài JSON`
 
 /* ── Types ── */
 type Brand = { id: string; brand_name: string }
@@ -71,7 +84,7 @@ function toISO(d: Date): string {
 }
 function fmtNum(n: number, unit: string): string {
   if (!n && n !== 0) return '—'
-  if (unit === '₫') return n.toLocaleString('vi-VN') + '₫'
+  if (unit === '₫') return n.toLocaleString('vi-VN')
   if (unit === 'x') return n.toFixed(2)
   if (unit === '%') return n.toFixed(2) + '%'
   if (unit === '‰') return n.toFixed(0) + '‰'
@@ -1189,17 +1202,28 @@ export default function ReportPage() {
   ]
 
   const planMetricLabels: Record<string, string> = {
-    's_cpc_doanh_so':'[S-CPC] Doanh số','s_cpc_chi_phi':'[S-CPC] Chi phí',
-    's_cpc_luot_xem':'[S-CPC] Lượt xem','s_cpc_luot_click':'[S-CPC] Lượt click','s_cpc_don_hang':'[S-CPC] Đơn hàng',
-    's_nd_gmv':'[S-ND] GMV','s_nd_chi_phi':'[S-ND] Chi phí',
-    's_nd_luot_xem':'[S-ND] Lượt xem','s_nd_luot_click':'[S-ND] Lượt click',
-    's_live_gmv':'[S-Live] GMV','s_live_chi_phi':'[S-Live] Chi phí','s_live_luot_xem':'[S-Live] Lượt xem',
-    't_pgm_doanh_so':'[T-PGM] Doanh số','t_pgm_chi_phi':'[T-PGM] Chi phí',
-    't_pgm_luot_xem':'[T-PGM] Lượt xem','t_pgm_luot_click':'[T-PGM] Lượt click','t_pgm_don_hang':'[T-PGM] Đơn hàng',
-    't_lgm_doanhthu':'[T-LGM] Doanh thu','t_lgm_chi_phi':'[T-LGM] Chi phí',
-    't_con_nguoi':'[T-Con] Người tiếp cận','t_con_chi_phi':'[T-Con] Chi phí',
-    't_brd_view':'[T-Brand] View','t_brd_follow':'[T-Brand] Follow','t_brd_chi_phi':'[T-Brand] Chi phí',
+    's_cpc_doanh_so':'Doanh số','s_cpc_chi_phi':'Chi phí',
+    's_cpc_luot_xem':'Lượt xem','s_cpc_luot_click':'Lượt click','s_cpc_don_hang':'Đơn hàng',
+    's_nd_gmv':'GMV','s_nd_chi_phi':'Chi phí',
+    's_nd_luot_xem':'Lượt xem','s_nd_luot_click':'Lượt click',
+    's_live_gmv':'GMV','s_live_chi_phi':'Chi phí','s_live_luot_xem':'Lượt xem',
+    't_pgm_doanh_so':'Doanh số','t_pgm_chi_phi':'Chi phí',
+    't_pgm_luot_xem':'Lượt xem','t_pgm_luot_click':'Lượt click','t_pgm_don_hang':'Đơn hàng',
+    't_lgm_doanhthu':'Doanh thu Live','t_lgm_chi_phi':'Chi phí',
+    't_con_nguoi':'Người tiếp cận','t_con_chi_phi':'Chi phí',
+    't_brd_view':'View','t_brd_follow':'Follow','t_brd_chi_phi':'Chi phí',
   }
+
+  // Section grouping for plan modal & xlsx templates
+  const PLAN_SECTIONS: { id: string; label: string; plat: 'shopee'|'tiktok'; keys: string[] }[] = [
+    { id: 'cpc',  label: 'SHOPEE — Quảng cáo CPC',          plat: 'shopee', keys: ['s_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang'] },
+    { id: 'nd',   label: 'SHOPEE — Nhận Diện thương hiệu',  plat: 'shopee', keys: ['s_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click'] },
+    { id: 'live', label: 'SHOPEE — Livestream',             plat: 'shopee', keys: ['s_live_gmv','s_live_chi_phi','s_live_luot_xem'] },
+    { id: 'pgm',  label: 'TIKTOK — PGM (Product GMV)',      plat: 'tiktok', keys: ['t_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang'] },
+    { id: 'lgm',  label: 'TIKTOK — LGM (Live GMV)',         plat: 'tiktok', keys: ['t_lgm_doanhthu','t_lgm_chi_phi'] },
+    { id: 'con',  label: 'TIKTOK — Consideration',          plat: 'tiktok', keys: ['t_con_nguoi','t_con_chi_phi'] },
+    { id: 'brd',  label: 'TIKTOK — Branding',               plat: 'tiktok', keys: ['t_brd_view','t_brd_follow','t_brd_chi_phi'] },
+  ]
 
   // Filter plan keys based on selected platforms
   const activePlanKeys = planMetricKeys.filter(k => {
@@ -1208,7 +1232,7 @@ export default function ReportPage() {
     return true
   })
 
-  /* ── Build Chart (10 most recent weeks across all months) ── */
+  /* ── Build Chart (always 10 fixed weeks ending at current week) ── */
   const buildChart = useCallback(() => {
     if (!chartRef.current || !weekInfo) return
     if (chartInstRef.current) { chartInstRef.current.destroy(); chartInstRef.current = null }
@@ -1218,57 +1242,74 @@ export default function ReportPage() {
     const curTGmv = tiktokData.t_pgm_doanh_so + tiktokData.t_lgm_doanhthu
     const curTCp  = tiktokData.t_pgm_chi_phi + tiktokData.t_lgm_chi_phi + tiktokData.t_con_chi_phi + tiktokData.t_brd_chi_phi
 
-    /* Gather rows: chartHistory (broad) + current input row, then dedup by year/month/week */
-    type R = Record<string, number|string|null>
-    const allRows: R[] = [...chartHistory]
-    // ensure current week present (replace if exists)
-    const curIdx = allRows.findIndex(r => parseInt(String(r.year))===weekInfo.year && parseInt(String(r.month))===weekInfo.month && parseInt(String(r.week_num))===weekInfo.weekNum)
-    const curRow: R = {
-      year: weekInfo.year, month: weekInfo.month, week_num: weekInfo.weekNum,
-      s_cpc_doanh_so: shopeeData.s_cpc_doanh_so, s_nd_gmv: shopeeData.s_nd_gmv, s_live_gmv: shopeeData.s_live_gmv,
-      s_cpc_chi_phi: shopeeData.s_cpc_chi_phi, s_nd_chi_phi: shopeeData.s_nd_chi_phi, s_live_chi_phi: shopeeData.s_live_chi_phi,
-      t_pgm_doanh_so: tiktokData.t_pgm_doanh_so, t_lgm_doanhthu: tiktokData.t_lgm_doanhthu,
-      t_pgm_chi_phi: tiktokData.t_pgm_chi_phi, t_lgm_chi_phi: tiktokData.t_lgm_chi_phi,
-      t_con_chi_phi: tiktokData.t_con_chi_phi, t_brd_chi_phi: tiktokData.t_brd_chi_phi,
+    /* Build 10 fixed week slots: walk back month-by-month from current month
+       (collect all weeks of each month), dedup, sort ascending, take last 10
+       ending at the current selected week. */
+    type Slot = { year: number; month: number; week: number; startISO: string; label: string }
+    const slots: Slot[] = []
+    let cy = weekInfo.year, cm = weekInfo.month
+    let safety = 0
+    while (slots.length < 30 && safety < 24) {
+      const wcount = getWeeksInMonth(cm, cy)
+      for (let w = 1; w <= wcount; w++) {
+        try {
+          const wi = getWeekInfo(cm, cy, w)
+          slots.push({ year: cy, month: cm, week: w, startISO: wi.startISO, label: `W${w} ${wi.start.substring(0,5)}–${wi.end.substring(0,5)}` })
+        } catch {}
+      }
+      cm -= 1
+      if (cm < 1) { cm = 12; cy -= 1 }
+      safety++
     }
-    if (curIdx >= 0) allRows[curIdx] = curRow; else allRows.push(curRow)
-
-    // Sort newest→oldest, take 10, then reverse to oldest→newest
-    allRows.sort((a, b) => {
-      const ay = parseInt(String(a.year)), by = parseInt(String(b.year))
-      if (ay !== by) return by - ay
-      const am = parseInt(String(a.month)), bm = parseInt(String(b.month))
-      if (am !== bm) return bm - am
-      return parseInt(String(b.week_num)) - parseInt(String(a.week_num))
+    const seen = new Set<string>()
+    const uniq = slots.filter(s => {
+      const k = `${s.year}-${s.month}-${s.week}`
+      if (seen.has(k)) return false
+      seen.add(k); return true
     })
-    const recent = allRows.slice(0, 10).reverse()
+    uniq.sort((a, b) => a.startISO.localeCompare(b.startISO))
+    const curIdxInUniq = uniq.findIndex(s => s.year === weekInfo.year && s.month === weekInfo.month && s.week === weekInfo.weekNum)
+    let chosen: Slot[]
+    if (curIdxInUniq >= 0) {
+      const end = curIdxInUniq + 1
+      const start = Math.max(0, end - 10)
+      chosen = uniq.slice(start, end)
+    } else {
+      chosen = uniq.slice(Math.max(0, uniq.length - 10))
+    }
+
+    type R = Record<string, number|string|null>
+    const histIdx: Record<string, R> = {}
+    ;(chartHistory as R[]).forEach(r => {
+      const k = `${parseInt(String(r.year))}-${parseInt(String(r.month))}-${parseInt(String(r.week_num))}`
+      histIdx[k] = r
+    })
 
     const labels: string[] = []
     const gmvData: (number|null)[] = []
     const cpData: (number|null)[] = []
     const cpDtData: (number|null)[] = []
-    recent.forEach(r => {
-      const yr = parseInt(String(r.year)), mo = parseInt(String(r.month)), wk = parseInt(String(r.week_num))
-      let lbl = `W${wk}/T${mo}`
-      try {
-        const wi = getWeekInfo(mo, yr, wk)
-        lbl = `W${wk}/T${mo} ${wi.start.substring(0,5)}`
-      } catch {}
-      labels.push(lbl)
-      const isCur = yr===weekInfo.year && mo===weekInfo.month && wk===weekInfo.weekNum
-      let g = 0, c = 0
+    chosen.forEach(s => {
+      labels.push(s.label)
+      const isCur = s.year === weekInfo.year && s.month === weekInfo.month && s.week === weekInfo.weekNum
+      let g = 0, c = 0, hasData = false
       if (isCur) {
         g = (shopeeChecked ? curSGmv : 0) + (tiktokChecked ? curTGmv : 0)
         c = (shopeeChecked ? curSCp : 0) + (tiktokChecked ? curTCp : 0)
+        hasData = g > 0 || c > 0
       } else {
-        g = (shopeeChecked?(n(r.s_cpc_doanh_so)+n(r.s_nd_gmv)+n(r.s_live_gmv)):0)
-          + (tiktokChecked?(n(r.t_pgm_doanh_so)+n(r.t_lgm_doanhthu)):0)
-        c = (shopeeChecked?(n(r.s_cpc_chi_phi)+n(r.s_nd_chi_phi)+n(r.s_live_chi_phi)):0)
-          + (tiktokChecked?(n(r.t_pgm_chi_phi)+n(r.t_lgm_chi_phi)+n(r.t_con_chi_phi)+n(r.t_brd_chi_phi)):0)
+        const r = histIdx[`${s.year}-${s.month}-${s.week}`]
+        if (r) {
+          g = (shopeeChecked?(n(r.s_cpc_doanh_so)+n(r.s_nd_gmv)+n(r.s_live_gmv)):0)
+            + (tiktokChecked?(n(r.t_pgm_doanh_so)+n(r.t_lgm_doanhthu)):0)
+          c = (shopeeChecked?(n(r.s_cpc_chi_phi)+n(r.s_nd_chi_phi)+n(r.s_live_chi_phi)):0)
+            + (tiktokChecked?(n(r.t_pgm_chi_phi)+n(r.t_lgm_chi_phi)+n(r.t_con_chi_phi)+n(r.t_brd_chi_phi)):0)
+          hasData = g > 0 || c > 0
+        }
       }
-      gmvData.push(g || null)
-      cpData.push(c || null)
-      cpDtData.push(g ? parseFloat(((c/g)*100).toFixed(1)) : null)
+      gmvData.push(hasData ? g : null)
+      cpData.push(hasData ? c : null)
+      cpDtData.push(hasData && g ? parseFloat(((c/g)*100).toFixed(1)) : null)
     })
 
     chartInstRef.current = new Chart(chartRef.current, {
@@ -1316,32 +1357,54 @@ export default function ReportPage() {
   }, [chartDataUrl, step])
 
   /* ── XLSX helpers ── */
-  /* Plan template: header [Metric, Tháng, W1..W5, key], 1 row per active metric */
+  /* Plan template: grouped by section, header [Section, Metric, Tháng, W1..W5, key] */
   function downloadPlanTemplateXlsx() {
     if (!weekInfo) return
-    const headers = ['Metric', 'Tháng', 'W1', 'W2', 'W3', 'W4', 'W5', 'key']
+    const headers = ['Section', 'Metric', 'Tháng', 'W1', 'W2', 'W3', 'W4', 'W5', 'key']
     const rows: (string|number)[][] = [headers]
-    activePlanKeys.forEach(mk => {
-      const label = planMetricLabels[mk] || mk
-      const plat = mk.startsWith('s_') ? 'shopee' : 'tiktok'
-      const get = (w: string) => parseVN(planRawInputs[`${plat}_${mk}_${w}`] ?? planInputs[`${plat}_${mk}_${w}`] ?? '')
-      const existing = mk.startsWith('s_') ? shopeePlan : tiktokPlan
-      const v = (w: string) => {
-        const inp = get(w)
-        if (inp) return inp
-        return existing?.[mk]?.[w as 'w1'] || 0
-      }
-      rows.push([label, v('month'), v('w1'), v('w2'), v('w3'), v('w4'), v('w5'), mk])
+    const sectionRowIdx: number[] = []
+    PLAN_SECTIONS.forEach(sec => {
+      const keys = sec.keys.filter(k => activePlanKeys.includes(k))
+      if (keys.length === 0) return
+      // Section divider row
+      sectionRowIdx.push(rows.length)
+      rows.push([sec.label, '', '', '', '', '', '', '', ''])
+      keys.forEach(mk => {
+        const label = planMetricLabels[mk] || mk
+        const plat = sec.plat
+        const get = (w: string) => parseVN(planRawInputs[`${plat}_${mk}_${w}`] ?? planInputs[`${plat}_${mk}_${w}`] ?? '')
+        const existing = plat === 'shopee' ? shopeePlan : tiktokPlan
+        const v = (w: string) => {
+          const inp = get(w)
+          if (inp) return inp
+          return existing?.[mk]?.[w as 'w1'] || 0
+        }
+        rows.push([sec.label, label, v('month'), v('w1'), v('w2'), v('w3'), v('w4'), v('w5'), mk])
+      })
     })
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.aoa_to_sheet(rows)
-    ws['!cols'] = [{ wch:30 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:14 }, { wch:20 }]
+    ws['!cols'] = [{ wch:24 }, { wch:22 }, { wch:16 }, { wch:16 }, { wch:16 }, { wch:16 }, { wch:16 }, { wch:16 }, { wch:28 }]
+    // Apply basic styles (header + section dividers) — best-effort, supported by xlsx-js-style fork; community xlsx ignores silently.
+    const headerStyle = { fill: { fgColor: { rgb: '1A2E5C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } }
+    const sectionStyle = { fill: { fgColor: { rgb: 'E5E7EB' } }, font: { bold: true, italic: true } }
+    for (let c = 0; c < headers.length; c++) {
+      const ref = XLSX.utils.encode_cell({ r: 0, c })
+      if (ws[ref]) (ws[ref] as { s?: unknown }).s = headerStyle
+    }
+    sectionRowIdx.forEach(r => {
+      for (let c = 0; c < headers.length; c++) {
+        const ref = XLSX.utils.encode_cell({ r, c })
+        if (ws[ref]) (ws[ref] as { s?: unknown }).s = sectionStyle
+      }
+    })
     XLSX.utils.book_append_sheet(wb, ws, 'Plan')
     XLSX.writeFile(wb, `Plan_${selectedBrand}_T${weekInfo.month}_${weekInfo.year}.xlsx`)
     showToast('Đã export Plan XLSX!')
   }
 
-  /* Plan upload: parse XLSX → fill planInputs / planRawInputs */
+  /* Plan upload: parse XLSX → fill planInputs / planRawInputs.
+     New format: [Section, Metric, Tháng, W1..W5, key] — key in last column. */
   function uploadPlanXlsx(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1354,13 +1417,20 @@ export default function ReportPage() {
         const newInp = { ...planInputs }
         const newRaw = { ...planRawInputs }
         data.slice(1).forEach(row => {
-          const key = String(row[7] || '').trim()
-          if (!planMetricKeys.includes(key)) return
+          // key is in the last column (legacy: idx 7, new: idx 8). Try last non-empty cell that matches a known key.
+          let key = ''
+          for (let i = row.length - 1; i >= 0; i--) {
+            const v = String(row[i] || '').trim()
+            if (planMetricKeys.includes(v)) { key = v; break }
+          }
+          if (!key) return
           const plat = key.startsWith('s_') ? 'shopee' : 'tiktok'
           const periods = ['month','w1','w2','w3','w4','w5']
-          // columns: 0 label, 1 month, 2 w1, 3 w2, 4 w3, 5 w4, 6 w5
+          // Detect column offset: if row has 9 cols, Metric=1, Tháng=2; else legacy Metric=0, Tháng=1
+          const hasSection = row.length >= 9
+          const monthCol = hasSection ? 2 : 1
           periods.forEach((p, i) => {
-            const cellVal = row[i + 1]
+            const cellVal = row[monthCol + i]
             const num = parseInt(String(cellVal).replace(/[^\d-]/g, ''), 10) || 0
             newInp[`${plat}_${key}_${p}`] = String(num)
             newRaw[`${plat}_${key}_${p}`] = num ? num.toLocaleString('vi-VN') : ''
@@ -1377,17 +1447,34 @@ export default function ReportPage() {
 
   function downloadActualTemplate() {
     if (!weekInfo) return
-    const headers = ['Metric', 'Actual W', 'Key']
+    const headers = ['Section', 'Metric', 'Actual W', 'key']
     const rows: (string|number)[][] = [headers]
-    const allKeys = [...planMetricKeys]
-    allKeys.forEach(mk => {
-      const label = planMetricLabels[mk] || mk
-      const dataObj = mk.startsWith('s_') ? shopeeData : tiktokData
-      const val = dataObj[mk as keyof ShopeeData & keyof TiktokData] as number || 0
-      rows.push([label, val, mk])
+    const sectionRowIdx: number[] = []
+    PLAN_SECTIONS.forEach(sec => {
+      sectionRowIdx.push(rows.length)
+      rows.push([sec.label, '', '', ''])
+      sec.keys.forEach(mk => {
+        const label = planMetricLabels[mk] || mk
+        const dataObj = mk.startsWith('s_') ? shopeeData : tiktokData
+        const val = dataObj[mk as keyof ShopeeData & keyof TiktokData] as number || 0
+        rows.push([sec.label, label, val, mk])
+      })
     })
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.aoa_to_sheet(rows)
+    ws['!cols'] = [{ wch:24 }, { wch:22 }, { wch:16 }, { wch:28 }]
+    const headerStyle = { fill: { fgColor: { rgb: '1A2E5C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center', vertical: 'center' } }
+    const sectionStyle = { fill: { fgColor: { rgb: 'E5E7EB' } }, font: { bold: true, italic: true } }
+    for (let c = 0; c < headers.length; c++) {
+      const ref = XLSX.utils.encode_cell({ r: 0, c })
+      if (ws[ref]) (ws[ref] as { s?: unknown }).s = headerStyle
+    }
+    sectionRowIdx.forEach(r => {
+      for (let c = 0; c < headers.length; c++) {
+        const ref = XLSX.utils.encode_cell({ r, c })
+        if (ws[ref]) (ws[ref] as { s?: unknown }).s = sectionStyle
+      }
+    })
     XLSX.utils.book_append_sheet(wb, ws, 'Actual')
     XLSX.writeFile(wb, `Actual_${selectedBrand}_T${weekInfo.month}_W${weekInfo.weekNum}_${weekInfo.year}.xlsx`)
     showToast('Đã export Actual XLSX!')
@@ -1405,8 +1492,17 @@ export default function ReportPage() {
         const newShopee = { ...shopeeData }
         const newTiktok = { ...tiktokData }
         data.slice(1).forEach(row => {
-          const key = String(row[2] || '').trim()
-          const val = parseFloat(String(row[1]).replace(/[^\d.]/g,'')) || 0
+          // Find key in last column matching known metric keys
+          let key = ''
+          let keyIdx = -1
+          for (let i = row.length - 1; i >= 0; i--) {
+            const v = String(row[i] || '').trim()
+            if (planMetricKeys.includes(v)) { key = v; keyIdx = i; break }
+          }
+          if (!key) return
+          // Actual W is the column immediately before key
+          const valCol = keyIdx - 1
+          const val = parseFloat(String(row[valCol]).replace(/[^\d.]/g,'')) || 0
           if (key.startsWith('s_') && key in newShopee) (newShopee as Record<string,number>)[key] = val
           if (key.startsWith('t_') && key in newTiktok) (newTiktok as Record<string,number>)[key] = val
         })
@@ -1764,8 +1860,8 @@ export default function ReportPage() {
                   </thead>
                   <tbody>
                     {[
-                      { key:'s_cpc_doanh_so', label:'Doanh số Ads (₫)' },
-                      { key:'s_cpc_chi_phi',  label:'Chi phí (₫)' },
+                      { key:'s_cpc_doanh_so', label:'Doanh số Ads' },
+                      { key:'s_cpc_chi_phi',  label:'Chi phí' },
                       { key:'s_cpc_luot_xem', label:'Lượt xem' },
                       { key:'s_cpc_luot_click',label:'Lượt click' },
                       { key:'s_cpc_don_hang', label:'Đơn hàng' },
@@ -1818,8 +1914,8 @@ export default function ReportPage() {
                   </thead>
                   <tbody>
                     {[
-                      { key:'s_nd_gmv',        label:'GMV (₫)' },
-                      { key:'s_nd_chi_phi',     label:'Chi phí (₫)' },
+                      { key:'s_nd_gmv',        label:'GMV' },
+                      { key:'s_nd_chi_phi',     label:'Chi phí' },
                       { key:'s_nd_luot_xem',    label:'Lượt xem' },
                       { key:'s_nd_luot_click',  label:'Lượt click' },
                     ].map(({ key, label }) => {
@@ -1854,8 +1950,8 @@ export default function ReportPage() {
                   </thead>
                   <tbody>
                     {[
-                      { key:'s_live_gmv',      label:'GMV (₫)' },
-                      { key:'s_live_chi_phi',  label:'Chi phí (₫)' },
+                      { key:'s_live_gmv',      label:'GMV' },
+                      { key:'s_live_chi_phi',  label:'Chi phí' },
                       { key:'s_live_luot_xem', label:'Lượt xem' },
                     ].map(({ key, label }) => {
                       const planV = shopeePlan?.[key]?.[wk] || 0
@@ -1917,8 +2013,8 @@ export default function ReportPage() {
                   </thead>
                   <tbody>
                     {[
-                      { key:'t_pgm_doanh_so',   label:'Doanh số (₫)' },
-                      { key:'t_pgm_chi_phi',     label:'Chi phí (₫)' },
+                      { key:'t_pgm_doanh_so',   label:'Doanh số' },
+                      { key:'t_pgm_chi_phi',     label:'Chi phí' },
                       { key:'t_pgm_luot_xem',    label:'Lượt xem' },
                       { key:'t_pgm_luot_click',  label:'Lượt click' },
                       { key:'t_pgm_don_hang',    label:'Đơn hàng' },
@@ -1957,8 +2053,8 @@ export default function ReportPage() {
                   </thead>
                   <tbody>
                     {[
-                      { key:'t_lgm_doanhthu', label:'Doanh thu Live (₫)' },
-                      { key:'t_lgm_chi_phi',  label:'Chi phí (₫)' },
+                      { key:'t_lgm_doanhthu', label:'Doanh thu Live' },
+                      { key:'t_lgm_chi_phi',  label:'Chi phí' },
                     ].map(({ key, label }) => {
                       const planV = tiktokPlan?.[key]?.[wk] || 0
                       const actual = tiktokData[key as keyof TiktokData] as number
@@ -1990,7 +2086,7 @@ export default function ReportPage() {
                   <tbody>
                     {[
                       { key:'t_con_nguoi',   label:'Người tiếp cận' },
-                      { key:'t_con_chi_phi', label:'Chi phí (₫)' },
+                      { key:'t_con_chi_phi', label:'Chi phí' },
                     ].map(({ key, label }) => {
                       const planV = tiktokPlan?.[key]?.[wk] || 0
                       const actual = tiktokData[key as keyof TiktokData] as number
@@ -2023,7 +2119,7 @@ export default function ReportPage() {
                     {[
                       { key:'t_brd_view',     label:'View' },
                       { key:'t_brd_follow',   label:'Follow' },
-                      { key:'t_brd_chi_phi',  label:'Chi phí (₫)' },
+                      { key:'t_brd_chi_phi',  label:'Chi phí' },
                     ].map(({ key, label }) => {
                       const planV = tiktokPlan?.[key]?.[wk] || 0
                       const actual = tiktokData[key as keyof TiktokData] as number
@@ -2169,12 +2265,9 @@ export default function ReportPage() {
       {/* ══════════════ STEP 3 ══════════════ */}
       {step === 3 && weekInfo && (
         <div>
-          {/* Chart */}
-          <div className="rc" style={{ marginBottom:16 }}>
-            <div style={{ fontWeight:700, fontSize:'.9rem', marginBottom:8 }}>Biểu đồ GMV & Chi phí theo tuần</div>
-            <div style={{ height:280, position:'relative' }}>
-              <canvas ref={chartRef} />
-            </div>
+          {/* Hidden chart canvas — rendered offscreen, captured as image and embedded inside email body */}
+          <div style={{ position:'absolute', left:'-9999px', top:0, width:900, height:300, pointerEvents:'none' }} aria-hidden>
+            <canvas ref={chartRef} width={900} height={300} />
           </div>
 
           <div className="pv-wrap">
@@ -2290,13 +2383,16 @@ export default function ReportPage() {
                 <div key={h} className="pg-head">{h}</div>
               ))}
             </div>
-            {(['shopee','tiktok'] as const).map(plat => {
-              if (plat === 'shopee' && !shopeeChecked) return null
-              if (plat === 'tiktok' && !tiktokChecked) return null
+            {PLAN_SECTIONS.map((sec, idx) => {
+              if (sec.plat === 'shopee' && !shopeeChecked) return null
+              if (sec.plat === 'tiktok' && !tiktokChecked) return null
+              const keys = sec.keys.filter(k => activePlanKeys.includes(k))
+              if (keys.length === 0) return null
               return (
-                <div key={plat}>
-                  <div className="pg-section" style={{ gridColumn:'1/-1', marginBottom:8, marginTop: plat === 'tiktok' ? 16 : 0 }}>{plat === 'shopee' ? 'Shopee' : 'TikTok Shop'}</div>
-                  {activePlanKeys.filter(k => k.startsWith(plat === 'shopee' ? 's_' : 't_')).map(mk => {
+                <div key={sec.id}>
+                  <div className="pg-section" style={{ gridColumn:'1/-1', marginBottom:8, marginTop: idx === 0 ? 0 : 16 }}>{sec.label}</div>
+                  {keys.map(mk => {
+                    const plat = sec.plat
                     const monthV = parseVN(planRawInputs[`${plat}_${mk}_month`] ?? planInputs[`${plat}_${mk}_month`] ?? '')
                     const sumW = sumWeeksForMetric(plat, mk)
                     const diff = monthV - sumW
