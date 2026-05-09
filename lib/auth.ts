@@ -6,6 +6,7 @@ export interface SessionUser {
   name: string
   role: UserRole
   perms: Record<string, number>
+  avatar_url?: string | null
 }
 
 export const ROLE_DEFAULTS: Record<UserRole, Record<string, number>> = {

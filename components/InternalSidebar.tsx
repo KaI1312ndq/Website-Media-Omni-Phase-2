@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { SessionUser, initials } from '@/lib/auth'
+import { useEffect, useState } from 'react'
+import { SessionUser, initials, setSession } from '@/lib/auth'
+import ProfileModal from './ProfileModal'
 
 type Item = {
   href?: string
@@ -43,6 +44,9 @@ const I = {
   logout: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
   ),
+  user: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  ),
 }
 
 interface Props {
@@ -50,13 +54,18 @@ interface Props {
   onLogout: () => void
   open?: boolean
   onClose?: () => void
+  collapsed?: boolean
+  setCollapsed?: (v: boolean) => void
 }
 
-export default function InternalSidebar({ user, onLogout, open, onClose }: Props) {
+export default function InternalSidebar({ user, onLogout, open, onClose, collapsed, setCollapsed }: Props) {
   const pathname = usePathname() || ''
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
-  const isAdmin = user.role === 'admin'
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState(user)
+  const isAdmin = currentUser.role === 'admin'
+  useEffect(() => { setCurrentUser(user) }, [user])
 
   const items: Item[] = [
     { href: '/dashboard', label: 'Tổng quan', icon: I.home, match: (p) => p === '/dashboard' },
@@ -69,15 +78,28 @@ export default function InternalSidebar({ user, onLogout, open, onClose }: Props
     { label: 'SOP & Resources', icon: I.sop, disabled: true, badge: 'Phase 4' },
   ]
 
+  const isCollapsed = !!collapsed
+
   return (
     <>
       {open && <div className="isb-overlay" onClick={onClose} />}
-      <aside className={`isb${open ? ' open' : ''}`}>
+      <aside className={`isb${open ? ' open' : ''}${isCollapsed ? ' collapsed' : ''}`}>
         <div className="isb-top">
-          <Link href="/dashboard" className="isb-brand">
+          <Link href="/dashboard" className="isb-brand" title={isCollapsed ? 'MediaOmni' : undefined}>
             <span className="isb-mark">MO</span>
             <span className="isb-brand-text">MediaOmni</span>
           </Link>
+          {setCollapsed && (
+            <button
+              type="button"
+              className="isb-toggle"
+              onClick={() => setCollapsed(!isCollapsed)}
+              aria-label={isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+              title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
+            >
+              {isCollapsed ? '→' : '←'}
+            </button>
+          )}
         </div>
 
         <nav className="isb-nav">
@@ -86,9 +108,10 @@ export default function InternalSidebar({ user, onLogout, open, onClose }: Props
               ? it.match(pathname)
               : it.href ? pathname.startsWith(it.href.split('#')[0]) && it.href !== '/dashboard' : false
             const cls = `isb-item${active ? ' active' : ''}${it.disabled ? ' disabled' : ''}`
+            const tip = isCollapsed ? it.label : undefined
             if (it.disabled || !it.href) {
               return (
-                <div key={i} className={cls}>
+                <div key={i} className={cls} title={tip}>
                   <span className="isb-icon">{it.icon}</span>
                   <span className="isb-label">{it.label}</span>
                   {it.badge && <span className="isb-badge">{it.badge}</span>}
@@ -96,7 +119,7 @@ export default function InternalSidebar({ user, onLogout, open, onClose }: Props
               )
             }
             return (
-              <Link key={i} href={it.href} className={cls} onClick={onClose}>
+              <Link key={i} href={it.href} className={cls} onClick={onClose} title={tip}>
                 <span className="isb-icon">{it.icon}</span>
                 <span className="isb-label">{it.label}</span>
                 {it.badge && <span className="isb-badge">{it.badge}</span>}
@@ -106,26 +129,35 @@ export default function InternalSidebar({ user, onLogout, open, onClose }: Props
         </nav>
 
         <div className="isb-bottom">
-          <div className="isb-decor" aria-hidden>
-            <svg width="100%" height="60" viewBox="0 0 200 60" fill="none">
-              <circle cx="100" cy="80" r="60" stroke="rgba(96,165,250,0.25)" strokeWidth="1"/>
-              <circle cx="100" cy="80" r="50" stroke="rgba(96,165,250,0.15)" strokeWidth="1"/>
-              <circle cx="40" cy="20" r="1.5" fill="rgba(147,197,253,0.7)"/>
-              <circle cx="160" cy="15" r="1" fill="rgba(147,197,253,0.5)"/>
-              <circle cx="170" cy="35" r="1.2" fill="rgba(147,197,253,0.6)"/>
-              <circle cx="20" cy="40" r="1" fill="rgba(147,197,253,0.4)"/>
-            </svg>
-          </div>
-          <div className="isb-user" onClick={() => setMenuOpen(o => !o)}>
-            <div className="isb-avatar">{initials(user.name)}</div>
+          {!isCollapsed && (
+            <div className="isb-decor" aria-hidden>
+              <svg width="100%" height="60" viewBox="0 0 200 60" fill="none">
+                <circle cx="100" cy="80" r="60" stroke="rgba(96,165,250,0.25)" strokeWidth="1"/>
+                <circle cx="100" cy="80" r="50" stroke="rgba(96,165,250,0.15)" strokeWidth="1"/>
+                <circle cx="40" cy="20" r="1.5" fill="rgba(147,197,253,0.7)"/>
+                <circle cx="160" cy="15" r="1" fill="rgba(147,197,253,0.5)"/>
+                <circle cx="170" cy="35" r="1.2" fill="rgba(147,197,253,0.6)"/>
+                <circle cx="20" cy="40" r="1" fill="rgba(147,197,253,0.4)"/>
+              </svg>
+            </div>
+          )}
+          <div className="isb-user" onClick={() => setMenuOpen(o => !o)} title={isCollapsed ? currentUser.name : undefined}>
+            <div className="isb-avatar">
+              {currentUser.avatar_url
+                ? <img src={currentUser.avatar_url} alt={currentUser.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                : initials(currentUser.name)}
+            </div>
             <div className="isb-user-info">
-              <div className="isb-user-name">{user.name}</div>
-              <div className="isb-user-role">{user.role}</div>
+              <div className="isb-user-name">{currentUser.name}</div>
+              <div className="isb-user-role">{currentUser.role}</div>
             </div>
             <svg className="isb-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
           </div>
           {menuOpen && (
             <div className="isb-menu">
+              <button className="isb-menu-item" onClick={() => { setProfileOpen(true); setMenuOpen(false) }}>
+                {I.user} <span>Tài khoản</span>
+              </button>
               <button className="isb-menu-item" onClick={() => { router.push('/'); setMenuOpen(false) }}>
                 {I.home} <span>Trang công khai</span>
               </button>
@@ -136,6 +168,13 @@ export default function InternalSidebar({ user, onLogout, open, onClose }: Props
           )}
         </div>
       </aside>
+      {profileOpen && (
+        <ProfileModal
+          user={currentUser}
+          onClose={() => setProfileOpen(false)}
+          onUpdate={(u) => { setCurrentUser(u); setSession(u) }}
+        />
+      )}
     </>
   )
 }
