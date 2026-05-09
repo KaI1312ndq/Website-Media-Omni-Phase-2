@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getSession, SessionUser } from '@/lib/auth'
 import * as XLSX from 'xlsx'
 import { Chart, registerables } from 'chart.js'
@@ -247,6 +247,14 @@ function calcBrd(d: TiktokData) {
    MAIN COMPONENT
 ════════════════════════════════════════════════ */
 export default function ReportPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReportPageInner />
+    </Suspense>
+  )
+}
+
+function ReportPageInner() {
   const router = useRouter()
   const [user, setUser] = useState<SessionUser | null>(null)
   const [step, setStep] = useState(1)
@@ -261,7 +269,7 @@ export default function ReportPage() {
   const [tiktokChecked, setTiktokChecked] = useState(true)
   const today = new Date()
   const [selMonth, setSelMonth] = useState(today.getMonth() + 1)
-  const [selYear]  = useState(today.getFullYear())
+  const [selYear, setSelYear] = useState(today.getFullYear())
   const [selWeek, setSelWeek]   = useState(1)
   const [weekInfo, setWeekInfo] = useState<WeekInfo | null>(null)
 
@@ -318,6 +326,9 @@ export default function ReportPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const searchParams = useSearchParams()
+  const [autoOpened, setAutoOpened] = useState(false)
+
   /* ── Auth ── */
   useEffect(() => {
     const u = getSession()
@@ -346,6 +357,33 @@ export default function ReportPage() {
   useEffect(() => {
     setWeekInfo(getWeekInfo(selMonth, selYear, selWeek))
   }, [selMonth, selYear, selWeek])
+
+  /* ── Auto prefill from query params (?brand=&month=&year=&openPlan=1) ── */
+  useEffect(() => {
+    if (autoOpened) return
+    if (!searchParams) return
+    if (brands.length === 0) return
+    const qBrand = searchParams.get('brand')
+    const qMonth = searchParams.get('month')
+    const qYear  = searchParams.get('year')
+    const qOpen  = searchParams.get('openPlan')
+    if (!qBrand || !qMonth || !qYear) return
+    const m = parseInt(qMonth)
+    const y = parseInt(qYear)
+    if (!m || !y) return
+    setSelectedBrand(qBrand)
+    setBrandSearch(qBrand)
+    setSelMonth(m)
+    setSelYear(y)
+    setSelWeek(1)
+    setAutoOpened(true)
+    // wait for state to flush + weekInfo recompute, then advance
+    setTimeout(async () => {
+      await goStep2()
+      if (qOpen === '1') setTimeout(() => openPlanModal(), 350)
+    }, 80)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brands, searchParams, autoOpened])
 
   /* ── Close brand dropdown on outside click ── */
   useEffect(() => {

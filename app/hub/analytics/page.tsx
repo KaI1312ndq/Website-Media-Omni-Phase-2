@@ -30,21 +30,23 @@ interface SummaryResp {
 interface PlanRow {
   brand_name: string
   has_plan: boolean
-  shopee_pct: number
-  tiktok_pct: number
-  overall_pct: number
+  shopee_pct: number | null
+  tiktok_pct: number | null
+  overall_pct: number | null
   missing_keys: string[]
+  shopee_active: boolean
+  tiktok_active: boolean
 }
 interface ReportDetailEntry { username: string; created_at: string; week_end: string | null; has_data: boolean }
 interface ReportRow {
   brand_name: string
   weeks: { w1: boolean; w2: boolean; w3: boolean; w4: boolean; w5: boolean }
   weeks_count: number
-  late_days_avg: number | null
+  late_hours_avg: number | null
   detail: Record<number, ReportDetailEntry[]>
 }
 interface ConsistencyRow { brand_name: string; week_num: number; username: string; group: string; issues: string[] }
-interface TimingRow { username: string; count: number; avg_delay_days: number; on_time_pct: number }
+interface TimingRow { username: string; count: number; avg_delay_hours: number; on_time_pct: number }
 interface DailyRow { date: string; count: number }
 interface CoverageSummary {
   total_brands: number
@@ -54,7 +56,7 @@ interface CoverageSummary {
   total_actual_reports: number
   total_expected_reports: number
   missing_reports: number
-  avg_delay_days: number | null
+  avg_late_hours: number | null
   expected_weeks: number
 }
 interface CoverageResp {
@@ -83,6 +85,21 @@ function pctClass(p: number | null | undefined): string {
   if (p === null || p === undefined) return 'pct-none'
   if (p >= 100) return 'pct-good'
   if (p >= 70) return 'pct-warn'
+  return 'pct-bad'
+}
+function fmtLateHours(h: number | null | undefined): string {
+  if (h === null || h === undefined || isNaN(Number(h))) return '—'
+  const n = Number(h)
+  if (n <= 0) return 'Đúng hạn'
+  if (n < 24) return `${Math.round(n)}h`
+  const d = Math.floor(n / 24)
+  const r = Math.round(n - d * 24)
+  return r > 0 ? `${d}d ${r}h` : `${d}d`
+}
+function lateClass(h: number | null | undefined): string {
+  if (h === null || h === undefined) return ''
+  if (h <= 0) return 'pct-good'
+  if (h <= 24) return 'pct-warn'
   return 'pct-bad'
 }
 function fmtDate(v: string | null | undefined): string {
@@ -259,10 +276,10 @@ export default function AnalyticsPage() {
         : (sh?.lastWeekEnd || tk?.lastWeekEnd || null)
       return {
         brand: b,
-        plan_pct: plan?.overall_pct || 0,
+        plan_pct: plan?.overall_pct ?? null,
         report_pct: reportPct,
-        gmv_shopee: sh?.gmv || 0,
-        gmv_tiktok: tk?.gmv || 0,
+        gmv_shopee: plan?.shopee_active === false ? null : (sh?.gmv || 0),
+        gmv_tiktok: plan?.tiktok_active === false ? null : (tk?.gmv || 0),
         roas,
         last_reported: lastReported,
       }
@@ -275,10 +292,10 @@ export default function AnalyticsPage() {
       let av: number | string = 0, bv: number | string = 0
       switch (sortKey) {
         case 'brand': av = a.brand.toLowerCase(); bv = b.brand.toLowerCase(); break
-        case 'plan_pct': av = a.plan_pct; bv = b.plan_pct; break
+        case 'plan_pct': av = a.plan_pct ?? -1; bv = b.plan_pct ?? -1; break
         case 'report_pct': av = a.report_pct; bv = b.report_pct; break
-        case 'gmv_shopee': av = a.gmv_shopee; bv = b.gmv_shopee; break
-        case 'gmv_tiktok': av = a.gmv_tiktok; bv = b.gmv_tiktok; break
+        case 'gmv_shopee': av = a.gmv_shopee ?? -1; bv = b.gmv_shopee ?? -1; break
+        case 'gmv_tiktok': av = a.gmv_tiktok ?? -1; bv = b.gmv_tiktok ?? -1; break
         case 'roas': av = a.roas; bv = b.roas; break
         case 'last_reported': av = a.last_reported || ''; bv = b.last_reported || ''; break
       }
@@ -477,7 +494,7 @@ export default function AnalyticsPage() {
               <div style={{ marginTop: 8 }}>{progressBar(cs?.avg_fill_pct || 0)}</div>
             </div>
             <div className="an-card">
-              <div className="an-card-val">{coverage?.plans.filter(p => p.has_plan && p.overall_pct < 50).length || 0}</div>
+              <div className="an-card-val">{coverage?.plans.filter(p => p.has_plan && p.overall_pct !== null && p.overall_pct < 50).length || 0}</div>
               <div className="an-card-lbl">Plan &lt; 50% fill</div>
             </div>
           </div>
@@ -500,16 +517,24 @@ export default function AnalyticsPage() {
                     <tr key={p.brand_name}>
                       <td>{p.has_plan ? <span className="plan-badge plan-yes">Có</span> : <span className="plan-badge plan-no">Chưa</span>} {p.brand_name}</td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                          <span className={pctClass(p.shopee_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.shopee_pct, 0)}</span>
-                          <div style={{ width: 70 }}>{progressBar(p.shopee_pct, 6)}</div>
-                        </div>
+                        {p.shopee_active ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                            <span className={pctClass(p.shopee_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.shopee_pct, 0)}</span>
+                            <div style={{ width: 70 }}>{progressBar(p.shopee_pct ?? 0, 6)}</div>
+                          </div>
+                        ) : (
+                          <span style={{ fontStyle: 'italic', color: 'var(--faint)', fontSize: '.78rem' }}>Không chạy</span>
+                        )}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                          <span className={pctClass(p.tiktok_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.tiktok_pct, 0)}</span>
-                          <div style={{ width: 70 }}>{progressBar(p.tiktok_pct, 6)}</div>
-                        </div>
+                        {p.tiktok_active ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                            <span className={pctClass(p.tiktok_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.tiktok_pct, 0)}</span>
+                            <div style={{ width: 70 }}>{progressBar(p.tiktok_pct ?? 0, 6)}</div>
+                          </div>
+                        ) : (
+                          <span style={{ fontStyle: 'italic', color: 'var(--faint)', fontSize: '.78rem' }}>Không chạy</span>
+                        )}
                       </td>
                       <td style={{ textAlign: 'left', fontSize: '.74rem', color: 'var(--muted)' }}>
                         {p.missing_keys.length === 0
@@ -517,7 +542,7 @@ export default function AnalyticsPage() {
                           : (p.missing_keys.slice(0, 4).join(', ') + (p.missing_keys.length > 4 ? `, +${p.missing_keys.length - 4}` : ''))}
                       </td>
                       <td>
-                        <Link href={`/hub/report?brand=${encodeURIComponent(p.brand_name)}`} style={{ fontSize: '.78rem', color: 'var(--blue)', fontWeight: 600 }}>→ Set plan</Link>
+                        <Link href={`/hub/report?brand=${encodeURIComponent(p.brand_name)}&month=${month}&year=${year}&openPlan=1`} style={{ fontSize: '.78rem', color: 'var(--blue)', fontWeight: 600 }}>→ Set plan</Link>
                       </td>
                     </tr>
                   ))}
@@ -539,8 +564,8 @@ export default function AnalyticsPage() {
               <div className="an-card-lbl">Reports missing</div>
             </div>
             <div className="an-card">
-              <div className="an-card-val">{cs?.avg_delay_days !== null && cs?.avg_delay_days !== undefined ? cs.avg_delay_days.toFixed(1) : '—'}</div>
-              <div className="an-card-lbl">Ngày trễ TB (sau week_end)</div>
+              <div className="an-card-val">{fmtLateHours(cs?.avg_late_hours)}</div>
+              <div className="an-card-lbl">Trễ trung bình (sau deadline)</div>
             </div>
             <div className="an-card">
               <div className="an-card-val">{cs?.expected_weeks || 0}</div>
@@ -584,7 +609,7 @@ export default function AnalyticsPage() {
                             </td>
                           ))}
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem' }}>
-                            {r.late_days_avg !== null ? r.late_days_avg.toFixed(1) + 'd' : '—'}
+                            <span className={lateClass(r.late_hours_avg)}>{fmtLateHours(r.late_hours_avg)}</span>
                           </td>
                         </tr>
                         {expandedReport && expandedReport.brand === r.brand_name && (
@@ -677,12 +702,12 @@ export default function AnalyticsPage() {
                     {(coverage?.timing || []).length === 0 ? (
                       <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>—</td></tr>
                     ) : coverage!.timing.map((t, i) => {
-                      const isLate = t.avg_delay_days > 2
+                      const isLate = t.avg_delay_hours > 0
                       return (
                         <tr key={t.username} style={{ background: i === 0 && isLate ? '#fff7ed' : undefined }}>
                           <td>{t.username}{i === 0 && isLate ? <span style={{ marginLeft: 6, fontSize: '.7rem', color: 'var(--error)', fontWeight: 700 }}>● Slowest</span> : null}</td>
                           <td>{t.count}</td>
-                          <td><span className={t.avg_delay_days > 2 ? 'pct-bad' : t.avg_delay_days > 1 ? 'pct-warn' : 'pct-good'}>{t.avg_delay_days.toFixed(1)}d</span></td>
+                          <td><span className={lateClass(t.avg_delay_hours)}>{fmtLateHours(t.avg_delay_hours)}</span></td>
                           <td><span className={pctClass(t.on_time_pct)}>{fmtPct(t.on_time_pct, 0)}</span></td>
                         </tr>
                       )
@@ -723,8 +748,8 @@ export default function AnalyticsPage() {
                       <td>{r.brand}</td>
                       <td><span className={pctClass(r.plan_pct)}>{fmtPct(r.plan_pct, 0)}</span></td>
                       <td><span className={pctClass(r.report_pct)}>{fmtPct(r.report_pct, 0)}</span></td>
-                      <td>{fmtNum(r.gmv_shopee)}</td>
-                      <td>{fmtNum(r.gmv_tiktok)}</td>
+                      <td>{r.gmv_shopee === null ? <span style={{ color: 'var(--faint)' }}>—</span> : fmtNum(r.gmv_shopee)}</td>
+                      <td>{r.gmv_tiktok === null ? <span style={{ color: 'var(--faint)' }}>—</span> : fmtNum(r.gmv_tiktok)}</td>
                       <td>{r.roas > 0 ? r.roas.toFixed(2) + 'x' : '—'}</td>
                       <td>{fmtDate(r.last_reported)}</td>
                     </tr>

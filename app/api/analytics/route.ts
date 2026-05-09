@@ -71,6 +71,33 @@ function planFillPct(row: Row | undefined | null, keys: string[]): { pct: number
   return { pct: total > 0 ? (filled / total) * 100 : 0, missing: Array.from(missingKeySet) }
 }
 
+/* Platform-active detection: true if plan_month has any cost or revenue/GMV > 0. */
+const SHOPEE_ACTIVE_KEYS = ['s_cpc_doanh_so', 's_cpc_chi_phi', 's_nd_gmv', 's_nd_chi_phi', 's_live_gmv', 's_live_chi_phi']
+const TIKTOK_ACTIVE_KEYS = ['t_pgm_doanh_so', 't_pgm_chi_phi', 't_lgm_doanhthu', 't_lgm_chi_phi']
+function platformActive(row: Row | undefined | null, keys: string[]): boolean {
+  if (!row) return false
+  return keys.some(k => num(row[`${k}__plan_month`]) > 0)
+}
+
+/* Deadline: noon (12:00) Asia/Ho_Chi_Minh on the next Friday strictly after week_end.
+   Returned as a UTC ms timestamp for safe diffing against created_at (which is also UTC). */
+function getDeadlineUtcMs(weekEndIso: string): number | null {
+  // weekEndIso typically YYYY-MM-DD
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(weekEndIso)
+  if (!m) return null
+  const yr = parseInt(m[1]), mo = parseInt(m[2]) - 1, da = parseInt(m[3])
+  // Construct as UTC midnight for the week_end date, then walk forward to next Friday.
+  const d = new Date(Date.UTC(yr, mo, da))
+  // start with day after week_end
+  d.setUTCDate(d.getUTCDate() + 1)
+  // 0=Sun ... 5=Fri
+  while (d.getUTCDay() !== 5) d.setUTCDate(d.getUTCDate() + 1)
+  // Deadline: 12:00 noon Asia/Ho_Chi_Minh = 05:00 UTC on the same calendar date in VN.
+  // Since we built d at UTC midnight of the VN-local Friday calendar date, set to 05:00 UTC = 12:00 VN.
+  d.setUTCHours(5, 0, 0, 0)
+  return d.getTime()
+}
+
 /* Permission-aware brand list. */
 async function allowedBrandNames(): Promise<{ ok: boolean; names: string[]; isAdmin: boolean; username: string | null }> {
   const session = await getSessionFromCookie()
@@ -200,32 +227,47 @@ export async function GET(req: NextRequest) {
     const planByBrand: Record<string, Row> = {}
     ;(plans || []).forEach(p => { planByBrand[String(p.brand_name)] = p as Row })
 
-    /* Plan completeness rows */
+    /* Plan completeness rows — skip platforms the brand doesn't run */
     const planRows = target.map(b => {
       const p = planByBrand[b]
-      const sh = planFillPct(p, SHOPEE_KEYS)
-      const tk = planFillPct(p, TIKTOK_KEYS)
-      const all = planFillPct(p, ALL_KEYS)
+      const shActive = platformActive(p, SHOPEE_ACTIVE_KEYS)
+      const tkActive = platformActive(p, TIKTOK_ACTIVE_KEYS)
+      const sh = shActive ? planFillPct(p, SHOPEE_KEYS) : { pct: 0, missing: [] as string[] }
+      const tk = tkActive ? planFillPct(p, TIKTOK_KEYS) : { pct: 0, missing: [] as string[] }
+      // Overall = average of active platforms only
+      const activeParts: number[] = []
+      if (shActive) activeParts.push(sh.pct)
+      if (tkActive) activeParts.push(tk.pct)
+      const overallPct = activeParts.length ? activeParts.reduce((a, x) => a + x, 0) / activeParts.length : null
+      // Missing keys only from active platforms
+      const missing = [...(shActive ? sh.missing : []), ...(tkActive ? tk.missing : [])]
+      // has_plan: brand has plan and at least one active platform fully filled, OR plan exists
+      // Treat brand as "Có" if plan exists AND every active platform has fill > 0
+      const hasPlan = !!p && (!shActive || sh.pct > 0) && (!tkActive || tk.pct > 0) && (shActive || tkActive)
       return {
         brand_name: b,
-        has_plan: !!p,
-        shopee_pct: sh.pct,
-        tiktok_pct: tk.pct,
-        overall_pct: all.pct,
-        missing_keys: all.missing,
+        has_plan: hasPlan,
+        shopee_pct: shActive ? sh.pct : null,
+        tiktok_pct: tkActive ? tk.pct : null,
+        overall_pct: overallPct,
+        missing_keys: missing,
+        shopee_active: shActive,
+        tiktok_active: tkActive,
       }
     })
 
     const brandsWithPlan = planRows.filter(r => r.has_plan).length
     const brandsWithoutPlan = target.length - brandsWithPlan
-    const avgFillPct = planRows.length > 0
-      ? planRows.reduce((a, r) => a + r.overall_pct, 0) / planRows.length
+    const fillPctValues = planRows.map(r => r.overall_pct).filter((x): x is number => x !== null)
+    const avgFillPct = fillPctValues.length > 0
+      ? fillPctValues.reduce((a, x) => a + x, 0) / fillPctValues.length
       : 0
 
-    /* Report completeness — group weekly rows by (brand, week_num) */
+    /* Report completeness — group weekly rows by (brand, week_num).
+       Lateness measured in HOURS vs deadline (next Fri 12:00 ICT after week_end). */
     const weeksPresent: Record<string, Set<number>> = {}
     const weekDetail: Record<string, Record<number, { username: string; created_at: string; week_end: string | null; has_data: boolean }[]>> = {}
-    const delaysByBrand: Record<string, number[]> = {}
+    const delayHoursByBrand: Record<string, number[]> = {}
     ;(weekly || []).forEach(r => {
       const b = String(r.brand_name)
       const w = Number(r.week_num)
@@ -241,25 +283,25 @@ export async function GET(req: NextRequest) {
         has_data: hasData,
       })
       if (r.week_end && r.created_at) {
-        const we = new Date(String(r.week_end)).getTime()
+        const deadline = getDeadlineUtcMs(String(r.week_end))
         const ca = new Date(String(r.created_at)).getTime()
-        if (!isNaN(we) && !isNaN(ca)) {
-          const days = Math.max(0, (ca - we) / (1000 * 60 * 60 * 24))
-          if (!delaysByBrand[b]) delaysByBrand[b] = []
-          delaysByBrand[b].push(days)
+        if (deadline !== null && !isNaN(ca)) {
+          const hours = (ca - deadline) / (1000 * 60 * 60)
+          if (!delayHoursByBrand[b]) delayHoursByBrand[b] = []
+          delayHoursByBrand[b].push(hours)
         }
       }
     })
 
     const reportRows = target.map(b => {
       const set = weeksPresent[b] || new Set<number>()
-      const ds = delaysByBrand[b] || []
+      const ds = delayHoursByBrand[b] || []
       const avg = ds.length ? ds.reduce((a, x) => a + x, 0) / ds.length : null
       return {
         brand_name: b,
         weeks: { w1: set.has(1), w2: set.has(2), w3: set.has(3), w4: set.has(4), w5: set.has(5) },
         weeks_count: set.size,
-        late_days_avg: avg,
+        late_hours_avg: avg,
         detail: weekDetail[b] || {},
       }
     })
@@ -270,8 +312,8 @@ export async function GET(req: NextRequest) {
     const expectedWeeksPerBrand = weekNumsSeen.size > 0 ? weekNumsSeen.size : 4
     const totalExpectedReports = expectedWeeksPerBrand * target.length
     const totalActualReports = reportRows.reduce((a, r) => a + r.weeks_count, 0)
-    const allDelays = Object.values(delaysByBrand).flat()
-    const avgDelayDays = allDelays.length ? allDelays.reduce((a, x) => a + x, 0) / allDelays.length : null
+    const allDelayHours = Object.values(delayHoursByBrand).flat()
+    const avgLateHours = allDelayHours.length ? allDelayHours.reduce((a, x) => a + x, 0) / allDelayHours.length : null
 
     /* Consistency — flag rows where cost & revenue > 0 but engagement zero */
     const consistency: { brand_name: string; week_num: number; username: string; group: string; issues: string[] }[] = []
@@ -294,23 +336,23 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    /* Timing per user */
+    /* Timing per user — hours vs deadline */
     const userMap: Record<string, { count: number; delays: number[] }> = {}
     ;(weekly || []).forEach(r => {
       const u = String(r.username || '—')
       if (!userMap[u]) userMap[u] = { count: 0, delays: [] }
       userMap[u].count += 1
       if (r.week_end && r.created_at) {
-        const we = new Date(String(r.week_end)).getTime()
+        const deadline = getDeadlineUtcMs(String(r.week_end))
         const ca = new Date(String(r.created_at)).getTime()
-        if (!isNaN(we) && !isNaN(ca)) userMap[u].delays.push(Math.max(0, (ca - we) / (1000 * 60 * 60 * 24)))
+        if (deadline !== null && !isNaN(ca)) userMap[u].delays.push((ca - deadline) / (1000 * 60 * 60))
       }
     })
     const timing = Object.entries(userMap).map(([username, v]) => {
       const avg = v.delays.length ? v.delays.reduce((a, x) => a + x, 0) / v.delays.length : 0
-      const onTime = v.delays.length ? v.delays.filter(d => d <= 2).length / v.delays.length * 100 : 0
-      return { username, count: v.count, avg_delay_days: avg, on_time_pct: onTime }
-    }).sort((a, b) => b.avg_delay_days - a.avg_delay_days)
+      const onTime = v.delays.length ? v.delays.filter(d => d <= 0).length / v.delays.length * 100 : 0
+      return { username, count: v.count, avg_delay_hours: avg, on_time_pct: onTime }
+    }).sort((a, b) => b.avg_delay_hours - a.avg_delay_hours)
 
     /* Daily cadence — # reports created on each day */
     const dailyMap: Record<string, number> = {}
@@ -340,7 +382,7 @@ export async function GET(req: NextRequest) {
           total_actual_reports: totalActualReports,
           total_expected_reports: totalExpectedReports,
           missing_reports: Math.max(0, totalExpectedReports - totalActualReports),
-          avg_delay_days: avgDelayDays,
+          avg_late_hours: avgLateHours,
           expected_weeks: expectedWeeksPerBrand,
         },
       },
