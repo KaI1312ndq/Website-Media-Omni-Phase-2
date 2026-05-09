@@ -15,13 +15,22 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
+
+  // Vietnamese date string DD/M/YYYY
+  const today = new Date()
+  const dateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`
+
   const { data, error } = await supabaseAdmin.from('quiz_scores').insert([{
-    username: body.username,
-    name: body.name,
-    quiz_type: body.quiz_type,
-    score: body.score,
-    total: body.total,
-    percentage: Math.round((body.score / body.total) * 100),
+    username:     body.username,
+    name:         body.name,
+    role:         body.role || null,                                  // admin / member / upbase
+    quiz_type:    body.quiz_type,                                     // 'Dạng 1 - Benchmark', 'Dạng 2 - Chỉ số Ads', etc.
+    topic:        body.topic || null,                                 // 'Benchmark ALL · ALL', 'Chỉ số Ads', etc.
+    score:        body.score,
+    total:        body.total,
+    percentage:   Math.round((body.score / body.total) * 100),
+    duration_min: body.duration_min || 0,                             // Thời gian làm bài (phút)
+    quiz_date:    body.quiz_date || dateStr,                          // Ngày làm (định dạng VN)
   }]).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

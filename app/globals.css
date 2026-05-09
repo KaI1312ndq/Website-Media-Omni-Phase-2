@@ -1265,7 +1265,7 @@ select.r-input{cursor:pointer}
 .mo-body{padding:18px 22px}
 .mo-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1.5px solid var(--border);position:sticky;bottom:0;background:var(--paper)}
 .pg{display:grid;grid-template-columns:minmax(160px,1fr) repeat(6,90px);gap:5px;align-items:center;font-size:.8rem}
-.pg7{display:grid;grid-template-columns:minmax(160px,1fr) repeat(7,80px);gap:5px;align-items:center;font-size:.8rem}
+.pg6{display:grid;grid-template-columns:minmax(160px,1fr) repeat(6,90px);gap:5px;align-items:center;font-size:.8rem}
 .pg-head{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:center;padding:4px}
 .pg-lbl{font-weight:600;color:var(--ink);padding:4px 0}
 .pg-inp{width:100%;padding:5px 6px;border:1.5px solid var(--border);border-radius:5px;font-size:.8rem;text-align:right;font-family:var(--f-mono);background:var(--paper);box-sizing:border-box;color:var(--ink);transition:border-color .15s}

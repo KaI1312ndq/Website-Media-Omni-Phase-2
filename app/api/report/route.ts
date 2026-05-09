@@ -1,6 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
+/* ── Plan metric keys (12 financial keys, match CSV) ── */
+const SHOPEE_PLAN_KEYS = [
+  's_cpc_doanh_so','s_cpc_chi_phi',
+  's_nd_gmv','s_nd_chi_phi',
+  's_live_gmv','s_live_chi_phi',
+]
+const TIKTOK_PLAN_KEYS = [
+  't_pgm_doanh_so','t_pgm_chi_phi',
+  't_lgm_doanhthu','t_lgm_chi_phi',
+  't_con_chi_phi','t_brd_chi_phi',
+]
+const ALL_PLAN_KEYS = [...SHOPEE_PLAN_KEYS, ...TIKTOK_PLAN_KEYS]
+const PLAN_PERIODS = ['month','w1','w2','w3','w4','w5'] as const
+
+/* Flat row → JSONB { metric: { w1, w2, ..., month } } filtered by platform */
+function flatToJsonb(row: Record<string, unknown>, platform: string): Record<string, Record<string, number>> {
+  const keys = platform === 'shopee' ? SHOPEE_PLAN_KEYS : platform === 'tiktok' ? TIKTOK_PLAN_KEYS : ALL_PLAN_KEYS
+  const result: Record<string, Record<string, number>> = {}
+  keys.forEach(k => {
+    result[k] = {}
+    PLAN_PERIODS.forEach(p => {
+      const colName = `${k}__plan_${p}`
+      result[k][p] = Number(row[colName]) || 0
+    })
+  })
+  return result
+}
+
+/* JSONB → flat columns dict (for upsert) */
+function jsonbToFlat(plan: Record<string, Record<string, number>>): Record<string, number> {
+  const flat: Record<string, number> = {}
+  Object.entries(plan || {}).forEach(([metric, periods]) => {
+    if (!ALL_PLAN_KEYS.includes(metric)) return
+    Object.entries(periods || {}).forEach(([period, val]) => {
+      const sbPeriod = period === 'month' ? 'month' : period // 'w1'..'w5' or 'month'
+      if (!PLAN_PERIODS.includes(sbPeriod as typeof PLAN_PERIODS[number])) return
+      flat[`${metric}__plan_${sbPeriod}`] = Number(val) || 0
+    })
+  })
+  return flat
+}
+
 /* ── GET ── */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -10,18 +52,18 @@ export async function GET(req: NextRequest) {
   const month     = parseInt(searchParams.get('month') || '0')
   const year      = parseInt(searchParams.get('year') || '0')
 
-  /* GET plan for a brand/platform/month/year */
+  /* GET plan for a brand/platform/month/year (returns JSONB filtered by platform) */
   if (action === 'plan') {
     const { data, error } = await supabaseAdmin
       .from('monthly_plans')
-      .select('plan_data')
+      .select('*')
       .eq('brand_name', brand)
-      .eq('platform', platform)
       .eq('month', month)
       .eq('year', year)
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ data: data?.plan_data || null })
+    if (!data) return NextResponse.json({ data: null })
+    return NextResponse.json({ data: flatToJsonb(data, platform) })
   }
 
   /* GET weekly history rows for a brand/platform in a month */
@@ -45,16 +87,32 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { action } = body
 
-  /* ── Save / upsert monthly plan ── */
+  /* ── Save / upsert monthly plan (flat format, smart merge with existing row) ── */
   if (action === 'savePlan') {
-    const { brand_name, platform, month, year, plan_data, created_by } = body
-    const { error } = await supabaseAdmin
+    const { brand_name, month, year, plan_data, created_by } = body
+    const flatUpdates = jsonbToFlat(plan_data)
+
+    // Check if row exists for (username, brand_name, month, year)
+    const { data: existing } = await supabaseAdmin
       .from('monthly_plans')
-      .upsert(
-        { brand_name, platform, month, year, plan_data, created_by, updated_at: new Date().toISOString() },
-        { onConflict: 'brand_name,platform,month,year' }
-      )
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      .select('id')
+      .eq('brand_name', brand_name)
+      .eq('month', month)
+      .eq('year', year)
+      .maybeSingle()
+
+    if (existing) {
+      const { error } = await supabaseAdmin
+        .from('monthly_plans')
+        .update({ ...flatUpdates, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    } else {
+      const { error } = await supabaseAdmin
+        .from('monthly_plans')
+        .insert({ username: created_by || null, brand_name, month, year, ...flatUpdates })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
     return NextResponse.json({ ok: true })
   }
 

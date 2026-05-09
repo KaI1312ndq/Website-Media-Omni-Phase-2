@@ -27,7 +27,7 @@ Nguyên tắc: Tiếng Việt, mix English term đúng chỗ. Chỉ phân tích 
 /* ── Types ── */
 type Brand = { id: string; brand_name: string }
 
-type PlanData = Record<string, { w1: number; w2: number; w3: number; w4: number; w5: number; mtd: number; month: number }>
+type PlanData = Record<string, { w1: number; w2: number; w3: number; w4: number; w5: number; month: number }>
 
 type WeekInfo = {
   weekNum: number
@@ -465,7 +465,7 @@ export default function ReportPage() {
 
   function buildMailHTML(): string {
     if (!weekInfo) return ''
-    const wk = `w${weekInfo.weekNum}` as 'w1'|'w2'|'w3'|'w4'|'w5'|'mtd'|'month'
+    const wk = `w${weekInfo.weekNum}` as 'w1'|'w2'|'w3'|'w4'|'w5'|'month'
 
     const tdS = (v: string, extra = '') => `<td style="padding:5px 10px;border:1px solid #ccc;text-align:right;${extra}">${v}</td>`
     const tdL = (v: string) => `<td style="padding:5px 10px;border:1px solid #ccc;text-align:left">${v}</td>`
@@ -656,7 +656,7 @@ export default function ReportPage() {
     const inputs: Record<string, string> = {}
     const fillPlan = (plat: string, plan: PlanData | null) => {
       planMetricKeys.forEach(mk => {
-        ['w1','w2','w3','w4','w5','mtd','month'].forEach(w => {
+        ['w1','w2','w3','w4','w5','month'].forEach(w => {
           inputs[`${plat}_${mk}_${w}`] = plan ? String(plan[mk]?.[w as 'w1'] || '') : ''
         })
       })
@@ -674,7 +674,7 @@ export default function ReportPage() {
         const plan_data: PlanData = {}
         planMetricKeys.forEach(mk => {
           plan_data[mk] = {} as PlanData[string]
-          ;(['w1','w2','w3','w4','w5','mtd','month'] as const).forEach(w => {
+          ;(['w1','w2','w3','w4','w5','month'] as const).forEach(w => {
             plan_data[mk][w] = parseFloat(planInputs[`${plat}_${mk}_${w}`] || '0') || 0
           })
         })
@@ -694,24 +694,23 @@ export default function ReportPage() {
     }
   }
 
+  // Plan metric keys — 12 financial keys (match CSV format)
   const planMetricKeys = [
-    's_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
-    's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
-    's_live_gmv','s_live_chi_phi','s_live_luot_xem',
-    't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
+    's_cpc_doanh_so','s_cpc_chi_phi',
+    's_nd_gmv','s_nd_chi_phi',
+    's_live_gmv','s_live_chi_phi',
+    't_pgm_doanh_so','t_pgm_chi_phi',
     't_lgm_doanhthu','t_lgm_chi_phi',
-    't_con_nguoi','t_con_chi_phi',
-    't_brd_view','t_brd_follow','t_brd_chi_phi',
+    't_con_chi_phi','t_brd_chi_phi',
   ]
 
   const planMetricLabels: Record<string, string> = {
-    's_cpc_doanh_so':'[S-CPC] Doanh số','s_cpc_chi_phi':'[S-CPC] Chi phí','s_cpc_luot_xem':'[S-CPC] Lượt xem','s_cpc_luot_click':'[S-CPC] Lượt click','s_cpc_don_hang':'[S-CPC] Đơn hàng',
-    's_nd_gmv':'[S-ND] GMV','s_nd_chi_phi':'[S-ND] Chi phí','s_nd_luot_xem':'[S-ND] Lượt xem','s_nd_luot_click':'[S-ND] Lượt click',
-    's_live_gmv':'[S-Live] GMV','s_live_chi_phi':'[S-Live] Chi phí','s_live_luot_xem':'[S-Live] Lượt xem',
-    't_pgm_doanh_so':'[T-PGM] Doanh số','t_pgm_chi_phi':'[T-PGM] Chi phí','t_pgm_luot_xem':'[T-PGM] Lượt xem','t_pgm_luot_click':'[T-PGM] Lượt click','t_pgm_don_hang':'[T-PGM] Đơn hàng',
+    's_cpc_doanh_so':'[S-CPC] Doanh số','s_cpc_chi_phi':'[S-CPC] Chi phí',
+    's_nd_gmv':'[S-ND] GMV','s_nd_chi_phi':'[S-ND] Chi phí',
+    's_live_gmv':'[S-Live] GMV','s_live_chi_phi':'[S-Live] Chi phí',
+    't_pgm_doanh_so':'[T-PGM] Doanh số','t_pgm_chi_phi':'[T-PGM] Chi phí',
     't_lgm_doanhthu':'[T-LGM] Doanh thu','t_lgm_chi_phi':'[T-LGM] Chi phí',
-    't_con_nguoi':'[T-Con] Người','t_con_chi_phi':'[T-Con] Chi phí',
-    't_brd_view':'[T-Brand] View','t_brd_follow':'[T-Brand] Follow','t_brd_chi_phi':'[T-Brand] Chi phí',
+    't_con_chi_phi':'[T-Con] Chi phí','t_brd_chi_phi':'[T-Brand] Chi phí',
   }
 
   // Filter plan keys based on selected platforms
@@ -873,7 +872,7 @@ export default function ReportPage() {
   const tTotalCP  = tiktokData.t_pgm_chi_phi + tiktokData.t_lgm_chi_phi + tiktokData.t_con_chi_phi + tiktokData.t_brd_chi_phi
   const tTotalROI = tTotalCP ? +(tTotalGMV / tTotalCP).toFixed(2) : 0
 
-  const wk = weekInfo ? `w${weekInfo.weekNum}` as 'w1'|'w2'|'w3'|'w4'|'w5'|'mtd'|'month' : 'w1'
+  const wk = weekInfo ? `w${weekInfo.weekNum}` as 'w1'|'w2'|'w3'|'w4'|'w5'|'month' : 'w1'
 
   if (!user) return null
 
@@ -1552,9 +1551,9 @@ export default function ReportPage() {
           </div>
           <div className="mo-body">
             {/* Plan grid header */}
-            <div className="pg7" style={{ marginBottom:8 }}>
+            <div className="pg6" style={{ marginBottom:8 }}>
               <div className="pg-head" style={{ textAlign:'left' }}>Metric</div>
-              {['W1','W2','W3','W4','W5','MTD','Tháng'].map(h => (
+              {['W1','W2','W3','W4','W5','Tháng'].map(h => (
                 <div key={h} className="pg-head">{h}</div>
               ))}
             </div>
@@ -1563,9 +1562,9 @@ export default function ReportPage() {
               <>
                 <div className="pg-section" style={{ gridColumn:'1/-1', marginBottom:8 }}>Shopee</div>
                 {activePlanKeys.filter(k => k.startsWith('s_')).map(mk => (
-                  <div key={mk} className="pg7" style={{ marginBottom:4 }}>
+                  <div key={mk} className="pg6" style={{ marginBottom:4 }}>
                     <div className="pg-lbl" style={{ fontSize:'.78rem' }}>{planMetricLabels[mk] || mk}</div>
-                    {(['w1','w2','w3','w4','w5','mtd','month'] as const).map(w => (
+                    {(['w1','w2','w3','w4','w5','month'] as const).map(w => (
                       <input key={w} className="pg-inp" type="number" placeholder="0"
                         value={planInputs[`shopee_${mk}_${w}`] || ''}
                         onChange={e => setPlanInputs(prev => ({ ...prev, [`shopee_${mk}_${w}`]: e.target.value }))} />
@@ -1579,9 +1578,9 @@ export default function ReportPage() {
               <>
                 <div className="pg-section" style={{ gridColumn:'1/-1', marginBottom:8, marginTop:16 }}>TikTok Shop</div>
                 {activePlanKeys.filter(k => k.startsWith('t_')).map(mk => (
-                  <div key={mk} className="pg7" style={{ marginBottom:4 }}>
+                  <div key={mk} className="pg6" style={{ marginBottom:4 }}>
                     <div className="pg-lbl" style={{ fontSize:'.78rem' }}>{planMetricLabels[mk] || mk}</div>
-                    {(['w1','w2','w3','w4','w5','mtd','month'] as const).map(w => (
+                    {(['w1','w2','w3','w4','w5','month'] as const).map(w => (
                       <input key={w} className="pg-inp" type="number" placeholder="0"
                         value={planInputs[`tiktok_${mk}_${w}`] || ''}
                         onChange={e => setPlanInputs(prev => ({ ...prev, [`tiktok_${mk}_${w}`]: e.target.value }))} />
