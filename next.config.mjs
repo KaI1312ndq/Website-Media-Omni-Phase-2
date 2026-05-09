@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig = {
   images: {
@@ -13,4 +14,12 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  org: 'media-omni',
+  project: 'mediaomni-website',
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  disableLogger: true,
+  tunnelRoute: '/monitoring',
+})
