@@ -59,11 +59,25 @@ export interface LatestPost {
   bgGradient?: string
 }
 
+export interface FeaturedCaseStudy {
+  _id: string
+  title: string
+  slug: { current: string }
+  brandName: string
+  industry?: string
+  platforms?: string[]
+  excerpt?: string
+  coverUrl?: string
+  logoUrl?: string
+  topResult?: { metric?: string; before?: string; after?: string; change?: string }
+}
+
 interface Props {
   settings: SiteSettings | null
   team: TeamMember[]
   brands: SanityBrand[]
   posts?: LatestPost[]
+  caseStudies?: FeaturedCaseStudy[]
 }
 
 const TICKER_DEFAULT = [
@@ -75,7 +89,7 @@ const TICKER_DEFAULT = [
   { val: '100+',  lbl: 'BRANDS & SHOPS',    sub: 'Đang vận hành' },
 ]
 
-export default function HomeClient({ settings, team, brands, posts = [] }: Props) {
+export default function HomeClient({ settings, team, brands, posts = [], caseStudies = [] }: Props) {
   useEffect(() => {
     // Build ticker — use Sanity ticker if provided, else fallback
     const track = document.getElementById('ticker-track')
@@ -369,6 +383,60 @@ export default function HomeClient({ settings, team, brands, posts = [] }: Props
       {/* FAQ — render only when Sanity has FAQ items */}
       {settings?.faq && settings.faq.length > 0 && (
         <FaqSection intro={settings.faqIntro} faq={settings.faq} />
+      )}
+
+      {/* CASE STUDIES — featured */}
+      {caseStudies.length > 0 && (
+        <section id="case-studies-home" className="cs-home-section">
+          <div className="container">
+            <div className="sec-hd rv" style={{ textAlign: 'center', alignItems: 'center' }}>
+              <div className="sec-label" style={{ justifyContent: 'center' }}>Kết quả thực tế</div>
+              <h2 className="sec-title">Case Studies.<br />Số liệu đo lường được.</h2>
+              <p className="sec-sub" style={{ margin: '0 auto' }}>
+                Cách Media Omni scale brands ecommerce hàng đầu Việt Nam — TikTok Shop, Shopee, Meta, Google.
+              </p>
+            </div>
+            <div className="cs-home-grid rv">
+              {caseStudies.map(cs => (
+                <Link key={cs._id} href={`/case-studies/${cs.slug.current}`} className="cs-home-card">
+                  <div className="cs-home-cover">
+                    {cs.coverUrl ? (
+                      <Image src={cs.coverUrl} alt={cs.title} fill sizes="(max-width: 768px) 100vw, 33vw" style={{ objectFit: 'cover' }} loading="lazy" />
+                    ) : (
+                      <div className="cs-home-cover-grad" />
+                    )}
+                    {cs.logoUrl && (
+                      <div className="cs-home-logo">
+                        <Image src={cs.logoUrl} alt={cs.brandName} width={48} height={48} style={{ objectFit: 'contain' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="cs-home-body">
+                    <div className="cs-home-brand">{cs.brandName}</div>
+                    <h3 className="cs-home-title">{cs.title}</h3>
+                    {cs.topResult && (
+                      <div className="cs-home-result">
+                        <span className="cs-home-result-metric">{cs.topResult.metric}</span>
+                        <span className="cs-home-result-change">{cs.topResult.change}</span>
+                      </div>
+                    )}
+                    {cs.excerpt && <p className="cs-home-excerpt">{cs.excerpt}</p>}
+                    <div className="cs-home-cta">
+                      Xem case study
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="home-blog-foot">
+              <Link href="/case-studies" className="btn-outline" style={{ fontSize: '.92rem', padding: '12px 26px' }}>
+                Xem tất cả case studies
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+              </Link>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* BLOG CTA */}

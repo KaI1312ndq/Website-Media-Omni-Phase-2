@@ -18,22 +18,44 @@ async function getBlogSlugs(): Promise<string[]> {
   }
 }
 
+async function getCaseStudySlugs(): Promise<string[]> {
+  if (!hasSanity) return []
+  try {
+    const { client } = await import('@/lib/sanity')
+    const slugs = await client.fetch<{ slug: { current: string } }[]>(
+      `*[_type == "caseStudy" && defined(slug.current)]{ slug }`
+    )
+    return slugs.map(s => s.slug.current)
+  } catch {
+    return []
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = 'https://www.mediaomni.site'
   const now  = new Date()
 
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: base,        lastModified: now, changeFrequency: 'weekly',  priority: 1 },
-    { url: `${base}/blog`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: base,                    lastModified: now, changeFrequency: 'weekly', priority: 1 },
+    { url: `${base}/blog`,          lastModified: now, changeFrequency: 'daily',  priority: 0.9 },
+    { url: `${base}/case-studies`,  lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
   ]
 
-  const slugs = await getBlogSlugs()
-  const blogRoutes: MetadataRoute.Sitemap = slugs.map(slug => ({
+  const [blogSlugs, csSlugs] = await Promise.all([getBlogSlugs(), getCaseStudySlugs()])
+
+  const blogRoutes: MetadataRoute.Sitemap = blogSlugs.map(slug => ({
     url: `${base}/blog/${slug}`,
     lastModified: now,
     changeFrequency: 'monthly' as const,
     priority: 0.7,
   }))
 
-  return [...staticRoutes, ...blogRoutes]
+  const csRoutes: MetadataRoute.Sitemap = csSlugs.map(slug => ({
+    url: `${base}/case-studies/${slug}`,
+    lastModified: now,
+    changeFrequency: 'monthly' as const,
+    priority: 0.8,
+  }))
+
+  return [...staticRoutes, ...blogRoutes, ...csRoutes]
 }

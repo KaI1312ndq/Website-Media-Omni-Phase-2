@@ -45,12 +45,14 @@ export default function Nav() {
         { href: '#hero', label: 'Home' },
         { href: '#services', label: 'Services' },
         { href: '#brands', label: 'Brands' },
+        { href: '/case-studies', label: 'Case Studies' },
         { href: '#partners', label: 'Partners' },
         { href: '#team', label: 'Team' },
         { href: '#blog', label: 'Blog' },
       ]
     : [
         { href: '/', label: 'Home' },
+        { href: '/case-studies', label: 'Case Studies' },
         { href: '/blog', label: 'Blog' },
       ]
 

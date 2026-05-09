@@ -68,6 +68,15 @@ export default defineConfig({
                           .filter('_type == "blogPost"')
                           .defaultOrdering([{ field: 'publishedAt', direction: 'desc' }])
                       ),
+                    S.listItem()
+                      .title('Case Studies')
+                      .icon(() => '🎯')
+                      .child(
+                        S.documentList()
+                          .title('Case Studies')
+                          .filter('_type == "caseStudy"')
+                          .defaultOrdering([{ field: 'featured', direction: 'desc' }, { field: 'order', direction: 'asc' }])
+                      ),
                   ])
               ),
             // PEOPLE

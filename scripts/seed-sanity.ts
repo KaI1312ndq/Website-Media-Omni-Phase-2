@@ -128,6 +128,75 @@ const BRAND_LIST: { name: string; category: Cat }[] = [
   { name: 'ORGALIFE', category: 'fmcg' },
 ]
 
+/* ── Case Studies (sample marketing assets) ── */
+type CSResult = { metric: string; before: string; after: string; change: string }
+type CSTestimonial = { quote: string; authorName: string; authorRole: string }
+type CSItem = {
+  title: string
+  slug: string
+  brandName: string
+  industry: 'skincare' | 'fashion' | 'baby' | 'fmcg' | 'electronics' | 'pharma'
+  platforms: string[]
+  excerpt: string
+  featured: boolean
+  order: number
+  results: CSResult[]
+  testimonial?: CSTestimonial
+}
+
+const SAMPLE_CASE_STUDIES: CSItem[] = [
+  {
+    title: 'Meracine: 8.5x ROAS qua 6 tháng — TikTok Shop scale từ 0 → 1.2B GMV',
+    slug: 'meracine-tiktok-shop-scale',
+    brandName: 'Meracine',
+    industry: 'skincare',
+    platforms: ['tiktok', 'shopee'],
+    excerpt: 'Brand mỹ phẩm khoa học scale từ 0 GMV trên TikTok Shop lên 1.2B GMV/tháng trong 6 tháng nhờ chiến lược PGM + LGM kết hợp.',
+    featured: true,
+    order: 1,
+    results: [
+      { metric: 'ROAS', before: '3.2x', after: '8.5x', change: '+165%' },
+      { metric: 'GMV/tháng', before: '0', after: '1.2B', change: '+∞' },
+      { metric: 'Chi phí/đơn', before: '180k', after: '95k', change: '-47%' },
+    ],
+    testimonial: {
+      quote: 'Media Omni đã scale TikTok Shop của Meracine từ 0 lên top 3 ngành skincare trong 6 tháng. Chỉ số đo lường được, optimize realtime.',
+      authorName: 'Brand Manager',
+      authorRole: 'Meracine Vietnam',
+    },
+  },
+  {
+    title: 'Bye Bye Blemish: Top 1 Shopee Skincare nhập khẩu sau 4 tháng',
+    slug: 'byebyeblemish-shopee-top1',
+    brandName: 'Bye Bye Blemish',
+    industry: 'skincare',
+    platforms: ['shopee'],
+    excerpt: 'Triple GMV qua 4 tháng nhờ tối ưu Shopee CPC + ND + Live ads parallel. ROAS Shopee đạt 9.2x — cao hơn industry benchmark 35%.',
+    featured: true,
+    order: 2,
+    results: [
+      { metric: 'GMV', before: '450M', after: '1.4B', change: '+211%' },
+      { metric: 'ROAS', before: '5.8x', after: '9.2x', change: '+58%' },
+      { metric: 'Rank Shopee', before: 'Top 18', after: 'Top 1', change: '↑17 ranks' },
+    ],
+  },
+  {
+    title: 'Cathy Doll: Scale 4 platforms đồng thời — 320M ngân sách/tháng',
+    slug: 'cathydoll-multichannel-scale',
+    brandName: 'Cathy Doll',
+    industry: 'skincare',
+    platforms: ['shopee', 'tiktok', 'meta', 'google'],
+    excerpt: 'Vận hành đa kênh full-funnel 4 platforms với budget 320M/tháng. Audit + reallocation budget hàng tuần dựa trên ROAS thực tế từng channel.',
+    featured: true,
+    order: 3,
+    results: [
+      { metric: 'Total GMV', before: '780M', after: '2.4B', change: '+208%' },
+      { metric: 'Blended ROAS', before: '4.5x', after: '7.5x', change: '+67%' },
+      { metric: 'Channels', before: '1 (Shopee only)', after: '4', change: '+3 channels' },
+    ],
+  },
+]
+
 /* ── Team Members (13 users from Supabase users) ── */
 const TEAM_LIST: { name: string; role: string; isLead?: boolean; order: number }[] = [
   { name: 'Nguyễn Đức Quảng',       role: 'Team Lead — Performance Marketing', isLead: true, order: 1 },
@@ -193,7 +262,30 @@ async function main() {
   await teamTx.commit()
   console.log(`[seed-sanity] ✓ Upserted ${TEAM_LIST.length} team members`)
 
-  console.log(`\n[seed-sanity] Done. Upserted 1 siteSettings, ${BRAND_LIST.length} brands, ${TEAM_LIST.length} team members.`)
+  // 4) Upsert case studies
+  const csTx = client.transaction()
+  SAMPLE_CASE_STUDIES.forEach(cs => {
+    const _id = `caseStudy-${cs.slug}`
+    csTx.createOrReplace({
+      _id,
+      _type: 'caseStudy',
+      title: cs.title,
+      slug: { _type: 'slug', current: cs.slug },
+      brandName: cs.brandName,
+      industry: cs.industry,
+      platforms: cs.platforms,
+      excerpt: cs.excerpt,
+      featured: cs.featured,
+      order: cs.order,
+      results: cs.results.map((r, i) => ({ _key: `r${i}`, _type: 'resultItem', ...r })),
+      ...(cs.testimonial ? { testimonial: cs.testimonial } : {}),
+      publishedAt: new Date().toISOString(),
+    })
+  })
+  await csTx.commit()
+  console.log(`[seed-sanity] ✓ Upserted ${SAMPLE_CASE_STUDIES.length} case studies`)
+
+  console.log(`\n[seed-sanity] Done. Upserted 1 siteSettings, ${BRAND_LIST.length} brands, ${TEAM_LIST.length} team members, ${SAMPLE_CASE_STUDIES.length} case studies.`)
 }
 
 main().catch(err => {

@@ -1,5 +1,5 @@
 import { client } from '@/lib/sanity'
-import { siteSettingsQuery, teamQuery, brandsQuery, latestPostsQuery } from '@/lib/queries'
+import { siteSettingsQuery, teamQuery, brandsQuery, latestPostsQuery, featuredCaseStudiesQuery } from '@/lib/queries'
 import HomeClient from '@/components/HomeClient'
 
 // ISR: regenerate every hour. On-demand revalidation via /api/revalidate
@@ -11,14 +11,15 @@ const hasSanity = Boolean(
 )
 
 export default async function HomePage() {
-  const [settings, team, brands, posts] = hasSanity
+  const [settings, team, brands, posts, featuredCaseStudies] = hasSanity
     ? await Promise.all([
         client.fetch(siteSettingsQuery).catch(() => null),
         client.fetch(teamQuery).catch(() => []),
         client.fetch(brandsQuery).catch(() => []),
         client.fetch(latestPostsQuery).catch(() => []),
+        client.fetch(featuredCaseStudiesQuery).catch(() => []),
       ])
-    : [null, [], [], []]
+    : [null, [], [], [], []]
 
   return (
     <HomeClient
@@ -26,6 +27,7 @@ export default async function HomePage() {
       team={team as Parameters<typeof HomeClient>[0]['team']}
       brands={brands as Parameters<typeof HomeClient>[0]['brands']}
       posts={posts as Parameters<typeof HomeClient>[0]['posts']}
+      caseStudies={featuredCaseStudies as Parameters<typeof HomeClient>[0]['caseStudies']}
     />
   )
 }
