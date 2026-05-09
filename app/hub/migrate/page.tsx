@@ -8,7 +8,6 @@ type LogEntry = { msg: string; type: 'info' | 'ok' | 'err' | 'warn' }
 export default function MigratePage() {
   const router = useRouter()
   const [brands, setBrands] = useState<string[]>([])
-  const [gasBrands, setGasBrands] = useState<string[]>([])
   const [log, setLog] = useState<LogEntry[]>([])
   const [running, setRunning] = useState(false)
   const [fromMonth, setFromMonth] = useState(1)
@@ -16,7 +15,13 @@ export default function MigratePage() {
   const [toMonth, setToMonth] = useState(new Date().getMonth() + 1)
   const [toYear, setToYear] = useState(new Date().getFullYear())
   const [step, setStep] = useState<1|2|3>(1)
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([])
+
+  // Brand input (manual)
+  const [brandInput, setBrandInput] = useState('')
+  const [pendingBrands, setPendingBrands] = useState<string[]>([])
+
+  // Single brand add
+  const [singleBrand, setSingleBrand] = useState('')
 
   useEffect(() => {
     const u = getSession()
@@ -33,38 +38,49 @@ export default function MigratePage() {
     setBrands((r.data || r.brands || []).map((b: { brand_name: string }) => b.brand_name))
   }
 
-  /* Step 1: Fetch brands from GAS */
-  async function fetchGASBrands() {
+  /* Try fetch from GAS (best-effort, may fail) */
+  async function tryFetchGASBrands() {
     setRunning(true)
-    addLog('Đang tải danh sách brands từ Google Sheets...', 'info')
+    addLog('Đang thử lấy brands từ GAS API...', 'info')
     try {
       const r = await fetch('/api/migrate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'fetchGASBrands' })
       }).then(res => res.json())
+
       if (!r.ok) throw new Error(r.error)
-      setGasBrands(r.brands)
-      setSelectedBrands(r.brands)
-      addLog(`✅ Tìm thấy ${r.brands.length} brands: ${r.brands.join(', ')}`, 'ok')
-      setStep(2)
+      if (!r.brands?.length) {
+        addLog('⚠️ GAS API trả về 0 brands — script hiện tại đã thay đổi. Nhập brands thủ công bên dưới.', 'warn')
+      } else {
+        addLog(`✅ GAS trả về ${r.brands.length} brands: ${r.brands.join(', ')}`, 'ok')
+        setBrandInput(r.brands.join('\n'))
+        setPendingBrands(r.brands)
+      }
     } catch (e) {
-      addLog('❌ Lỗi: ' + String(e), 'err')
+      addLog('❌ GAS API lỗi: ' + String(e) + ' — nhập brands thủ công.', 'err')
     } finally {
       setRunning(false)
     }
   }
 
-  /* Step 2: Import brands */
+  function parseBrands() {
+    const list = brandInput.split('\n').map(s => s.trim()).filter(Boolean)
+    const deduped = list.filter((v, i, a) => a.indexOf(v) === i)
+    setPendingBrands(deduped)
+    addLog(`✅ Parse xong: ${deduped.length} brands — ${deduped.join(', ')}`, 'ok')
+  }
+
+  /* Import brands to Supabase */
   async function importBrands() {
-    if (!selectedBrands.length) return
+    if (!pendingBrands.length) { addLog('⚠️ Chưa có brand nào để import', 'warn'); return }
     setRunning(true)
-    addLog(`Đang xoá brand cũ và import ${selectedBrands.length} brands mới...`, 'info')
+    addLog(`Đang import ${pendingBrands.length} brands vào Supabase...`, 'info')
     try {
       const r = await fetch('/api/migrate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'importBrands', brands: selectedBrands })
+        body: JSON.stringify({ action: 'importBrands', brands: pendingBrands })
       }).then(res => res.json())
       if (!r.ok) throw new Error(r.error)
       addLog(`✅ Đã import ${r.count} brands vào Supabase`, 'ok')
@@ -77,8 +93,31 @@ export default function MigratePage() {
     }
   }
 
-  /* Step 3: Migrate weekly + plan data */
+  /* Add single brand directly to Supabase (without deleting others) */
+  async function addSingleBrand() {
+    if (!singleBrand.trim()) return
+    setRunning(true)
+    try {
+      const r = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'addBrand', brand_name: singleBrand.trim() })
+      }).then(res => res.json())
+      if (!r.ok) throw new Error(r.error || 'Lỗi')
+      addLog(`✅ Đã thêm brand: ${singleBrand.trim()}`, 'ok')
+      setSingleBrand('')
+      await fetchCurrentBrands()
+    } catch (e) {
+      addLog('❌ ' + String(e), 'err')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  /* Migrate weekly + plan data */
   async function migrateData() {
+    const brandsToMigrate = brands.length ? brands : pendingBrands
+    if (!brandsToMigrate.length) { addLog('⚠️ Chưa có brands trong Supabase', 'warn'); return }
     setRunning(true)
     let weeklyTotal = 0, planTotal = 0, errors = 0
 
@@ -86,15 +125,13 @@ export default function MigratePage() {
     let m = fromMonth, y = fromYear
     while (y < toYear || (y === toYear && m <= toMonth)) {
       months.push({ month: m, year: y })
-      m++
-      if (m > 12) { m = 1; y++ }
+      m++; if (m > 12) { m = 1; y++ }
     }
 
-    addLog(`Bắt đầu migrate ${selectedBrands.length} brands × ${months.length} tháng...`, 'info')
+    addLog(`Bắt đầu migrate ${brandsToMigrate.length} brands × ${months.length} tháng...`, 'info')
 
-    for (const brand of selectedBrands) {
+    for (const brand of brandsToMigrate) {
       for (const { month, year } of months) {
-        // Weekly data
         try {
           const rw = await fetch('/api/migrate', {
             method: 'POST',
@@ -105,12 +142,8 @@ export default function MigratePage() {
             weeklyTotal += rw.count
             addLog(`  ✅ Weekly ${brand} ${month}/${year}: ${rw.count} tuần`, 'ok')
           }
-        } catch (e) {
-          addLog(`  ❌ Weekly ${brand} ${month}/${year}: ${String(e)}`, 'err')
-          errors++
-        }
+        } catch (e) { addLog(`  ❌ Weekly ${brand} ${month}/${year}: ${String(e)}`, 'err'); errors++ }
 
-        // Plan data
         try {
           const rp = await fetch('/api/migrate', {
             method: 'POST',
@@ -121,114 +154,163 @@ export default function MigratePage() {
             planTotal += rp.count
             addLog(`  ✅ Plan ${brand} ${month}/${year}: ${rp.count} platform`, 'ok')
           }
-        } catch (e) {
-          addLog(`  ❌ Plan ${brand} ${month}/${year}: ${String(e)}`, 'err')
-          errors++
-        }
+        } catch (e) { addLog(`  ❌ Plan ${brand} ${month}/${year}: ${String(e)}`, 'err'); errors++ }
       }
     }
 
-    addLog(`\n=== XONG ===\nWeekly: ${weeklyTotal} rows | Plan: ${planTotal} rows | Lỗi: ${errors}`, errors > 0 ? 'warn' : 'ok')
+    addLog(`\n=== XONG ===\nWeekly: ${weeklyTotal} | Plan: ${planTotal} | Lỗi: ${errors}`, errors > 0 ? 'warn' : 'ok')
     setRunning(false)
   }
 
+  const STEPS = [
+    { n: 1, label: '1. Quản lý Brands' },
+    { n: 2, label: '2. Import Brands mới' },
+    { n: 3, label: '3. Migrate Data' },
+  ]
+
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 16px', fontFamily: 'var(--f-sans)' }}>
-      <div style={{ marginBottom: 24 }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px', fontFamily: 'var(--f-sans)' }}>
+
+      <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--navy)', marginBottom: 6 }}>
           🔄 Migration Tool — Google Sheets → Supabase
         </h1>
         <p style={{ fontSize: '.84rem', color: 'var(--muted)' }}>
-          Tool này pull toàn bộ data (Brands + WeeklyData + PlanData) từ Google Sheets về Supabase.
-          Chỉ admin mới truy cập được.
+          Đồng bộ Brands + WeeklyData + PlanData từ Google Sheets về Supabase. Chỉ admin.
         </p>
       </div>
 
-      {/* Current Supabase state */}
-      <div className="rc" style={{ marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8, fontSize: '.88rem' }}>Brands hiện tại trong Supabase</div>
-        {brands.length === 0
-          ? <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>Chưa có brand nào</span>
-          : <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {brands.map(b => (
-                <span key={b} style={{ background: 'var(--border2)', padding: '2px 10px', borderRadius: 20, fontSize: '.8rem', color: 'var(--ink)' }}>{b}</span>
-              ))}
-            </div>
-        }
+      {/* Status bar */}
+      <div className="rc" style={{ marginBottom: 16, display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div>
+          <span style={{ fontSize: '.75rem', color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' }}>Brands trong Supabase</span>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+            {brands.length === 0
+              ? <span style={{ color: '#DC2626', fontSize: '.82rem', fontWeight: 600 }}>⚠️ Chưa có brand nào</span>
+              : brands.map(b => (
+                  <span key={b} style={{ background: 'var(--border2)', padding: '2px 10px', borderRadius: 20, fontSize: '.8rem' }}>{b}</span>
+                ))
+            }
+          </div>
+        </div>
+        <button className="btn-s" style={{ fontSize: '.78rem' }} onClick={fetchCurrentBrands}>↻ Refresh</button>
       </div>
 
-      {/* Steps */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {[
-          { n: 1, label: 'Lấy Brands từ GAS' },
-          { n: 2, label: 'Import Brands' },
-          { n: 3, label: 'Migrate Data' },
-        ].map(s => (
-          <div key={s.n} style={{
-            padding: '6px 14px', borderRadius: 20, fontSize: '.78rem', fontWeight: 700,
-            background: step === s.n ? 'var(--blue)' : step > s.n ? '#10B981' : 'var(--border2)',
-            color: step >= s.n ? '#fff' : 'var(--muted)'
-          }}>
-            {s.n}. {s.label}
-          </div>
+      {/* Step tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {STEPS.map(s => (
+          <button key={s.n} onClick={() => setStep(s.n as 1|2|3)} style={{
+            padding: '7px 16px', borderRadius: 20, fontSize: '.78rem', fontWeight: 700, border: 'none', cursor: 'pointer',
+            background: step === s.n ? 'var(--blue)' : 'var(--border2)',
+            color: step === s.n ? '#fff' : 'var(--muted)'
+          }}>{s.label}</button>
         ))}
       </div>
 
-      {/* Step 1 */}
+      {/* ── STEP 1: Quản lý brands hiện tại ── */}
       {step === 1 && (
+        <div>
+          {/* Add single brand */}
+          <div className="rc" style={{ marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 10, fontSize: '.88rem' }}>Thêm Brand nhanh</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="ri" style={{ flex: 1 }} placeholder="Tên brand..." value={singleBrand}
+                onChange={e => setSingleBrand(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addSingleBrand()} />
+              <button className="btn-p" onClick={addSingleBrand} disabled={running || !singleBrand.trim()}>+ Thêm</button>
+            </div>
+            <p style={{ fontSize: '.78rem', color: 'var(--muted)', marginTop: 6 }}>Thêm từng brand mà không xóa brands khác.</p>
+          </div>
+
+          {/* Schema comparison info */}
+          <div className="rc" style={{ background: 'var(--border2)', border: 'none' }}>
+            <div style={{ fontWeight: 700, marginBottom: 10, fontSize: '.88rem' }}>📊 So sánh Schema: Supabase vs Google Sheets</div>
+            <table style={{ width: '100%', fontSize: '.78rem', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--navy)', color: '#fff' }}>
+                  <th style={{ padding: '6px 10px', textAlign: 'left' }}>Table</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'left' }}>Supabase</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'left' }}>Google Sheets (GAS)</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'center' }}>Match?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { t: 'brands', sb: 'id, brand_name, assigned_members text[], active', gas: 'id, brand_name, assigned_members (string)', ok: true },
+                  { t: 'weekly_reports', sb: 's_cpc_*, s_nd_*, s_live_*, t_pgm_*, t_lgm_*, t_con_*, t_brd_*, highlight, lowlight, nhan_xet_*', gas: 'WEEKLY_COLS — cùng tên cột', ok: true },
+                  { t: 'monthly_plans', sb: 'plan_data JSONB {metric:{w1,w2,w3,w4,w5,month}}', gas: 'flat: {metric}__plan_w1, {metric}__plan_month', ok: true },
+                ].map((row, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: 700 }}>{row.t}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--muted)' }}>{row.sb}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--muted)' }}>{row.gas}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      {row.ok ? '✅' : '❌'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: 10, padding: '8px 12px', background: '#FEF9C3', borderRadius: 6, fontSize: '.78rem', color: '#92400E' }}>
+              ⚠️ <strong>Lưu ý:</strong> GAS API hiện tại trả về <code>{`{"status":"ok","message":"Weekly Report API ready"}`}</code> thay vì data — script deployed đã thay đổi. Migration sẽ dùng GAS API để lấy WeeklyData & PlanData theo từng brand (nếu GAS có handlers). Brands cần nhập thủ công ở Bước 2.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 2: Import Brands ── */}
+      {step === 2 && (
         <div className="rc">
-          <p style={{ fontSize: '.84rem', color: 'var(--muted)', marginBottom: 14 }}>
-            Bước 1: Pull danh sách brand từ Google Sheets. Sau đó bạn xác nhận brand nào cần import.
+          <div style={{ fontWeight: 700, marginBottom: 12, fontSize: '.9rem' }}>Import danh sách Brands vào Supabase</div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button className="btn-s" style={{ fontSize: '.78rem' }} onClick={tryFetchGASBrands} disabled={running}>
+              🔍 Thử lấy từ GAS
+            </button>
+            <span style={{ color: 'var(--muted)', fontSize: '.78rem', alignSelf: 'center' }}>hoặc nhập thủ công:</span>
+          </div>
+
+          <textarea
+            style={{ width: '100%', minHeight: 120, padding: 10, border: '1.5px solid var(--border)', borderRadius: 8, fontSize: '.84rem', marginBottom: 10, resize: 'vertical', boxSizing: 'border-box' }}
+            placeholder={`Nhập tên brand, mỗi brand một dòng:\nMeracine\nBye Bye Blemish\nYumvita`}
+            value={brandInput}
+            onChange={e => setBrandInput(e.target.value)}
+          />
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <button className="btn-s" onClick={parseBrands}>Parse ({brandInput.split('\n').filter(s=>s.trim()).length} dòng)</button>
+            {pendingBrands.length > 0 && (
+              <span style={{ fontSize: '.8rem', color: '#059669', alignSelf: 'center', fontWeight: 600 }}>
+                ✅ Ready: {pendingBrands.join(', ')}
+              </span>
+            )}
+          </div>
+
+          <p style={{ fontSize: '.78rem', color: '#DC2626', marginBottom: 14 }}>
+            ⚠️ Thao tác này sẽ XOÁ toàn bộ brand cũ trong Supabase và import lại danh sách mới.
           </p>
-          <button className="btn-p" onClick={fetchGASBrands} disabled={running}>
-            {running ? 'Đang tải...' : '🔍 Lấy Brands từ Google Sheets'}
+
+          <button className="btn-p" onClick={importBrands} disabled={running || !pendingBrands.length}>
+            {running ? 'Đang import...' : `✅ Import ${pendingBrands.length} Brands vào Supabase →`}
           </button>
         </div>
       )}
 
-      {/* Step 2 */}
-      {step === 2 && (
-        <div className="rc">
-          <p style={{ fontWeight: 700, marginBottom: 10, fontSize: '.88rem' }}>
-            Chọn brands cần import vào Supabase:
-          </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            {gasBrands.map(b => (
-              <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '.84rem' }}>
-                <input type="checkbox"
-                  checked={selectedBrands.includes(b)}
-                  onChange={e => setSelectedBrands(prev =>
-                    e.target.checked ? [...prev, b] : prev.filter(x => x !== b)
-                  )}
-                />
-                {b}
-              </label>
-            ))}
-          </div>
-          <p style={{ fontSize: '.78rem', color: '#DC2626', marginBottom: 14 }}>
-            ⚠️ Thao tác này sẽ XOÁ toàn bộ brand hiện tại trong Supabase (kể cả seed) rồi import lại.
-          </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-s" onClick={() => setStep(1)} disabled={running}>← Quay lại</button>
-            <button className="btn-p" onClick={importBrands} disabled={running || !selectedBrands.length}>
-              {running ? 'Đang import...' : `✅ Import ${selectedBrands.length} Brands →`}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3 */}
+      {/* ── STEP 3: Migrate Data ── */}
       {step === 3 && (
         <div className="rc">
-          <p style={{ fontWeight: 700, marginBottom: 12, fontSize: '.88rem' }}>
-            Cấu hình khoảng thời gian cần migrate:
-          </p>
+          <div style={{ fontWeight: 700, marginBottom: 12, fontSize: '.9rem' }}>Migrate WeeklyData + PlanData từ GAS</div>
+
+          <div style={{ background: '#FEF9C3', borderRadius: 6, padding: '8px 12px', fontSize: '.78rem', color: '#92400E', marginBottom: 16 }}>
+            ⚠️ GAS API hiện không trả về data đúng format. Bước này sẽ thử gọi GAS với từng brand + tháng — nếu script GAS chưa có handlers thì kết quả sẽ 0 rows. Bạn cần deploy lại <code>appscript_v8.gs</code> với URL mới và cập nhật trong <code>app/api/migrate/route.ts</code>.
+          </div>
+
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginBottom: 4 }}>Từ tháng</div>
+              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginBottom: 4, fontWeight: 700 }}>Từ tháng</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <select className="rs" value={fromMonth} onChange={e => setFromMonth(parseInt(e.target.value))}>
-                  {Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>Tháng {i+1}</option>)}
+                  {Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>T{i+1}</option>)}
                 </select>
                 <select className="rs" value={fromYear} onChange={e => setFromYear(parseInt(e.target.value))}>
                   {[2023,2024,2025,2026].map(y=><option key={y} value={y}>{y}</option>)}
@@ -236,10 +318,10 @@ export default function MigratePage() {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginBottom: 4 }}>Đến tháng</div>
+              <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginBottom: 4, fontWeight: 700 }}>Đến tháng</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <select className="rs" value={toMonth} onChange={e => setToMonth(parseInt(e.target.value))}>
-                  {Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>Tháng {i+1}</option>)}
+                  {Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>T{i+1}</option>)}
                 </select>
                 <select className="rs" value={toYear} onChange={e => setToYear(parseInt(e.target.value))}>
                   {[2023,2024,2025,2026].map(y=><option key={y} value={y}>{y}</option>)}
@@ -249,15 +331,12 @@ export default function MigratePage() {
           </div>
 
           <p style={{ fontSize: '.8rem', color: 'var(--muted)', marginBottom: 16 }}>
-            Brands: <strong>{selectedBrands.join(', ')}</strong>
+            Brands: <strong>{brands.join(', ') || 'Chưa có — thêm ở Bước 2'}</strong>
           </p>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-s" onClick={() => setStep(2)} disabled={running}>← Quay lại</button>
-            <button className="btn-p" onClick={migrateData} disabled={running}>
-              {running ? '⏳ Đang migrate...' : '🚀 Bắt đầu Migrate'}
-            </button>
-          </div>
+          <button className="btn-p" onClick={migrateData} disabled={running || !brands.length}>
+            {running ? '⏳ Đang migrate...' : '🚀 Bắt đầu Migrate'}
+          </button>
         </div>
       )}
 
@@ -269,15 +348,13 @@ export default function MigratePage() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ color: '#94a3b8', fontWeight: 700 }}>LOG</span>
-            <button onClick={() => setLog([])} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '.75rem' }}>Xoá log</button>
+            <button onClick={() => setLog([])} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '.75rem' }}>Xoá</button>
           </div>
           {log.map((l, i) => (
             <div key={i} style={{
               color: l.type === 'ok' ? '#34d399' : l.type === 'err' ? '#f87171' : l.type === 'warn' ? '#fbbf24' : '#cbd5e1',
               marginBottom: 4, whiteSpace: 'pre-wrap'
-            }}>
-              {l.msg}
-            </div>
+            }}>{l.msg}</div>
           ))}
         </div>
       )}

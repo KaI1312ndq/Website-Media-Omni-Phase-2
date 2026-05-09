@@ -40,10 +40,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  /* ── Delete seed brands + import real brands ── */
+  /* ── Delete all brands + import new list ── */
   if (action === 'importBrands') {
     const { brands } = body as { brands: string[] }
-    if (!brands?.length) return NextResponse.json({ ok: false, error: 'No brands' }, { status: 400 })
+    if (!brands?.length) return NextResponse.json({ ok: false, error: 'Danh sách brands trống — không thực hiện để tránh mất data' }, { status: 400 })
 
     // Delete all existing brands first
     const { error: delErr } = await supabaseAdmin.from('brands').delete().neq('id', '00000000-0000-0000-0000-000000000000')
