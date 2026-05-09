@@ -3,8 +3,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { getSession, clearSession, setSession, SessionUser } from '@/lib/auth'
 import { Skeleton } from '@/components/Skeleton'
+import InternalLayout from '@/components/InternalLayout'
+import '@/app/dashboard/dashboard.css'
+import './analytics.css'
 
 /* ─── Types ─── */
 type PlatformToggle = 'shopee' | 'tiktok' | 'both'
@@ -82,10 +85,10 @@ function fmtPct(v: number | null | undefined, digits = 0): string {
   return `${Number(v).toFixed(digits)}%`
 }
 function pctClass(p: number | null | undefined): string {
-  if (p === null || p === undefined) return 'pct-none'
-  if (p >= 100) return 'pct-good'
-  if (p >= 70) return 'pct-warn'
-  return 'pct-bad'
+  if (p === null || p === undefined) return 'an2-pct-none'
+  if (p >= 100) return 'an2-pct-good'
+  if (p >= 70) return 'an2-pct-warn'
+  return 'an2-pct-bad'
 }
 function fmtLateHours(h: number | null | undefined): string {
   if (h === null || h === undefined || isNaN(Number(h))) return '—'
@@ -98,9 +101,9 @@ function fmtLateHours(h: number | null | undefined): string {
 }
 function lateClass(h: number | null | undefined): string {
   if (h === null || h === undefined) return ''
-  if (h <= 0) return 'pct-good'
-  if (h <= 24) return 'pct-warn'
-  return 'pct-bad'
+  if (h <= 0) return 'an2-pct-good'
+  if (h <= 24) return 'an2-pct-warn'
+  return 'an2-pct-bad'
 }
 function fmtDate(v: string | null | undefined): string {
   if (!v) return '—'
@@ -108,15 +111,11 @@ function fmtDate(v: string | null | undefined): string {
   if (isNaN(d.getTime())) return v
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
 }
-function progressBar(pct: number, height = 8) {
+function progressBar(pct: number) {
   const clamped = Math.max(0, Math.min(100, pct))
   return (
-    <div style={{ width: '100%', minWidth: 80, height, background: '#eef2ff', borderRadius: height / 2, overflow: 'hidden', position: 'relative' }}>
-      <div style={{
-        width: `${clamped}%`, height: '100%',
-        background: 'linear-gradient(90deg, #2563EB 0%, #10B981 100%)',
-        transition: 'width .3s',
-      }} />
+    <div className="an2-progress">
+      <div className="an2-progress-bar" style={{ width: `${clamped}%` }} />
     </div>
   )
 }
@@ -125,14 +124,15 @@ type SortDir = 'asc' | 'desc'
 type SortKey = 'brand' | 'plan_pct' | 'report_pct' | 'gmv_shopee' | 'gmv_tiktok' | 'roas' | 'last_reported'
 
 function ArrowIcon({ dir }: { dir: SortDir | null }) {
-  if (dir === null) return <span style={{ color: 'var(--faint)', fontSize: '.7rem', marginLeft: 3 }}>▲▼</span>
-  return <span style={{ color: 'var(--blue)', fontSize: '.7rem', marginLeft: 3 }}>{dir === 'asc' ? '▲' : '▼'}</span>
+  if (dir === null) return <span className="an2-arrow-none">▲▼</span>
+  return <span className={dir === 'asc' ? 'an2-arrow-asc' : 'an2-arrow-desc'}>{dir === 'asc' ? '▲' : '▼'}</span>
 }
 
 /* ─── Page ─── */
 export default function AnalyticsPage() {
   const router = useRouter()
   const now = new Date()
+  const [user, setUser] = useState<SessionUser | null>(null)
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
   const [allBrands, setAllBrands] = useState<string[]>([])
@@ -141,7 +141,6 @@ export default function AnalyticsPage() {
   const [ddOpen, setDdOpen] = useState(false)
   const [ddSearch, setDdSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [authChecked, setAuthChecked] = useState(false)
   const [summary, setSummary] = useState<SummaryResp | null>(null)
   const [coverage, setCoverage] = useState<CoverageResp | null>(null)
   const [expandedReport, setExpandedReport] = useState<{ brand: string; week: number } | null>(null)
@@ -157,17 +156,26 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const u = getSession()
     if (!u) { router.replace('/'); return }
-    setAuthChecked(true)
+    setUser(u)
+    fetch('/api/auth').then(r => r.json()).then(({ user: su }) => {
+      if (su) { setSession(su); setUser(su) }
+    }).catch(() => {})
   }, [router])
+
+  async function logout() {
+    try { await fetch('/api/auth', { method: 'DELETE' }) } catch {}
+    clearSession()
+    router.push('/')
+  }
 
   /* load brands once */
   useEffect(() => {
-    if (!authChecked) return
+    if (!user) return
     fetch('/api/analytics?action=brands', { credentials: 'include' })
       .then(r => r.json())
       .then(j => setAllBrands(j.data || []))
       .catch(() => setAllBrands([]))
-  }, [authChecked])
+  }, [user])
 
   /* close dropdown on outside */
   useEffect(() => {
@@ -180,7 +188,7 @@ export default function AnalyticsPage() {
 
   /* fetch summary + coverage whenever filters change */
   const reload = useCallback(async () => {
-    if (!authChecked) return
+    if (!user) return
     setLoading(true)
     const brandsQs = selBrands.length ? `&brands=${encodeURIComponent(selBrands.join(','))}` : ''
     try {
@@ -193,7 +201,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }, [authChecked, month, year, selBrands])
+  }, [user, month, year, selBrands])
 
   useEffect(() => { reload() }, [reload])
 
@@ -214,8 +222,8 @@ export default function AnalyticsPage() {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-          y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: 'rgba(37,99,235,.07)' } },
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } },
+          y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 }, color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.08)' } },
         },
       }
       cadenceInst.current = new Chart(cadenceRef.current!, {
@@ -225,11 +233,12 @@ export default function AnalyticsPage() {
           datasets: [{
             label: 'Reports',
             data,
-            borderColor: '#2563EB',
-            backgroundColor: 'rgba(37,99,235,.15)',
+            borderColor: '#22d3ee',
+            backgroundColor: 'rgba(34,211,238,0.15)',
             borderWidth: 2,
             tension: 0.3,
             pointRadius: 3,
+            pointBackgroundColor: '#22d3ee',
             fill: true,
           }],
         },
@@ -312,195 +321,174 @@ export default function AnalyticsPage() {
   }
   const arrowFor = (k: SortKey): SortDir | null => sortKey === k ? sortDir : null
 
+  function exportCSV() {
+    if (!sortedCompareRows.length) return
+    const headers = ['Brand', 'Plan %', 'Report %', 'GMV Shopee', 'GMV TikTok', 'ROAS', 'Last reported']
+    const lines = [headers.join(',')]
+    sortedCompareRows.forEach(r => {
+      lines.push([
+        `"${r.brand}"`,
+        r.plan_pct ?? '',
+        r.report_pct.toFixed(0),
+        r.gmv_shopee ?? '',
+        r.gmv_tiktok ?? '',
+        r.roas.toFixed(2),
+        r.last_reported || '',
+      ].join(','))
+    })
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `analytics-${month}-${year}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const showShopee = platformToggle !== 'tiktok'
   const showTiktok = platformToggle !== 'shopee'
 
   const summaryTotals = summary?.totals
   const cs = coverage?.summary
 
+  if (!user) return null
+
   /* ─── RENDER ─── */
   return (
-    <div className="an" style={{ maxWidth: 1280, margin: '0 auto', padding: '88px 20px 80px' }}>
-      <div style={{ marginBottom: 6 }}>
-        <Link href="/dashboard" style={{ fontSize: '.82rem', color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-          Dashboard
-        </Link>
-      </div>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--ink)' }}>Analytics — Operations</h1>
-        <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginTop: 4 }}>Plan completeness, report coverage, data consistency &amp; report timing.</p>
-      </div>
+    <InternalLayout user={user} onLogout={logout} greeting="Analytics — Operations" subline="Plan completeness, report coverage, data consistency & report timing.">
+      <div className="an2">
+        <div className="an2-pageHdr">
+          <div>
+            <h1>Analytics — Operations</h1>
+            <p>Plan completeness, report coverage, data consistency &amp; report timing.</p>
+          </div>
+          <button className="an2-export" onClick={exportCSV}>⬇ Xuất dữ liệu</button>
+        </div>
 
-      {/* FILTERS */}
-      <div className="an-filters">
-        <div>
-          <label className="an-label">Tháng</label>
-          <select className="an-sel" value={month} onChange={e => setMonth(Number(e.target.value))}>
+        {/* FILTERS */}
+        <div className="an2-filters">
+          <span className="lbl">Tháng</span>
+          <select className="an2-sel" value={month} onChange={e => setMonth(Number(e.target.value))}>
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>Tháng {m}</option>)}
           </select>
-        </div>
-        <div>
-          <label className="an-label">Năm</label>
-          <select className="an-sel" value={year} onChange={e => setYear(Number(e.target.value))}>
+          <span className="lbl">Năm</span>
+          <select className="an2-sel" value={year} onChange={e => setYear(Number(e.target.value))}>
             {yearsOpts.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label className="an-label">Brand</label>
-          <div className="filter-brand-wrap" ref={ddRef} style={{ position: 'relative', minWidth: 240 }}>
-            <div
-              className="brand-tag-list"
-              onClick={() => setDdOpen(o => !o)}
-              style={{ cursor: 'pointer', minHeight: 36, padding: '4px 10px', border: '1.5px solid var(--border)', borderRadius: 8, background: '#fff' }}
-            >
+          <span className="lbl">Brand</span>
+          <div className="an2-brand-wrap" ref={ddRef}>
+            <div className="an2-brand-trig" onClick={() => setDdOpen(o => !o)}>
               {selBrands.length === 0
-                ? <span className="brand-tag brand-tag-all">Tất cả ({allBrands.length})</span>
+                ? <span className="an2-tag" style={{ background: 'rgba(255,255,255,0.06)', color: '#cbd5e1' }}>Tất cả ({allBrands.length})</span>
                 : selBrands.map(b => (
-                  <span key={b} className="brand-tag">
+                  <span key={b} className="an2-tag">
                     {b}
-                    <button className="brand-tag-rm" onClick={e => { e.stopPropagation(); setSelBrands(p => p.filter(x => x !== b)) }}>×</button>
+                    <button className="an2-tag-rm" onClick={e => { e.stopPropagation(); setSelBrands(p => p.filter(x => x !== b)) }}>×</button>
                   </span>
                 ))}
             </div>
             {ddOpen && (
-              <div className="brand-dropdown open">
-                <input
-                  className="brand-dd-search"
-                  placeholder="Tìm brand..."
-                  value={ddSearch}
-                  onChange={e => setDdSearch(e.target.value)}
-                  onClick={e => e.stopPropagation()}
-                  autoFocus
-                />
-                <div>
-                  <div className="brand-dd-opt">
-                    <input type="checkbox" id="chk-all" checked={selBrands.length === 0} onChange={() => setSelBrands([])} />
-                    <label htmlFor="chk-all" style={{ cursor: 'pointer' }}>Tất cả</label>
-                  </div>
-                  {filteredDD.map(b => (
-                    <div key={b} className="brand-dd-opt">
-                      <input type="checkbox" id={`chk-${b}`} checked={selBrands.includes(b)} onChange={() => toggleBrand(b)} />
-                      <label htmlFor={`chk-${b}`} style={{ cursor: 'pointer' }}>{b}</label>
-                    </div>
-                  ))}
+              <div className="an2-brand-dd">
+                <input type="text" placeholder="Tìm brand..." value={ddSearch} onChange={e => setDdSearch(e.target.value)} onClick={e => e.stopPropagation()} autoFocus />
+                <div className="an2-brand-opt" onClick={() => setSelBrands([])}>
+                  <input type="checkbox" readOnly checked={selBrands.length === 0} />
+                  <span>Tất cả</span>
                 </div>
+                {filteredDD.map(b => (
+                  <div key={b} className="an2-brand-opt" onClick={() => toggleBrand(b)}>
+                    <input type="checkbox" readOnly checked={selBrands.includes(b)} />
+                    <span>{b}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label className="an-label">Platform</label>
-          <div style={{ display: 'flex', border: '1.5px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          <span className="lbl">Platform</span>
+          <div className="an2-pill">
             {(['shopee', 'tiktok', 'both'] as PlatformToggle[]).map(p => (
-              <button
-                key={p}
-                onClick={() => setPlatformToggle(p)}
-                style={{
-                  padding: '7px 12px',
-                  fontSize: '.82rem',
-                  fontWeight: 600,
-                  background: platformToggle === p ? 'var(--blue)' : '#fff',
-                  color: platformToggle === p ? '#fff' : 'var(--muted)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                }}
-              >{p === 'both' ? 'Cả 2' : p}</button>
+              <button key={p} onClick={() => setPlatformToggle(p)} className={platformToggle === p ? 'active' : ''}>
+                {p === 'both' ? 'Cả 2' : p}
+              </button>
             ))}
           </div>
+          <button className="an2-refresh" onClick={reload}>↻ Refresh</button>
         </div>
-        <button onClick={reload} className="filter-refresh an-sel" style={{ fontWeight: 600, color: 'var(--blue)' }}>↻ Refresh</button>
-      </div>
 
-      {loading ? (
-        <div className="an-cards">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="an-card"><Skeleton width="60%" height={32} /><Skeleton width="80%" height={12} style={{ marginTop: 10 }} /></div>
-          ))}
-        </div>
-      ) : !allBrands.length ? (
-        <div className="an-block" style={{ padding: 30, textAlign: 'center' }}>
-          <p style={{ color: 'var(--muted)' }}>Bạn chưa được assign brand nào. Liên hệ Admin để được phân quyền.</p>
-        </div>
-      ) : (
-        <>
-          {/* PERFORMANCE — split shopee/tiktok */}
-          <div className="an-sec"><h2>Hiệu suất Tháng {month}/{year}</h2><p>So sánh Shopee vs TikTok</p></div>
-          <div style={{ display: 'grid', gridTemplateColumns: showShopee && showTiktok ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 28 }}>
-            {showShopee && (
-              <div className="an-block" style={{ padding: 16 }}>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '.95rem', fontWeight: 700, color: '#EE4D2D', marginBottom: 12 }}>Shopee</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 14 }}>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.shopee?.gmv || 0)}</div>
-                    <div className="an-card-lbl">GMV</div>
-                  </div>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.shopee?.cp || 0)}</div>
-                    <div className="an-card-lbl">Chi phí</div>
-                  </div>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{(summaryTotals?.shopee?.roas || 0).toFixed(2)}x</div>
-                    <div className="an-card-lbl">ROAS TB</div>
-                  </div>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{summaryTotals?.shopee?.activeBrands || 0}</div>
-                    <div className="an-card-lbl">Brand active</div>
+        {loading ? (
+          <div className="an2-statgrid">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="an2-card"><Skeleton width="60%" height={32} /><Skeleton width="80%" height={12} style={{ marginTop: 10 }} /></div>
+            ))}
+          </div>
+        ) : !allBrands.length ? (
+          <div className="an2-card" style={{ textAlign: 'center', padding: 30 }}>
+            <p style={{ color: '#94a3b8' }}>Bạn chưa được assign brand nào. Liên hệ Admin để được phân quyền.</p>
+          </div>
+        ) : (
+          <>
+            {/* SECTION A — Performance */}
+            <div className="an2-sec">
+              <span className="an2-sec-letter">A.</span>
+              <div className="an2-sec-text">
+                <h2>Tổng quan hiệu suất</h2>
+                <p>Performance overview Shopee vs TikTok — Tháng {month}/{year}</p>
+              </div>
+            </div>
+            <div className="an2-perf">
+              {showShopee && (
+                <div className="an2-platCard">
+                  <div className="an2-platHdr shopee">Shopee</div>
+                  <div className="an2-platBody">
+                    <div className="an2-platStat"><div className="v">{fmtNum(summaryTotals?.shopee?.gmv || 0)}</div><div className="l">GMV</div></div>
+                    <div className="an2-platStat"><div className="v">{fmtNum(summaryTotals?.shopee?.cp || 0)}</div><div className="l">Chi phí</div></div>
+                    <div className="an2-platStat"><div className="v">{(summaryTotals?.shopee?.roas || 0).toFixed(2)}x</div><div className="l">ROAS TB</div></div>
+                    <div className="an2-platStat"><div className="v">{summaryTotals?.shopee?.activeBrands || 0}</div><div className="l">Brand active</div></div>
                   </div>
                 </div>
-              </div>
-            )}
-            {showTiktok && (
-              <div className="an-block" style={{ padding: 16 }}>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '.95rem', fontWeight: 700, color: '#FE2C55', marginBottom: 12 }}>TikTok</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 14 }}>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.tiktok?.gmv || 0)}</div>
-                    <div className="an-card-lbl">GMV</div>
-                  </div>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.tiktok?.cp || 0)}</div>
-                    <div className="an-card-lbl">Chi phí</div>
-                  </div>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{(summaryTotals?.tiktok?.roas || 0).toFixed(2)}x</div>
-                    <div className="an-card-lbl">ROI TB</div>
-                  </div>
-                  <div className="an-card" style={{ padding: '12px 14px' }}>
-                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{summaryTotals?.tiktok?.activeBrands || 0}</div>
-                    <div className="an-card-lbl">Brand active</div>
+              )}
+              {showTiktok && (
+                <div className="an2-platCard">
+                  <div className="an2-platHdr tiktok">TikTok</div>
+                  <div className="an2-platBody">
+                    <div className="an2-platStat"><div className="v">{fmtNum(summaryTotals?.tiktok?.gmv || 0)}</div><div className="l">GMV</div></div>
+                    <div className="an2-platStat"><div className="v">{fmtNum(summaryTotals?.tiktok?.cp || 0)}</div><div className="l">Chi phí</div></div>
+                    <div className="an2-platStat"><div className="v">{(summaryTotals?.tiktok?.roas || 0).toFixed(2)}x</div><div className="l">ROI TB</div></div>
+                    <div className="an2-platStat"><div className="v">{summaryTotals?.tiktok?.activeBrands || 0}</div><div className="l">Brand active</div></div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* SECTION A — PLAN COMPLETENESS */}
-          <div className="an-sec"><h2>A — Plan Completeness</h2><p>Tỷ lệ brand đã setup plan và % field plan đã fill</p></div>
-          <div className="an-cards">
-            <div className="an-card">
-              <div className="an-card-val">{cs?.brands_with_plan || 0}/{cs?.total_brands || 0}</div>
-              <div className="an-card-lbl">Brand đã có plan</div>
-              <div className="an-card-sub">{cs ? fmtPct((cs.brands_with_plan / Math.max(1, cs.total_brands)) * 100, 0) + ' coverage' : ''}</div>
+            {/* SECTION B — Plan Completeness */}
+            <div className="an2-sec">
+              <span className="an2-sec-letter">B.</span>
+              <div className="an2-sec-text">
+                <h2>Plan Completeness</h2>
+                <p>Tỷ lệ brand đã setup plan và % field plan đã fill</p>
+              </div>
             </div>
-            <div className={`an-card ${cs && cs.brands_without_plan > 0 ? 'err' : 'ok'}`}>
-              <div className="an-card-val">{cs?.brands_without_plan || 0}</div>
-              <div className="an-card-lbl">Brand chưa nhập plan</div>
+            <div className="an2-statgrid">
+              <div className="an2-card">
+                <div className="an2-stat-val">{cs?.brands_with_plan || 0}/{cs?.total_brands || 0}</div>
+                <div className="an2-stat-lbl">Brand đã có plan</div>
+                <div className="an2-stat-sub">{cs ? fmtPct((cs.brands_with_plan / Math.max(1, cs.total_brands)) * 100, 0) + ' coverage' : ''}</div>
+              </div>
+              <div className={`an2-card ${cs && cs.brands_without_plan > 0 ? 'err' : 'ok'}`}>
+                <div className="an2-stat-val">{cs?.brands_without_plan || 0}</div>
+                <div className="an2-stat-lbl">Brand chưa nhập plan</div>
+              </div>
+              <div className="an2-card">
+                <div className="an2-stat-val">{fmtPct(cs?.avg_fill_pct, 0)}</div>
+                <div className="an2-stat-lbl">% field plan fill TB</div>
+                <div style={{ marginTop: 8 }}>{progressBar(cs?.avg_fill_pct || 0)}</div>
+              </div>
+              <div className="an2-card">
+                <div className="an2-stat-val">{coverage?.plans.filter(p => p.has_plan && p.overall_pct !== null && p.overall_pct < 50).length || 0}</div>
+                <div className="an2-stat-lbl">Plan &lt; 50% fill</div>
+              </div>
             </div>
-            <div className="an-card">
-              <div className="an-card-val">{fmtPct(cs?.avg_fill_pct, 0)}</div>
-              <div className="an-card-lbl">% field plan fill TB</div>
-              <div style={{ marginTop: 8 }}>{progressBar(cs?.avg_fill_pct || 0)}</div>
-            </div>
-            <div className="an-card">
-              <div className="an-card-val">{coverage?.plans.filter(p => p.has_plan && p.overall_pct !== null && p.overall_pct < 50).length || 0}</div>
-              <div className="an-card-lbl">Plan &lt; 50% fill</div>
-            </div>
-          </div>
-          <div className="an-block">
-            <div className="matrix-wrap">
-              <table className="matrix-tbl">
+            <div className="an2-table-wrap">
+              <table className="an2-tbl">
                 <thead>
                   <tr>
                     <th style={{ textAlign: 'left' }}>Brand</th>
@@ -512,69 +500,72 @@ export default function AnalyticsPage() {
                 </thead>
                 <tbody>
                   {(coverage?.plans || []).length === 0 ? (
-                    <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>—</td></tr>
+                    <tr><td colSpan={5} className="an2-empty">—</td></tr>
                   ) : coverage!.plans.map(p => (
                     <tr key={p.brand_name}>
-                      <td>{p.has_plan ? <span className="plan-badge plan-yes">Có</span> : <span className="plan-badge plan-no">Chưa</span>} {p.brand_name}</td>
+                      <td className="left">
+                        <span className={`an2-pbadge ${p.has_plan ? 'yes' : 'no'}`}>{p.has_plan ? 'Có' : 'Chưa'}</span>
+                        {p.brand_name}
+                      </td>
                       <td>
                         {p.shopee_active ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                            <span className={pctClass(p.shopee_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.shopee_pct, 0)}</span>
-                            <div style={{ width: 70 }}>{progressBar(p.shopee_pct ?? 0, 6)}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                            <span className={pctClass(p.shopee_pct)} style={{ minWidth: 36, fontSize: '.78rem' }}>{fmtPct(p.shopee_pct, 0)}</span>
+                            <div style={{ width: 70 }}>{progressBar(p.shopee_pct ?? 0)}</div>
                           </div>
-                        ) : (
-                          <span style={{ fontStyle: 'italic', color: 'var(--faint)', fontSize: '.78rem' }}>Không chạy</span>
-                        )}
+                        ) : <span className="muted" style={{ fontStyle: 'italic' }}>Không chạy</span>}
                       </td>
                       <td>
                         {p.tiktok_active ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                            <span className={pctClass(p.tiktok_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.tiktok_pct, 0)}</span>
-                            <div style={{ width: 70 }}>{progressBar(p.tiktok_pct ?? 0, 6)}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                            <span className={pctClass(p.tiktok_pct)} style={{ minWidth: 36, fontSize: '.78rem' }}>{fmtPct(p.tiktok_pct, 0)}</span>
+                            <div style={{ width: 70 }}>{progressBar(p.tiktok_pct ?? 0)}</div>
                           </div>
-                        ) : (
-                          <span style={{ fontStyle: 'italic', color: 'var(--faint)', fontSize: '.78rem' }}>Không chạy</span>
-                        )}
+                        ) : <span className="muted" style={{ fontStyle: 'italic' }}>Không chạy</span>}
                       </td>
-                      <td style={{ textAlign: 'left', fontSize: '.74rem', color: 'var(--muted)' }}>
+                      <td className="left muted" style={{ fontSize: '.74rem' }}>
                         {p.missing_keys.length === 0
-                          ? <span style={{ color: 'var(--success)' }}>—</span>
+                          ? <span className="an2-pct-good">—</span>
                           : (p.missing_keys.slice(0, 4).join(', ') + (p.missing_keys.length > 4 ? `, +${p.missing_keys.length - 4}` : ''))}
                       </td>
                       <td>
-                        <Link href={`/hub/report?brand=${encodeURIComponent(p.brand_name)}&month=${month}&year=${year}&openPlan=1`} style={{ fontSize: '.78rem', color: 'var(--blue)', fontWeight: 600 }}>→ Set plan</Link>
+                        <Link href={`/hub/report?brand=${encodeURIComponent(p.brand_name)}&month=${month}&year=${year}&openPlan=1`} className="an2-link">→ Set plan</Link>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
 
-          {/* SECTION B — REPORT COMPLETENESS */}
-          <div className="an-sec"><h2>B — Report Completeness</h2><p>Heatmap tuần, missing reports, độ trễ</p></div>
-          <div className="an-cards">
-            <div className="an-card">
-              <div className="an-card-val">{cs?.total_actual_reports || 0}/{cs?.total_expected_reports || 0}</div>
-              <div className="an-card-lbl">Reports nộp</div>
-              <div className="an-card-sub">{cs && cs.total_expected_reports > 0 ? fmtPct((cs.total_actual_reports / cs.total_expected_reports) * 100, 0) : '—'}</div>
+            {/* SECTION C — Report Completeness */}
+            <div className="an2-sec">
+              <span className="an2-sec-letter">C.</span>
+              <div className="an2-sec-text">
+                <h2>Report Completeness</h2>
+                <p>Heatmap tuần, missing reports, độ trễ</p>
+              </div>
             </div>
-            <div className={`an-card ${cs && cs.missing_reports > 0 ? 'err' : 'ok'}`}>
-              <div className="an-card-val">{cs?.missing_reports || 0}</div>
-              <div className="an-card-lbl">Reports missing</div>
+            <div className="an2-statgrid">
+              <div className="an2-card">
+                <div className="an2-stat-val">{cs?.total_actual_reports || 0}/{cs?.total_expected_reports || 0}</div>
+                <div className="an2-stat-lbl">Reports nộp</div>
+                <div className="an2-stat-sub">{cs && cs.total_expected_reports > 0 ? fmtPct((cs.total_actual_reports / cs.total_expected_reports) * 100, 0) : '—'}</div>
+              </div>
+              <div className={`an2-card ${cs && cs.missing_reports > 0 ? 'err' : 'ok'}`}>
+                <div className="an2-stat-val">{cs?.missing_reports || 0}</div>
+                <div className="an2-stat-lbl">Reports missing</div>
+              </div>
+              <div className="an2-card">
+                <div className="an2-stat-val">{fmtLateHours(cs?.avg_late_hours)}</div>
+                <div className="an2-stat-lbl">Trễ trung bình</div>
+              </div>
+              <div className="an2-card">
+                <div className="an2-stat-val">{cs?.expected_weeks || 0}</div>
+                <div className="an2-stat-lbl">Tuần expected</div>
+              </div>
             </div>
-            <div className="an-card">
-              <div className="an-card-val">{fmtLateHours(cs?.avg_late_hours)}</div>
-              <div className="an-card-lbl">Trễ trung bình (sau deadline)</div>
-            </div>
-            <div className="an-card">
-              <div className="an-card-val">{cs?.expected_weeks || 0}</div>
-              <div className="an-card-lbl">Tuần expected</div>
-            </div>
-          </div>
-          <div className="an-block">
-            <div className="matrix-wrap">
-              <table className="matrix-tbl">
+            <div className="an2-table-wrap">
+              <table className="an2-tbl">
                 <thead>
                   <tr>
                     <th style={{ textAlign: 'left' }}>Brand</th>
@@ -584,7 +575,7 @@ export default function AnalyticsPage() {
                 </thead>
                 <tbody>
                   {(coverage?.reports || []).length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>—</td></tr>
+                    <tr><td colSpan={7} className="an2-empty">—</td></tr>
                   ) : coverage!.reports.map(r => {
                     const cells: { num: number; ok: boolean }[] = [
                       { num: 1, ok: r.weeks.w1 }, { num: 2, ok: r.weeks.w2 },
@@ -593,48 +584,43 @@ export default function AnalyticsPage() {
                     return (
                       <Fragment key={r.brand_name}>
                         <tr>
-                          <td>{r.brand_name}</td>
+                          <td className="left">{r.brand_name}</td>
                           {cells.map(c => (
                             <td key={c.num}>
                               <button
+                                className={`an2-heatcell ${c.ok ? 'ok' : 'bad'}`}
                                 onClick={() => setExpandedReport(prev => prev && prev.brand === r.brand_name && prev.week === c.num ? null : { brand: r.brand_name, week: c.num })}
-                                style={{
-                                  width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer',
-                                  background: c.ok ? '#10B981' : '#fee2e2',
-                                  color: c.ok ? '#fff' : '#991b1b',
-                                  fontSize: '.85rem', fontWeight: 700,
-                                }}
                                 title={c.ok ? 'Đã có report' : 'Missing'}
                               >{c.ok ? '✓' : '✗'}</button>
                             </td>
                           ))}
-                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem' }}>
-                            <span className={lateClass(r.late_hours_avg)}>{fmtLateHours(r.late_hours_avg)}</span>
-                          </td>
+                          <td><span className={lateClass(r.late_hours_avg)}>{fmtLateHours(r.late_hours_avg)}</span></td>
                         </tr>
                         {expandedReport && expandedReport.brand === r.brand_name && (
                           <tr>
-                            <td colSpan={7} style={{ background: 'var(--paper)', padding: 12, textAlign: 'left' }}>
-                              <strong style={{ fontSize: '.82rem' }}>W{expandedReport.week} — {r.brand_name}</strong>
-                              {(() => {
-                                const entries = r.detail[expandedReport.week] || []
-                                if (!entries.length) return <div style={{ color: 'var(--faint)', fontStyle: 'italic', fontSize: '.8rem', marginTop: 6 }}>Chưa có report tuần này.</div>
-                                return (
-                                  <table className="metrics-tbl" style={{ background: '#fff', borderRadius: 8, marginTop: 6 }}>
-                                    <thead><tr><th style={{ textAlign: 'left' }}>User</th><th>Created</th><th>Week end</th><th>Có data?</th></tr></thead>
-                                    <tbody>
-                                      {entries.map((e, i) => (
-                                        <tr key={i}>
-                                          <td>{e.username}</td>
-                                          <td>{fmtDate(e.created_at)}</td>
-                                          <td>{fmtDate(e.week_end)}</td>
-                                          <td>{e.has_data ? <span className="pct-good">Có</span> : <span className="pct-bad">Trống</span>}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                )
-                              })()}
+                            <td colSpan={7} className="left">
+                              <div className="an2-detail">
+                                <strong>W{expandedReport.week} — {r.brand_name}</strong>
+                                {(() => {
+                                  const entries = r.detail[expandedReport.week] || []
+                                  if (!entries.length) return <div style={{ color: '#64748b', fontStyle: 'italic', marginTop: 6 }}>Chưa có report tuần này.</div>
+                                  return (
+                                    <table className="an2-tbl" style={{ marginTop: 10 }}>
+                                      <thead><tr><th style={{ textAlign: 'left' }}>User</th><th>Created</th><th>Week end</th><th>Có data?</th></tr></thead>
+                                      <tbody>
+                                        {entries.map((e, i) => (
+                                          <tr key={i}>
+                                            <td className="left">{e.username}</td>
+                                            <td>{fmtDate(e.created_at)}</td>
+                                            <td>{fmtDate(e.week_end)}</td>
+                                            <td>{e.has_data ? <span className="an2-pct-good">Có</span> : <span className="an2-pct-bad">Trống</span>}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  )
+                                })()}
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -644,13 +630,17 @@ export default function AnalyticsPage() {
                 </tbody>
               </table>
             </div>
-          </div>
 
-          {/* SECTION C — DATA CONSISTENCY */}
-          <div className="an-sec"><h2>C — Data Consistency</h2><p>Row weekly_reports có chi phí + revenue nhưng thiếu engagement data</p></div>
-          <div className="an-block">
-            <div className="matrix-wrap">
-              <table className="metrics-tbl">
+            {/* SECTION D — Data Consistency */}
+            <div className="an2-sec">
+              <span className="an2-sec-letter">D.</span>
+              <div className="an2-sec-text">
+                <h2>Data Consistency</h2>
+                <p>Row weekly_reports có chi phí + revenue nhưng thiếu engagement data</p>
+              </div>
+            </div>
+            <div className="an2-table-wrap">
+              <table className="an2-tbl">
                 <thead>
                   <tr>
                     <th style={{ textAlign: 'left' }}>Brand</th>
@@ -663,93 +653,101 @@ export default function AnalyticsPage() {
                 </thead>
                 <tbody>
                   {(coverage?.consistency || []).length === 0 ? (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--success)', padding: 20 }}>Không có row inconsistent</td></tr>
+                    <tr><td colSpan={6} className="an2-empty an2-pct-good">Không có row inconsistent</td></tr>
                   ) : coverage!.consistency.map((c, i) => (
                     <tr key={i}>
-                      <td>{c.brand_name}</td>
-                      <td style={{ textAlign: 'left' }}>W{c.week_num}</td>
-                      <td style={{ textAlign: 'left' }}>{c.username}</td>
-                      <td style={{ textAlign: 'left' }}>{c.group}</td>
-                      <td style={{ textAlign: 'left', color: 'var(--error)', fontSize: '.78rem' }}>{c.issues.join(', ')}</td>
+                      <td className="left">{c.brand_name}</td>
+                      <td className="left">W{c.week_num}</td>
+                      <td className="left">{c.username}</td>
+                      <td className="left">{c.group}</td>
+                      <td className="left an2-pct-bad" style={{ fontSize: '.78rem' }}>{c.issues.join(', ')}</td>
                       <td>
-                        <Link href={`/hub/report?brand=${encodeURIComponent(c.brand_name)}`} style={{ fontSize: '.78rem', color: 'var(--blue)', fontWeight: 600 }}>→ Sửa</Link>
+                        <Link href={`/hub/report?brand=${encodeURIComponent(c.brand_name)}`} className="an2-link">→ Sửa</Link>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
 
-          {/* SECTION D — REPORT TIMING */}
-          <div className="an-sec"><h2>D — Report Timing</h2><p>Cadence theo user và theo ngày trong tháng</p></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, marginBottom: 28 }}>
-            <div className="an-block" style={{ padding: 0 }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1.5px solid var(--border)' }}>
-                <strong style={{ fontSize: '.88rem' }}>Per-user timing</strong>
-              </div>
-              <div className="matrix-wrap">
-                <table className="timing-tbl">
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left' }}>User</th>
-                      <th>Reports</th>
-                      <th>Trễ TB</th>
-                      <th>% On-time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(coverage?.timing || []).length === 0 ? (
-                      <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>—</td></tr>
-                    ) : coverage!.timing.map((t, i) => {
-                      const isLate = t.avg_delay_hours > 0
-                      return (
-                        <tr key={t.username} style={{ background: i === 0 && isLate ? '#fff7ed' : undefined }}>
-                          <td>{t.username}{i === 0 && isLate ? <span style={{ marginLeft: 6, fontSize: '.7rem', color: 'var(--error)', fontWeight: 700 }}>● Slowest</span> : null}</td>
-                          <td>{t.count}</td>
-                          <td><span className={lateClass(t.avg_delay_hours)}>{fmtLateHours(t.avg_delay_hours)}</span></td>
-                          <td><span className={pctClass(t.on_time_pct)}>{fmtPct(t.on_time_pct, 0)}</span></td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+            {/* SECTION E — Report Timing */}
+            <div className="an2-sec">
+              <span className="an2-sec-letter">E.</span>
+              <div className="an2-sec-text">
+                <h2>Report Timing</h2>
+                <p>Cadence theo user và theo ngày trong tháng</p>
               </div>
             </div>
-            <div className="an-block" style={{ padding: 16 }}>
-              <strong style={{ fontSize: '.88rem' }}>Daily report cadence</strong>
-              <div style={{ position: 'relative', height: 240, marginTop: 10 }}>
-                <canvas ref={cadenceRef} />
+            <div className="an2-twocol">
+              <div className="an2-card" style={{ padding: 0 }}>
+                <div className="an2-block-hdr">Per-user timing</div>
+                <div className="an2-table-wrap" style={{ border: 0 }}>
+                  <table className="an2-tbl">
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left' }}>User</th>
+                        <th>Reports</th>
+                        <th>Trễ TB</th>
+                        <th>% On-time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(coverage?.timing || []).length === 0 ? (
+                        <tr><td colSpan={4} className="an2-empty">—</td></tr>
+                      ) : coverage!.timing.map((t, i) => {
+                        const isLate = t.avg_delay_hours > 0
+                        return (
+                          <tr key={t.username} style={{ background: i === 0 && isLate ? 'rgba(245,158,11,0.08)' : undefined }}>
+                            <td className="left">{t.username}{i === 0 && isLate ? <span style={{ marginLeft: 6, fontSize: '.7rem', color: '#fbbf24', fontWeight: 700 }}>● Slowest</span> : null}</td>
+                            <td>{t.count}</td>
+                            <td><span className={lateClass(t.avg_delay_hours)}>{fmtLateHours(t.avg_delay_hours)}</span></td>
+                            <td><span className={pctClass(t.on_time_pct)}>{fmtPct(t.on_time_pct, 0)}</span></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="an2-card" style={{ padding: 0 }}>
+                <div className="an2-block-hdr">Daily report cadence</div>
+                <div className="an2-chart-wrap">
+                  <canvas ref={cadenceRef} />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* COMPARISON TABLE */}
-          <div className="an-sec"><h2>Brand Comparison</h2><p>Click cột header để sort. Default: Brand asc.</p></div>
-          <div className="an-block">
-            <div className="matrix-wrap">
-              <table className="metrics-tbl">
+            {/* SECTION F — Brand Comparison */}
+            <div className="an2-sec">
+              <span className="an2-sec-letter">F.</span>
+              <div className="an2-sec-text">
+                <h2>Brand Comparison</h2>
+                <p>Click cột header để sort. Default: Brand asc.</p>
+              </div>
+            </div>
+            <div className="an2-table-wrap">
+              <table className="an2-tbl">
                 <thead>
                   <tr>
-                    <th onClick={() => onSort('brand')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'left' }}>Brand <ArrowIcon dir={arrowFor('brand')} /></th>
-                    <th onClick={() => onSort('plan_pct')} style={{ cursor: 'pointer', userSelect: 'none' }}>Plan % <ArrowIcon dir={arrowFor('plan_pct')} /></th>
-                    <th onClick={() => onSort('report_pct')} style={{ cursor: 'pointer', userSelect: 'none' }}>Report % <ArrowIcon dir={arrowFor('report_pct')} /></th>
-                    <th onClick={() => onSort('gmv_shopee')} style={{ cursor: 'pointer', userSelect: 'none' }}>GMV Shopee <ArrowIcon dir={arrowFor('gmv_shopee')} /></th>
-                    <th onClick={() => onSort('gmv_tiktok')} style={{ cursor: 'pointer', userSelect: 'none' }}>GMV TikTok <ArrowIcon dir={arrowFor('gmv_tiktok')} /></th>
-                    <th onClick={() => onSort('roas')} style={{ cursor: 'pointer', userSelect: 'none' }}>ROAS <ArrowIcon dir={arrowFor('roas')} /></th>
-                    <th onClick={() => onSort('last_reported')} style={{ cursor: 'pointer', userSelect: 'none' }}>Last reported <ArrowIcon dir={arrowFor('last_reported')} /></th>
+                    <th className="sortable" onClick={() => onSort('brand')} style={{ textAlign: 'left' }}>Brand <ArrowIcon dir={arrowFor('brand')} /></th>
+                    <th className="sortable" onClick={() => onSort('plan_pct')}>Plan % <ArrowIcon dir={arrowFor('plan_pct')} /></th>
+                    <th className="sortable" onClick={() => onSort('report_pct')}>Report % <ArrowIcon dir={arrowFor('report_pct')} /></th>
+                    <th className="sortable" onClick={() => onSort('gmv_shopee')}>GMV Shopee <ArrowIcon dir={arrowFor('gmv_shopee')} /></th>
+                    <th className="sortable" onClick={() => onSort('gmv_tiktok')}>GMV TikTok <ArrowIcon dir={arrowFor('gmv_tiktok')} /></th>
+                    <th className="sortable" onClick={() => onSort('roas')}>ROAS <ArrowIcon dir={arrowFor('roas')} /></th>
+                    <th className="sortable" onClick={() => onSort('last_reported')}>Last reported <ArrowIcon dir={arrowFor('last_reported')} /></th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedCompareRows.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>Không có dữ liệu</td></tr>
+                    <tr><td colSpan={7} className="an2-empty">Không có dữ liệu</td></tr>
                   ) : sortedCompareRows.map(r => (
                     <tr key={r.brand}>
-                      <td>{r.brand}</td>
+                      <td className="left">{r.brand}</td>
                       <td><span className={pctClass(r.plan_pct)}>{fmtPct(r.plan_pct, 0)}</span></td>
                       <td><span className={pctClass(r.report_pct)}>{fmtPct(r.report_pct, 0)}</span></td>
-                      <td>{r.gmv_shopee === null ? <span style={{ color: 'var(--faint)' }}>—</span> : fmtNum(r.gmv_shopee)}</td>
-                      <td>{r.gmv_tiktok === null ? <span style={{ color: 'var(--faint)' }}>—</span> : fmtNum(r.gmv_tiktok)}</td>
+                      <td>{r.gmv_shopee === null ? <span className="muted">—</span> : fmtNum(r.gmv_shopee)}</td>
+                      <td>{r.gmv_tiktok === null ? <span className="muted">—</span> : fmtNum(r.gmv_tiktok)}</td>
                       <td>{r.roas > 0 ? r.roas.toFixed(2) + 'x' : '—'}</td>
                       <td>{fmtDate(r.last_reported)}</td>
                     </tr>
@@ -757,9 +755,9 @@ export default function AnalyticsPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </div>
+    </InternalLayout>
   )
 }
