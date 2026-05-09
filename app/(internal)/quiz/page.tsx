@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { getSession, SessionUser } from '@/lib/auth'
+import { Icon } from '@/lib/icons'
 import '@/app/(internal)/dashboard/dashboard.css'
 
 // ── D1 Benchmark Data ──
@@ -137,13 +138,13 @@ export default function QuizPage() {
             <p style={{ color: 'var(--muted)', marginBottom: 32 }}>Chọn dạng bài để bắt đầu kiểm tra kiến thức.</p>
             <div style={{ display: 'grid', gap: 16 }}>
               <div className="rc" style={{ cursor: 'pointer' }} onClick={() => setScreen('d1-setup')}>
-                <div style={{ fontSize: '2rem', marginBottom: 12 }}>⚡</div>
+                <div style={{ marginBottom: 12, color: '#fbbf24', display: 'inline-flex' }}>{Icon.zap(28)}</div>
                 <div style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: '1.1rem', marginBottom: 6 }}>Dạng 1 — Benchmark Ads Thị trường</div>
                 <div style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: 14 }}>Kiểm tra benchmark thực chiến — CPA/CPC/CPM/CTR/CR theo từng platform. Câu sai lặp lại đến khi thuộc.</div>
                 <span style={{ display: 'inline-block', padding: '.3rem .8rem', borderRadius: 20, background: 'rgba(16,185,129,.1)', color: '#059669', border: '1px solid rgba(16,185,129,.25)', fontSize: '.75rem', fontWeight: 700 }}>Sẵn sàng · ~{D1_DATA.length * 5} câu</span>
               </div>
               <div className="rc" style={{ cursor: 'pointer' }} onClick={() => { setD2Idx(0); setD2Ans(new Array(D2_DATA.length).fill(-1)); setSaved(false); setScreen('d2-quiz') }}>
-                <div style={{ fontSize: '2rem', marginBottom: 12 }}>📊</div>
+                <div style={{ marginBottom: 12, color: '#06b6d4', display: 'inline-flex' }}>{Icon.barChart(28)}</div>
                 <div style={{ fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: '1.1rem', marginBottom: 6 }}>Dạng 2 — Chỉ số Ads</div>
                 <div style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: 14 }}>18 chỉ số — định nghĩa, công thức, yếu tố tác động. {D2_DATA.length} câu trắc nghiệm 4 đáp án.</div>
                 <span style={{ display: 'inline-block', padding: '.3rem .8rem', borderRadius: 20, background: 'var(--border2)', color: 'var(--muted)', border: '1px solid var(--border)', fontSize: '.75rem', fontWeight: 700 }}>Sẵn sàng · {D2_DATA.length} câu</span>
@@ -310,7 +311,7 @@ function D1Quiz({ user, onDone, onBack }: { user: SessionUser; onDone: (sc: numb
       <div>
         <button className="btn-s" onClick={onBack} style={{ marginBottom: 20 }}>← Quay lại Hub</button>
         <div className="rc">
-          <h2 style={{ fontFamily: 'var(--f-display)', fontWeight: 800, marginBottom: 20 }}>⚡ Dạng 1 — Benchmark Ads</h2>
+          <h2 style={{ fontFamily: 'var(--f-display)', fontWeight: 800, marginBottom: 20, display: 'inline-flex', alignItems: 'center', gap: 10 }}><span style={{ display: 'inline-flex', color: '#fbbf24' }}>{Icon.zap(22)}</span>Dạng 1 — Benchmark Ads</h2>
           <div style={{ marginBottom: 16 }}>
             <label className="rl">Platform</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>

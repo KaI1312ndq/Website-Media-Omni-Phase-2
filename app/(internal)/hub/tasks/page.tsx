@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { getSession, SessionUser, initials } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
+import { Icon } from '@/lib/icons'
 import '@/app/(internal)/dashboard/dashboard.css'
 
 type Task = {
@@ -135,10 +136,10 @@ export default function TasksPage() {
       )}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap', paddingTop: 16 }}>
-        <button className={`btn-${tab === 'myday' ? 'p' : 's'}`} onClick={() => setTab('myday')}>📅 My Day</button>
-        <button className={`btn-${tab === 'team' ? 'p' : 's'}`} onClick={() => setTab('team')}>👥 Team</button>
+        <button className={`btn-${tab === 'myday' ? 'p' : 's'}`} onClick={() => setTab('myday')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex' }}>{Icon.calendar(14)}</span>My Day</button>
+        <button className={`btn-${tab === 'team' ? 'p' : 's'}`} onClick={() => setTab('team')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex' }}>{Icon.users(14)}</span>Team</button>
         {(user?.role === 'admin' || user?.perms?.tasks_create) && (
-          <button className={`btn-${tab === 'create' ? 'p' : 's'}`} onClick={() => setTab('create')}>➕ Tạo task</button>
+          <button className={`btn-${tab === 'create' ? 'p' : 's'}`} onClick={() => setTab('create')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex' }}>{Icon.plus(14)}</span>Tạo task</button>
         )}
       </div>
 
@@ -163,7 +164,7 @@ export default function TasksPage() {
               </div>
               <div className="tl-body">
                 {loading ? <div className="t-loading">⏳ Đang tải...</div> : todayTasks.length === 0 ? (
-                  <div className="t-empty"><div className="t-empty-ico">📭</div><div className="t-empty-tt">Không có task nào</div><div className="t-empty-sb">Hôm nay chưa có task được assign cho bạn.</div></div>
+                  <div className="t-empty"><div className="t-empty-ico" style={{ display: 'inline-flex', color: '#475569' }}>{Icon.inbox(36)}</div><div className="t-empty-tt">Không có task nào</div><div className="t-empty-sb">Hôm nay chưa có task được assign cho bạn.</div></div>
                 ) : (() => {
                   const hours = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
                   const noTime = todayTasks.filter(t => !t.time_start)

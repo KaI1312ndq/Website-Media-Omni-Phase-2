@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, SessionUser, initials, ROLE_DEFAULTS } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
+import { Icon } from '@/lib/icons'
 import '@/app/(internal)/dashboard/dashboard.css'
 
 type UserRow = { id: string; username: string; name: string; role: string; status: string; perms: Record<string, number> }
@@ -10,22 +11,22 @@ type BrandAssign = { id: string; brand_name: string; assigned_members: string; i
 
 const PERMS_DEF = [
   { section: 'Quiz & Learning', items: [
-    { key: 'quiz_view',  ico: '📝', name: 'Quiz Hub',      desc: 'Làm bài kiểm tra kiến thức' },
-    { key: 'quiz_score', ico: '📊', name: 'Xem điểm team', desc: 'Xem bảng điểm tất cả thành viên' },
+    { key: 'quiz_view',  ico: Icon.quiz(),    name: 'Quiz Hub',      desc: 'Làm bài kiểm tra kiến thức' },
+    { key: 'quiz_score', ico: Icon.score(),   name: 'Xem điểm team', desc: 'Xem bảng điểm tất cả thành viên' },
   ]},
   { section: 'Daily Tasks', items: [
-    { key: 'tasks_view',   ico: '📅', name: 'Xem task',  desc: 'Xem task được assign' },
-    { key: 'tasks_create', ico: '➕', name: 'Tạo task',  desc: 'Tạo và assign task cho người khác' },
+    { key: 'tasks_view',   ico: Icon.calendar(), name: 'Xem task', desc: 'Xem task được assign' },
+    { key: 'tasks_create', ico: Icon.plus(),     name: 'Tạo task', desc: 'Tạo và assign task cho người khác' },
   ]},
   { section: 'Blog & Content', items: [
-    { key: 'blog_view',    ico: '📖', name: 'Xem blog',  desc: 'Đọc bài viết nội bộ' },
-    { key: 'blog_write',   ico: '✏️', name: 'Viết bài',  desc: 'Tạo và chỉnh sửa bài viết' },
-    { key: 'blog_publish', ico: '🚀', name: 'Publish',   desc: 'Xuất bản bài viết công khai' },
-    { key: 'blog_delete',  ico: '🗑️', name: 'Xóa bài',   desc: 'Xóa bài viết đã đăng' },
+    { key: 'blog_view',    ico: Icon.book(),  name: 'Xem blog', desc: 'Đọc bài viết nội bộ' },
+    { key: 'blog_write',   ico: Icon.edit(),  name: 'Viết bài', desc: 'Tạo và chỉnh sửa bài viết' },
+    { key: 'blog_publish', ico: Icon.send(),  name: 'Publish',  desc: 'Xuất bản bài viết công khai' },
+    { key: 'blog_delete',  ico: Icon.trash(), name: 'Xóa bài',  desc: 'Xóa bài viết đã đăng' },
   ]},
   { section: 'Quản trị', items: [
-    { key: 'admin_users',  ico: '👥', name: 'Quản lý tài khoản', desc: 'Tạo, sửa, phân quyền user', locked: true },
-    { key: 'admin_scores', ico: '📈', name: 'Analytics',         desc: 'Thống kê toàn team',         locked: true },
+    { key: 'admin_users',  ico: Icon.users(),    name: 'Quản lý tài khoản', desc: 'Tạo, sửa, phân quyền user', locked: true },
+    { key: 'admin_scores', ico: Icon.trending(), name: 'Analytics',         desc: 'Thống kê toàn team',         locked: true },
   ]},
 ]
 
@@ -310,7 +311,7 @@ export default function UsersPage() {
                           onClick={() => !('locked' in p && p.locked) && setCurPerms(cp => ({ ...cp, [p.key]: cp[p.key] ? 0 : 1 }))}>
                           <div className="perm-checkbox" />
                           <div style={{ flex: 1 }}>
-                            <div className="perm-name">{p.ico} {p.name}</div>
+                            <div className="perm-name" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: '#93c5fd' }}>{p.ico}</span>{p.name}</div>
                             <div className="perm-desc">{p.desc}</div>
                           </div>
                         </div>
@@ -331,7 +332,7 @@ export default function UsersPage() {
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                       <button type="button" className="ud-btn" onClick={selectAllBrands}>Tất cả</button>
                       <button type="button" className="ud-btn" onClick={clearAllBrands}>Bỏ chọn</button>
-                      <button type="button" className="ud-btn ud-btn-primary" onClick={saveBrandAssign} disabled={savingBrands}>{savingBrands ? 'Đang lưu...' : '💾 Lưu phân quyền brand'}</button>
+                      <button type="button" className="ud-btn ud-btn-primary" onClick={saveBrandAssign} disabled={savingBrands} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{savingBrands ? 'Đang lưu...' : <><span style={{ display: 'inline-flex' }}>{Icon.save(14)}</span>Lưu phân quyền brand</>}</button>
                     </div>
 
                     {brandsLoading ? (
@@ -365,7 +366,7 @@ export default function UsersPage() {
                 )}
 
                 <div className="pass-section">
-                  <h4>🔑 Đặt lại mật khẩu</h4>
+                  <h4 style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: '#fbbf24' }}>{Icon.key(16)}</span>Đặt lại mật khẩu</h4>
                   <div className="pass-grid">
                     <div><label className="fp-label">Mật khẩu mới</label><input className="fp-input" type="password" autoComplete="new-password" data-lpignore="true" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" /></div>
                     <div><label className="fp-label">Xác nhận</label><input className="fp-input" type="password" autoComplete="new-password" data-lpignore="true" value={cfmPass} onChange={e => setCfmPass(e.target.value)} placeholder="Nhập lại mật khẩu" /></div>
@@ -375,7 +376,7 @@ export default function UsersPage() {
 
                 <div className="save-bar">
                   <span>Nhấn lưu để áp dụng thay đổi quyền</span>
-                  <button className="ud-btn ud-btn-primary" onClick={savePerms} disabled={saving}>{saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}</button>
+                  <button className="ud-btn ud-btn-primary" onClick={savePerms} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{saving ? 'Đang lưu...' : <><span style={{ display: 'inline-flex' }}>{Icon.save(14)}</span>Lưu thay đổi</>}</button>
                 </div>
               </div>
             )}
