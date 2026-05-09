@@ -128,6 +128,22 @@ const BRAND_LIST: { name: string; category: Cat }[] = [
   { name: 'ORGALIFE', category: 'fmcg' },
 ]
 
+/* ── Team Members (13 users from Supabase users) ── */
+const TEAM_LIST: { name: string; role: string; isLead?: boolean; order: number }[] = [
+  { name: 'Nguyễn Đức Quảng',       role: 'Team Lead — Performance Marketing', isLead: true, order: 1 },
+  { name: 'Nguyễn Trần Khánh Linh', role: 'Performance Marketing Manager',     order: 2 },
+  { name: 'Chu Khánh Duy',           role: 'Performance Marketing Manager',     order: 3 },
+  { name: 'Thiều Anh Đức',           role: 'Performance Marketing Manager',     order: 4 },
+  { name: 'Đoàn Khánh Linh',         role: 'Performance Marketing Specialist',  order: 5 },
+  { name: 'Đỗ Phương Thảo',          role: 'Performance Marketing Specialist',  order: 6 },
+  { name: 'Đỗ Thị Hằng',             role: 'Performance Marketing Specialist',  order: 7 },
+  { name: 'Đặng Hữu Trung',          role: 'Performance Marketing Specialist',  order: 8 },
+  { name: 'Phạm Quyền Anh',          role: 'Performance Marketing Specialist',  order: 9 },
+  { name: 'Nguyễn Minh Khánh',       role: 'Performance Marketing Specialist',  order: 10 },
+  { name: 'Hoàng Bảo Ngọc',          role: 'Performance Marketing Specialist',  order: 11 },
+  { name: 'Nguyễn Mai Phương',       role: 'Performance Marketing Specialist',  order: 12 },
+]
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -161,7 +177,23 @@ async function main() {
   await tx.commit()
   console.log(`[seed-sanity] ✓ Upserted ${BRAND_LIST.length} brands`)
 
-  console.log(`\n[seed-sanity] Done. Upserted 1 siteSettings, ${BRAND_LIST.length} brands.`)
+  // 3) Upsert team members
+  const teamTx = client.transaction()
+  TEAM_LIST.forEach(m => {
+    const _id = `team-${slugify(m.name)}`
+    teamTx.createOrReplace({
+      _id,
+      _type: 'teamMember',
+      name: m.name,
+      role: m.role,
+      isLead: m.isLead || false,
+      order: m.order,
+    })
+  })
+  await teamTx.commit()
+  console.log(`[seed-sanity] ✓ Upserted ${TEAM_LIST.length} team members`)
+
+  console.log(`\n[seed-sanity] Done. Upserted 1 siteSettings, ${BRAND_LIST.length} brands, ${TEAM_LIST.length} team members.`)
 }
 
 main().catch(err => {
