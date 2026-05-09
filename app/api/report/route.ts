@@ -25,32 +25,29 @@ export async function POST(req: NextRequest) {
   const { action } = body
 
   if (action === 'analyze') {
-    // Call Claude API for AI analysis
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
-      // Fallback: return raw formatted data
       return NextResponse.json({ analysis: buildFallbackReport(body) })
     }
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'gpt-4o-mini',
           max_tokens: 1500,
-          messages: [{
-            role: 'user',
-            content: buildPrompt(body),
-          }],
+          messages: [
+            { role: 'system', content: 'Bạn là chuyên gia phân tích performance marketing ecommerce tại Việt Nam (TikTok Shop, Shopee). Viết báo cáo ngắn gọn, chuyên nghiệp bằng tiếng Việt.' },
+            { role: 'user', content: buildPrompt(body) },
+          ],
         }),
       })
       const j = await res.json()
-      const analysis = j.content?.[0]?.text || buildFallbackReport(body)
+      const analysis = j.choices?.[0]?.message?.content || buildFallbackReport(body)
       return NextResponse.json({ analysis })
     } catch {
       return NextResponse.json({ analysis: buildFallbackReport(body) })
