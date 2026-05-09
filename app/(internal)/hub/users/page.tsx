@@ -173,7 +173,7 @@ export default function UsersPage() {
 
         <div className="um-layout">
           <div className="um-left">
-            <div className="um-search-wrap"><input className="um-search" placeholder="Tìm thành viên..." value={search} onChange={e => setSearch(e.target.value)} /></div>
+            <div className="um-search-wrap"><input className="um-search" type="search" name="member-search" autoComplete="off" placeholder="Tìm thành viên..." value={search} onChange={e => setSearch(e.target.value)} /></div>
             <div className="um-filter-row">
               {['ALL','admin','member','upbase'].map(r => (
                 <button key={r} className={`umf${filter === r ? ' active' : ''}`} onClick={() => setFilter(r)}>{r === 'ALL' ? 'Tất cả' : r.charAt(0).toUpperCase() + r.slice(1)}</button>

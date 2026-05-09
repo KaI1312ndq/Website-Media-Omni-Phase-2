@@ -103,10 +103,11 @@ export async function POST(req: NextRequest) {
     console.error('[avatar] Sanity sync error:', e)
   }
 
-  // Revalidate homepage so Team section shows new avatar
-  if (syncedToSanity) {
-    try { revalidatePath('/') } catch {}
-  }
+  // Revalidate homepage để Team section show ảnh mới (revalidate luôn cả khi không sync Sanity, vì có thể HomeClient sẽ đọc từ users.avatar_url ở phase sau)
+  try {
+    revalidatePath('/')
+    revalidatePath('/dashboard')
+  } catch {}
 
   // Refresh session cookie với avatar_url mới
   try {

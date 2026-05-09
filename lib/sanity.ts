@@ -9,7 +9,8 @@ export const client = createClient({
   projectId,
   dataset,
   apiVersion: '2024-01-01',
-  useCdn: process.env.NODE_ENV === 'production',
+  // useCdn:false → fresh data sau avatar/CMS write. Next.js ISR (revalidate=3600) vẫn cache layer trước.
+  useCdn: false,
 })
 
 const builder = imageUrlBuilder(client)
