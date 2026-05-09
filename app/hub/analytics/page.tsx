@@ -1,16 +1,15 @@
 'use client'
 
-import { Fragment, useEffect, useRef, useState, useCallback } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { Skeleton } from '@/components/Skeleton'
 
 /* ─── Types ─── */
-type Platform = 'all' | 'shopee' | 'tiktok'
-type Metric = 'gmv' | 'cp' | 'roas'
+type PlatformToggle = 'shopee' | 'tiktok' | 'both'
 
-interface BrandSummary {
+interface BrandRow {
   brand: string
   gmv: number
   cp: number
@@ -19,23 +18,53 @@ interface BrandSummary {
   planCp: number
   pctGmv: number | null
   pctCp: number | null
-  prevGmv: number
-  prevCp: number
-  prevRoas: number
   weeksReported: number
+  lastWeekEnd: string | null
 }
-interface Totals { gmv: number; cp: number; roas: number; activeBrands: number }
-interface SummaryResp { brands: BrandSummary[]; totals: Totals | null; prevTotals: Totals | null }
-interface TrendResp { months: string[]; series: Record<string, { gmv: number[]; cp: number[]; roas: number[] }> }
-interface WeeklyRow {
-  brand_name: string; week_num: number; month: number; year: number
-  s_cpc_doanh_so?: number; s_nd_gmv?: number; s_live_gmv?: number; t_pgm_doanh_so?: number; t_lgm_doanhthu?: number
-  s_cpc_chi_phi?: number; s_nd_chi_phi?: number; s_live_chi_phi?: number; t_pgm_chi_phi?: number
-  t_lgm_chi_phi?: number; t_con_chi_phi?: number; t_brd_chi_phi?: number
+interface PlatformTotals { gmv: number; cp: number; roas: number; activeBrands: number }
+interface SummaryResp {
+  shopee: BrandRow[]
+  tiktok: BrandRow[]
+  totals: { shopee: PlatformTotals | null; tiktok: PlatformTotals | null }
 }
-
-/* ─── Const ─── */
-const COLORS = ['#2563EB', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6']
+interface PlanRow {
+  brand_name: string
+  has_plan: boolean
+  shopee_pct: number
+  tiktok_pct: number
+  overall_pct: number
+  missing_keys: string[]
+}
+interface ReportDetailEntry { username: string; created_at: string; week_end: string | null; has_data: boolean }
+interface ReportRow {
+  brand_name: string
+  weeks: { w1: boolean; w2: boolean; w3: boolean; w4: boolean; w5: boolean }
+  weeks_count: number
+  late_days_avg: number | null
+  detail: Record<number, ReportDetailEntry[]>
+}
+interface ConsistencyRow { brand_name: string; week_num: number; username: string; group: string; issues: string[] }
+interface TimingRow { username: string; count: number; avg_delay_days: number; on_time_pct: number }
+interface DailyRow { date: string; count: number }
+interface CoverageSummary {
+  total_brands: number
+  brands_with_plan: number
+  brands_without_plan: number
+  avg_fill_pct: number
+  total_actual_reports: number
+  total_expected_reports: number
+  missing_reports: number
+  avg_delay_days: number | null
+  expected_weeks: number
+}
+interface CoverageResp {
+  plans: PlanRow[]
+  reports: ReportRow[]
+  consistency: ConsistencyRow[]
+  timing: TimingRow[]
+  daily_cadence: DailyRow[]
+  summary: CoverageSummary | null
+}
 
 /* ─── Utils ─── */
 function fmtNum(v: number | null | undefined): string {
@@ -50,26 +79,37 @@ function fmtPct(v: number | null | undefined, digits = 0): string {
   if (v === null || v === undefined || isNaN(Number(v))) return '—'
   return `${Number(v).toFixed(digits)}%`
 }
-function pctClass(p: number | null): string {
-  if (p === null || p === undefined) return ''
+function pctClass(p: number | null | undefined): string {
+  if (p === null || p === undefined) return 'pct-none'
   if (p >= 100) return 'pct-good'
   if (p >= 70) return 'pct-warn'
   return 'pct-bad'
 }
-function delta(cur: number, prev: number): { sign: '+' | '-' | '='; pct: number } {
-  if (!prev) return { sign: cur > 0 ? '+' : '=', pct: 0 }
-  const d = ((cur - prev) / prev) * 100
-  return { sign: d > 0.5 ? '+' : d < -0.5 ? '-' : '=', pct: Math.abs(d) }
+function fmtDate(v: string | null | undefined): string {
+  if (!v) return '—'
+  const d = new Date(v)
+  if (isNaN(d.getTime())) return v
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
 }
-function gmvW(r: WeeklyRow, p: Platform = 'all'): number {
-  const s = Number(r.s_cpc_doanh_so || 0) + Number(r.s_nd_gmv || 0) + Number(r.s_live_gmv || 0)
-  const t = Number(r.t_pgm_doanh_so || 0) + Number(r.t_lgm_doanhthu || 0)
-  return p === 'shopee' ? s : p === 'tiktok' ? t : s + t
+function progressBar(pct: number, height = 8) {
+  const clamped = Math.max(0, Math.min(100, pct))
+  return (
+    <div style={{ width: '100%', minWidth: 80, height, background: '#eef2ff', borderRadius: height / 2, overflow: 'hidden', position: 'relative' }}>
+      <div style={{
+        width: `${clamped}%`, height: '100%',
+        background: 'linear-gradient(90deg, #2563EB 0%, #10B981 100%)',
+        transition: 'width .3s',
+      }} />
+    </div>
+  )
 }
-function cpW(r: WeeklyRow, p: Platform = 'all'): number {
-  const s = Number(r.s_cpc_chi_phi || 0) + Number(r.s_nd_chi_phi || 0) + Number(r.s_live_chi_phi || 0)
-  const t = Number(r.t_pgm_chi_phi || 0) + Number(r.t_lgm_chi_phi || 0) + Number(r.t_con_chi_phi || 0) + Number(r.t_brd_chi_phi || 0)
-  return p === 'shopee' ? s : p === 'tiktok' ? t : s + t
+
+type SortDir = 'asc' | 'desc'
+type SortKey = 'brand' | 'plan_pct' | 'report_pct' | 'gmv_shopee' | 'gmv_tiktok' | 'roas' | 'last_reported'
+
+function ArrowIcon({ dir }: { dir: SortDir | null }) {
+  if (dir === null) return <span style={{ color: 'var(--faint)', fontSize: '.7rem', marginLeft: 3 }}>▲▼</span>
+  return <span style={{ color: 'var(--blue)', fontSize: '.7rem', marginLeft: 3 }}>{dir === 'asc' ? '▲' : '▼'}</span>
 }
 
 /* ─── Page ─── */
@@ -80,20 +120,21 @@ export default function AnalyticsPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [allBrands, setAllBrands] = useState<string[]>([])
   const [selBrands, setSelBrands] = useState<string[]>([])
+  const [platformToggle, setPlatformToggle] = useState<PlatformToggle>('both')
   const [ddOpen, setDdOpen] = useState(false)
   const [ddSearch, setDdSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [authChecked, setAuthChecked] = useState(false)
   const [summary, setSummary] = useState<SummaryResp | null>(null)
-  const [trend, setTrend] = useState<TrendResp | null>(null)
-  const [trendMetric, setTrendMetric] = useState<Metric>('gmv')
-  const [trendPlatform, setTrendPlatform] = useState<Platform>('all')
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [expandData, setExpandData] = useState<Record<string, WeeklyRow[]>>({})
+  const [coverage, setCoverage] = useState<CoverageResp | null>(null)
+  const [expandedReport, setExpandedReport] = useState<{ brand: string; week: number } | null>(null)
+
+  const [sortKey, setSortKey] = useState<SortKey>('brand')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const ddRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<HTMLCanvasElement>(null)
-  const chartInst = useRef<unknown>(null)
+  const cadenceRef = useRef<HTMLCanvasElement>(null)
+  const cadenceInst = useRef<unknown>(null)
 
   /* auth */
   useEffect(() => {
@@ -120,127 +161,158 @@ export default function AnalyticsPage() {
     return () => document.removeEventListener('mousedown', h)
   }, [])
 
-  /* fetch summary + trend whenever filters change */
+  /* fetch summary + coverage whenever filters change */
   const reload = useCallback(async () => {
     if (!authChecked) return
     setLoading(true)
     const brandsQs = selBrands.length ? `&brands=${encodeURIComponent(selBrands.join(','))}` : ''
     try {
-      const [sRes, tRes] = await Promise.all([
-        fetch(`/api/analytics?action=summary&month=${month}&year=${year}&platform=${trendPlatform}`, { credentials: 'include' }).then(r => r.json()),
-        fetch(`/api/analytics?action=trend&month=${month}&year=${year}${brandsQs}`, { credentials: 'include' }).then(r => r.json()),
+      const [sRes, cRes] = await Promise.all([
+        fetch(`/api/analytics?action=summary&month=${month}&year=${year}${brandsQs}`, { credentials: 'include' }).then(r => r.json()),
+        fetch(`/api/analytics?action=coverage&month=${month}&year=${year}${brandsQs}`, { credentials: 'include' }).then(r => r.json()),
       ])
       setSummary(sRes.data || null)
-      setTrend(tRes.data || null)
+      setCoverage(cRes.data || null)
     } finally {
       setLoading(false)
     }
-  }, [authChecked, month, year, selBrands, trendPlatform])
+  }, [authChecked, month, year, selBrands])
 
   useEffect(() => { reload() }, [reload])
 
-  /* draw chart */
+  /* daily cadence chart */
   useEffect(() => {
-    if (!trend || !chartRef.current) return
+    if (!coverage || !cadenceRef.current) return
     let cancelled = false
     ;(async () => {
       const Chart = (await import('chart.js/auto')).default
       if (cancelled) return
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (chartInst.current) (chartInst.current as any).destroy()
-
-      // Default to top 5 by current month GMV if no selection
-      let series = trend.series
-      let displayBrands = Object.keys(series)
-      if (!selBrands.length && summary) {
-        const top5 = summary.brands.slice(0, 5).map(b => b.brand)
-        displayBrands = top5.filter(b => series[b])
-      } else if (selBrands.length) {
-        displayBrands = selBrands.filter(b => series[b])
-      }
-
-      const datasets = displayBrands.map((b, i) => ({
-        label: b,
-        data: series[b][trendMetric],
-        borderColor: COLORS[i % COLORS.length],
-        backgroundColor: COLORS[i % COLORS.length] + '22',
-        borderWidth: 2,
-        tension: 0.3,
-        pointRadius: 3,
-      }))
-
+      if (cadenceInst.current) (cadenceInst.current as any).destroy()
+      const labels = coverage.daily_cadence.map(d => d.date.slice(5))
+      const data = coverage.daily_cadence.map(d => d.count)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const opts: any = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { font: { family: 'Be Vietnam Pro', size: 11 }, boxWidth: 12, padding: 10 } },
-          tooltip: {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            callbacks: { label: (ctx: any) => `${ctx.dataset.label}: ${trendMetric === 'roas' ? Number(ctx.raw).toFixed(2) + 'x' : fmtNum(ctx.raw)}` },
-          },
-        },
+        plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { display: false } },
-          y: {
-            grid: { color: 'rgba(37,99,235,.07)' },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ticks: { callback: (v: any) => trendMetric === 'roas' ? Number(v).toFixed(1) + 'x' : fmtNum(Number(v)) },
-          },
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: 'rgba(37,99,235,.07)' } },
         },
       }
-      chartInst.current = new Chart(chartRef.current!, {
+      cadenceInst.current = new Chart(cadenceRef.current!, {
         type: 'line',
-        data: { labels: trend.months, datasets },
+        data: {
+          labels,
+          datasets: [{
+            label: 'Reports',
+            data,
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37,99,235,.15)',
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 3,
+            fill: true,
+          }],
+        },
         options: opts,
       })
     })()
     return () => { cancelled = true }
-  }, [trend, summary, trendMetric, selBrands])
+  }, [coverage])
 
-  /* expand brand row */
-  async function toggleExpand(brand: string) {
-    if (expanded === brand) { setExpanded(null); return }
-    setExpanded(brand)
-    if (!expandData[brand]) {
-      const r = await fetch(`/api/analytics?action=compare&month=${month}&year=${year}&brands=${encodeURIComponent(brand)}`, { credentials: 'include' }).then(x => x.json())
-      const weekly: WeeklyRow[] = r.data?.weekly || []
-      setExpandData(prev => ({ ...prev, [brand]: weekly.sort((a, b) => a.week_num - b.week_num) }))
-    }
-  }
-
-  /* derived */
-  const yearsOpts = []
+  /* brand dropdown */
+  const yearsOpts: number[] = []
   for (let y = 2024; y <= now.getFullYear() + 1; y++) yearsOpts.push(y)
   const filteredDD = allBrands.filter(b => b.toLowerCase().includes(ddSearch.toLowerCase()))
   const toggleBrand = (b: string) => setSelBrands(p => p.includes(b) ? p.filter(x => x !== b) : [...p, b])
 
-  const sBrands = summary?.brands || []
-  const top5Gmv = [...sBrands].sort((a, b) => b.gmv - a.gmv).slice(0, 5)
-  const top5Roas = [...sBrands].filter(b => b.cp > 0).sort((a, b) => b.roas - a.roas).slice(0, 5)
-  const bottom5Plan = [...sBrands].filter(b => b.pctGmv !== null).sort((a, b) => (a.pctGmv || 0) - (b.pctGmv || 0)).slice(0, 5)
+  /* sortable comparison rows */
+  const compareRows = useMemo(() => {
+    if (!summary || !coverage) return []
+    const planMap: Record<string, PlanRow> = {}
+    coverage.plans.forEach(p => { planMap[p.brand_name] = p })
+    const reportMap: Record<string, ReportRow> = {}
+    coverage.reports.forEach(r => { reportMap[r.brand_name] = r })
+    const shopeeMap: Record<string, BrandRow> = {}
+    summary.shopee.forEach(b => { shopeeMap[b.brand] = b })
+    const tiktokMap: Record<string, BrandRow> = {}
+    summary.tiktok.forEach(b => { tiktokMap[b.brand] = b })
+    const expectedWeeks = coverage.summary?.expected_weeks || 4
+    const brands = Array.from(new Set([
+      ...summary.shopee.map(b => b.brand),
+      ...summary.tiktok.map(b => b.brand),
+      ...coverage.plans.map(p => p.brand_name),
+    ]))
+    return brands.map(b => {
+      const sh = shopeeMap[b]
+      const tk = tiktokMap[b]
+      const plan = planMap[b]
+      const rep = reportMap[b]
+      const totalGmv = (sh?.gmv || 0) + (tk?.gmv || 0)
+      const totalCp = (sh?.cp || 0) + (tk?.cp || 0)
+      const roas = totalCp > 0 ? totalGmv / totalCp : 0
+      const reportPct = expectedWeeks > 0 ? ((rep?.weeks_count || 0) / expectedWeeks) * 100 : 0
+      const lastReported = sh?.lastWeekEnd && tk?.lastWeekEnd
+        ? (sh.lastWeekEnd > tk.lastWeekEnd ? sh.lastWeekEnd : tk.lastWeekEnd)
+        : (sh?.lastWeekEnd || tk?.lastWeekEnd || null)
+      return {
+        brand: b,
+        plan_pct: plan?.overall_pct || 0,
+        report_pct: reportPct,
+        gmv_shopee: sh?.gmv || 0,
+        gmv_tiktok: tk?.gmv || 0,
+        roas,
+        last_reported: lastReported,
+      }
+    })
+  }, [summary, coverage])
 
-  const totals = summary?.totals
-  const prevTotals = summary?.prevTotals
+  const sortedCompareRows = useMemo(() => {
+    const arr = [...compareRows]
+    arr.sort((a, b) => {
+      let av: number | string = 0, bv: number | string = 0
+      switch (sortKey) {
+        case 'brand': av = a.brand.toLowerCase(); bv = b.brand.toLowerCase(); break
+        case 'plan_pct': av = a.plan_pct; bv = b.plan_pct; break
+        case 'report_pct': av = a.report_pct; bv = b.report_pct; break
+        case 'gmv_shopee': av = a.gmv_shopee; bv = b.gmv_shopee; break
+        case 'gmv_tiktok': av = a.gmv_tiktok; bv = b.gmv_tiktok; break
+        case 'roas': av = a.roas; bv = b.roas; break
+        case 'last_reported': av = a.last_reported || ''; bv = b.last_reported || ''; break
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+    return arr
+  }, [compareRows, sortKey, sortDir])
 
-  const renderArrow = (cur: number, prev: number) => {
-    const d = delta(cur, prev)
-    if (d.sign === '=') return <span style={{ color: 'var(--faint)', fontSize: '.78rem' }}>= 0%</span>
-    const color = d.sign === '+' ? 'var(--success)' : 'var(--error)'
-    return <span style={{ color, fontSize: '.78rem', fontWeight: 600 }}>{d.sign === '+' ? '↑' : '↓'} {d.pct.toFixed(1)}% MoM</span>
+  const onSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(k); setSortDir('asc') }
   }
+  const arrowFor = (k: SortKey): SortDir | null => sortKey === k ? sortDir : null
 
+  const showShopee = platformToggle !== 'tiktok'
+  const showTiktok = platformToggle !== 'shopee'
+
+  const summaryTotals = summary?.totals
+  const cs = coverage?.summary
+
+  /* ─── RENDER ─── */
   return (
-    <div className="an" style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 20px 80px' }}>
+    <div className="an" style={{ maxWidth: 1280, margin: '0 auto', padding: '88px 20px 80px' }}>
       <div style={{ marginBottom: 6 }}>
         <Link href="/dashboard" style={{ fontSize: '.82rem', color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
           Dashboard
         </Link>
       </div>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--ink)' }}>Analytics</h1>
-        <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginTop: 4 }}>Tổng quan hiệu suất multi-brand từ Supabase weekly_reports + monthly_plans.</p>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--ink)' }}>Analytics — Operations</h1>
+        <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginTop: 4 }}>Plan completeness, report coverage, data consistency &amp; report timing.</p>
       </div>
 
       {/* FILTERS */}
@@ -257,9 +329,9 @@ export default function AnalyticsPage() {
             {yearsOpts.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <label className="an-label">Brand</label>
-          <div className="filter-brand-wrap" ref={ddRef} style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
+          <div className="filter-brand-wrap" ref={ddRef} style={{ position: 'relative', minWidth: 240 }}>
             <div
               className="brand-tag-list"
               onClick={() => setDdOpen(o => !o)}
@@ -300,173 +372,363 @@ export default function AnalyticsPage() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* CONTENT */}
-      {loading ? (
-        <>
-          <div className="an-cards">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="an-card"><Skeleton width="60%" height={32} /><Skeleton width="80%" height={12} style={{ marginTop: 10 }} /></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <label className="an-label">Platform</label>
+          <div style={{ display: 'flex', border: '1.5px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            {(['shopee', 'tiktok', 'both'] as PlatformToggle[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setPlatformToggle(p)}
+                style={{
+                  padding: '7px 12px',
+                  fontSize: '.82rem',
+                  fontWeight: 600,
+                  background: platformToggle === p ? 'var(--blue)' : '#fff',
+                  color: platformToggle === p ? '#fff' : 'var(--muted)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >{p === 'both' ? 'Cả 2' : p}</button>
             ))}
           </div>
-          <div className="an-block" style={{ padding: 18 }}><Skeleton width="100%" height={220} /></div>
-        </>
+        </div>
+        <button onClick={reload} className="filter-refresh an-sel" style={{ fontWeight: 600, color: 'var(--blue)' }}>↻ Refresh</button>
+      </div>
+
+      {loading ? (
+        <div className="an-cards">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="an-card"><Skeleton width="60%" height={32} /><Skeleton width="80%" height={12} style={{ marginTop: 10 }} /></div>
+          ))}
+        </div>
       ) : !allBrands.length ? (
         <div className="an-block" style={{ padding: 30, textAlign: 'center' }}>
           <p style={{ color: 'var(--muted)' }}>Bạn chưa được assign brand nào. Liên hệ Admin để được phân quyền.</p>
         </div>
       ) : (
         <>
-          {/* SUMMARY CARDS */}
+          {/* PERFORMANCE — split shopee/tiktok */}
+          <div className="an-sec"><h2>Hiệu suất Tháng {month}/{year}</h2><p>So sánh Shopee vs TikTok</p></div>
+          <div style={{ display: 'grid', gridTemplateColumns: showShopee && showTiktok ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 28 }}>
+            {showShopee && (
+              <div className="an-block" style={{ padding: 16 }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '.95rem', fontWeight: 700, color: '#EE4D2D', marginBottom: 12 }}>Shopee</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 14 }}>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.shopee?.gmv || 0)}</div>
+                    <div className="an-card-lbl">GMV</div>
+                  </div>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.shopee?.cp || 0)}</div>
+                    <div className="an-card-lbl">Chi phí</div>
+                  </div>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{(summaryTotals?.shopee?.roas || 0).toFixed(2)}x</div>
+                    <div className="an-card-lbl">ROAS TB</div>
+                  </div>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{summaryTotals?.shopee?.activeBrands || 0}</div>
+                    <div className="an-card-lbl">Brand active</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {showTiktok && (
+              <div className="an-block" style={{ padding: 16 }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '.95rem', fontWeight: 700, color: '#FE2C55', marginBottom: 12 }}>TikTok</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 14 }}>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.tiktok?.gmv || 0)}</div>
+                    <div className="an-card-lbl">GMV</div>
+                  </div>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{fmtNum(summaryTotals?.tiktok?.cp || 0)}</div>
+                    <div className="an-card-lbl">Chi phí</div>
+                  </div>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{(summaryTotals?.tiktok?.roas || 0).toFixed(2)}x</div>
+                    <div className="an-card-lbl">ROI TB</div>
+                  </div>
+                  <div className="an-card" style={{ padding: '12px 14px' }}>
+                    <div className="an-card-val" style={{ fontSize: '1.4rem' }}>{summaryTotals?.tiktok?.activeBrands || 0}</div>
+                    <div className="an-card-lbl">Brand active</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION A — PLAN COMPLETENESS */}
+          <div className="an-sec"><h2>A — Plan Completeness</h2><p>Tỷ lệ brand đã setup plan và % field plan đã fill</p></div>
           <div className="an-cards">
             <div className="an-card">
-              <div className="an-card-val">{fmtNum(totals?.gmv || 0)}</div>
-              <div className="an-card-lbl">Tổng GMV ({trendPlatform === 'all' ? 'all' : trendPlatform})</div>
-              <div className="an-card-sub">{prevTotals ? renderArrow(totals?.gmv || 0, prevTotals.gmv) : null}</div>
+              <div className="an-card-val">{cs?.brands_with_plan || 0}/{cs?.total_brands || 0}</div>
+              <div className="an-card-lbl">Brand đã có plan</div>
+              <div className="an-card-sub">{cs ? fmtPct((cs.brands_with_plan / Math.max(1, cs.total_brands)) * 100, 0) + ' coverage' : ''}</div>
+            </div>
+            <div className={`an-card ${cs && cs.brands_without_plan > 0 ? 'err' : 'ok'}`}>
+              <div className="an-card-val">{cs?.brands_without_plan || 0}</div>
+              <div className="an-card-lbl">Brand chưa nhập plan</div>
             </div>
             <div className="an-card">
-              <div className="an-card-val">{fmtNum(totals?.cp || 0)}</div>
-              <div className="an-card-lbl">Tổng Chi phí</div>
-              <div className="an-card-sub">{prevTotals ? renderArrow(totals?.cp || 0, prevTotals.cp) : null}</div>
+              <div className="an-card-val">{fmtPct(cs?.avg_fill_pct, 0)}</div>
+              <div className="an-card-lbl">% field plan fill TB</div>
+              <div style={{ marginTop: 8 }}>{progressBar(cs?.avg_fill_pct || 0)}</div>
             </div>
             <div className="an-card">
-              <div className="an-card-val">{(totals?.roas || 0).toFixed(2)}x</div>
-              <div className="an-card-lbl">ROAS trung bình</div>
-              <div className="an-card-sub">{prevTotals ? renderArrow(totals?.roas || 0, prevTotals.roas) : null}</div>
-            </div>
-            <div className="an-card">
-              <div className="an-card-val">{totals?.activeBrands || 0}</div>
-              <div className="an-card-lbl">Brand active</div>
-              <div className="an-card-sub">{prevTotals ? `Tháng trước: ${prevTotals.activeBrands}` : ''}</div>
+              <div className="an-card-val">{coverage?.plans.filter(p => p.has_plan && p.overall_pct < 50).length || 0}</div>
+              <div className="an-card-lbl">Plan &lt; 50% fill</div>
             </div>
           </div>
-
-          {/* TOP / BOTTOM */}
-          <div className="an-sec"><h2>Top &amp; Bottom Performers</h2><p>Tháng {month}/{year}</p></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 28 }}>
-            <div className="an-block" style={{ padding: 14 }}>
-              <h3 style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Top 5 GMV</h3>
-              <table className="metrics-tbl">
-                <thead><tr><th>Brand</th><th>GMV</th></tr></thead>
-                <tbody>
-                  {top5Gmv.length === 0
-                    ? <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--faint)' }}>—</td></tr>
-                    : top5Gmv.map(b => <tr key={b.brand}><td>{b.brand}</td><td>{fmtNum(b.gmv)}</td></tr>)}
-                </tbody>
-              </table>
-            </div>
-            <div className="an-block" style={{ padding: 14 }}>
-              <h3 style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Top 5 ROAS</h3>
-              <table className="metrics-tbl">
-                <thead><tr><th>Brand</th><th>ROAS</th></tr></thead>
-                <tbody>
-                  {top5Roas.length === 0
-                    ? <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--faint)' }}>—</td></tr>
-                    : top5Roas.map(b => <tr key={b.brand}><td>{b.brand}</td><td>{b.roas.toFixed(2)}x</td></tr>)}
-                </tbody>
-              </table>
-            </div>
-            <div className="an-block" style={{ padding: 14 }}>
-              <h3 style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Bottom 5 % Plan GMV</h3>
-              <table className="metrics-tbl">
-                <thead><tr><th>Brand</th><th>% Plan</th></tr></thead>
-                <tbody>
-                  {bottom5Plan.length === 0
-                    ? <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--faint)' }}>Chưa có plan</td></tr>
-                    : bottom5Plan.map(b => <tr key={b.brand}><td>{b.brand}</td><td><span className={pctClass(b.pctGmv)}>{fmtPct(b.pctGmv)}</span></td></tr>)}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* TREND */}
-          <div className="an-sec" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 8 }}>
-            <div><h2>Trend 12 tháng</h2><p>{selBrands.length ? `${selBrands.length} brand được chọn` : 'Top 5 brand theo GMV'}</p></div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select className="an-sel" value={trendMetric} onChange={e => setTrendMetric(e.target.value as Metric)}>
-                <option value="gmv">GMV</option>
-                <option value="cp">Chi phí</option>
-                <option value="roas">ROAS</option>
-              </select>
-              <select className="an-sel" value={trendPlatform} onChange={e => setTrendPlatform(e.target.value as Platform)}>
-                <option value="all">Tất cả</option>
-                <option value="shopee">Shopee</option>
-                <option value="tiktok">TikTok</option>
-              </select>
-            </div>
-          </div>
-          <div className="an-block" style={{ padding: 18, marginBottom: 28 }}>
-            <div style={{ position: 'relative', height: 320 }}>
-              <canvas ref={chartRef} />
-            </div>
-          </div>
-
-          {/* COMPARISON TABLE */}
-          <div className="an-sec"><h2>Bảng so sánh Brand</h2><p>Click vào brand để xem chi tiết theo tuần</p></div>
           <div className="an-block">
-            <div className="matrix-wrap" style={{ overflowX: 'auto' }}>
-              <table className="metrics-tbl">
+            <div className="matrix-wrap">
+              <table className="matrix-tbl">
                 <thead>
                   <tr>
-                    <th>Brand</th><th>Plan GMV</th><th>Actual GMV</th><th>%</th>
-                    <th>Plan CP</th><th>Actual CP</th><th>%</th>
-                    <th>ROAS</th><th>Δ MoM</th>
+                    <th style={{ textAlign: 'left' }}>Brand</th>
+                    <th>Shopee plan</th>
+                    <th>TikTok plan</th>
+                    <th style={{ textAlign: 'left' }}>Thiếu</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sBrands.length === 0
-                    ? <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--faint)', fontStyle: 'italic', padding: 20 }}>Không có dữ liệu</td></tr>
-                    : sBrands.map(b => (
-                      <Fragment key={b.brand}>
-                        <tr style={{ cursor: 'pointer' }} onClick={() => toggleExpand(b.brand)}>
-                          <td>{expanded === b.brand ? '▼ ' : '▶ '}{b.brand}</td>
-                          <td>{b.planGmv ? fmtNum(b.planGmv) : '—'}</td>
-                          <td>{fmtNum(b.gmv)}</td>
-                          <td><span className={pctClass(b.pctGmv)}>{fmtPct(b.pctGmv)}</span></td>
-                          <td>{b.planCp ? fmtNum(b.planCp) : '—'}</td>
-                          <td>{fmtNum(b.cp)}</td>
-                          <td><span className={pctClass(b.pctCp)}>{fmtPct(b.pctCp)}</span></td>
-                          <td>{b.cp > 0 ? b.roas.toFixed(2) + 'x' : '—'}</td>
-                          <td>
-                            {(() => {
-                              const d = delta(b.gmv, b.prevGmv)
-                              if (d.sign === '=') return <span style={{ color: 'var(--faint)' }}>=</span>
-                              return <span style={{ color: d.sign === '+' ? 'var(--success)' : 'var(--error)', fontWeight: 600 }}>{d.sign === '+' ? '↑' : '↓'} {d.pct.toFixed(0)}%</span>
-                            })()}
+                  {(coverage?.plans || []).length === 0 ? (
+                    <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>—</td></tr>
+                  ) : coverage!.plans.map(p => (
+                    <tr key={p.brand_name}>
+                      <td>{p.has_plan ? <span className="plan-badge plan-yes">Có</span> : <span className="plan-badge plan-no">Chưa</span>} {p.brand_name}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                          <span className={pctClass(p.shopee_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.shopee_pct, 0)}</span>
+                          <div style={{ width: 70 }}>{progressBar(p.shopee_pct, 6)}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                          <span className={pctClass(p.tiktok_pct)} style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem', minWidth: 36 }}>{fmtPct(p.tiktok_pct, 0)}</span>
+                          <div style={{ width: 70 }}>{progressBar(p.tiktok_pct, 6)}</div>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'left', fontSize: '.74rem', color: 'var(--muted)' }}>
+                        {p.missing_keys.length === 0
+                          ? <span style={{ color: 'var(--success)' }}>—</span>
+                          : (p.missing_keys.slice(0, 4).join(', ') + (p.missing_keys.length > 4 ? `, +${p.missing_keys.length - 4}` : ''))}
+                      </td>
+                      <td>
+                        <Link href={`/hub/report?brand=${encodeURIComponent(p.brand_name)}`} style={{ fontSize: '.78rem', color: 'var(--blue)', fontWeight: 600 }}>→ Set plan</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION B — REPORT COMPLETENESS */}
+          <div className="an-sec"><h2>B — Report Completeness</h2><p>Heatmap tuần, missing reports, độ trễ</p></div>
+          <div className="an-cards">
+            <div className="an-card">
+              <div className="an-card-val">{cs?.total_actual_reports || 0}/{cs?.total_expected_reports || 0}</div>
+              <div className="an-card-lbl">Reports nộp</div>
+              <div className="an-card-sub">{cs && cs.total_expected_reports > 0 ? fmtPct((cs.total_actual_reports / cs.total_expected_reports) * 100, 0) : '—'}</div>
+            </div>
+            <div className={`an-card ${cs && cs.missing_reports > 0 ? 'err' : 'ok'}`}>
+              <div className="an-card-val">{cs?.missing_reports || 0}</div>
+              <div className="an-card-lbl">Reports missing</div>
+            </div>
+            <div className="an-card">
+              <div className="an-card-val">{cs?.avg_delay_days !== null && cs?.avg_delay_days !== undefined ? cs.avg_delay_days.toFixed(1) : '—'}</div>
+              <div className="an-card-lbl">Ngày trễ TB (sau week_end)</div>
+            </div>
+            <div className="an-card">
+              <div className="an-card-val">{cs?.expected_weeks || 0}</div>
+              <div className="an-card-lbl">Tuần expected</div>
+            </div>
+          </div>
+          <div className="an-block">
+            <div className="matrix-wrap">
+              <table className="matrix-tbl">
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left' }}>Brand</th>
+                    <th>W1</th><th>W2</th><th>W3</th><th>W4</th><th>W5</th>
+                    <th>Trễ TB</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(coverage?.reports || []).length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>—</td></tr>
+                  ) : coverage!.reports.map(r => {
+                    const cells: { num: number; ok: boolean }[] = [
+                      { num: 1, ok: r.weeks.w1 }, { num: 2, ok: r.weeks.w2 },
+                      { num: 3, ok: r.weeks.w3 }, { num: 4, ok: r.weeks.w4 }, { num: 5, ok: r.weeks.w5 },
+                    ]
+                    return (
+                      <Fragment key={r.brand_name}>
+                        <tr>
+                          <td>{r.brand_name}</td>
+                          {cells.map(c => (
+                            <td key={c.num}>
+                              <button
+                                onClick={() => setExpandedReport(prev => prev && prev.brand === r.brand_name && prev.week === c.num ? null : { brand: r.brand_name, week: c.num })}
+                                style={{
+                                  width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer',
+                                  background: c.ok ? '#10B981' : '#fee2e2',
+                                  color: c.ok ? '#fff' : '#991b1b',
+                                  fontSize: '.85rem', fontWeight: 700,
+                                }}
+                                title={c.ok ? 'Đã có report' : 'Missing'}
+                              >{c.ok ? '✓' : '✗'}</button>
+                            </td>
+                          ))}
+                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '.78rem' }}>
+                            {r.late_days_avg !== null ? r.late_days_avg.toFixed(1) + 'd' : '—'}
                           </td>
                         </tr>
-                        {expanded === b.brand && (
+                        {expandedReport && expandedReport.brand === r.brand_name && (
                           <tr>
-                            <td colSpan={9} style={{ background: 'var(--paper)', padding: 12 }}>
-                              {!expandData[b.brand]
-                                ? <Skeleton width="100%" height={60} />
-                                : expandData[b.brand].length === 0
-                                ? <span style={{ color: 'var(--faint)', fontStyle: 'italic' }}>Chưa có weekly report tháng này</span>
-                                : (
-                                  <table className="metrics-tbl" style={{ background: '#fff', borderRadius: 8 }}>
-                                    <thead><tr><th>Tuần</th><th>GMV</th><th>Chi phí</th><th>ROAS</th></tr></thead>
+                            <td colSpan={7} style={{ background: 'var(--paper)', padding: 12, textAlign: 'left' }}>
+                              <strong style={{ fontSize: '.82rem' }}>W{expandedReport.week} — {r.brand_name}</strong>
+                              {(() => {
+                                const entries = r.detail[expandedReport.week] || []
+                                if (!entries.length) return <div style={{ color: 'var(--faint)', fontStyle: 'italic', fontSize: '.8rem', marginTop: 6 }}>Chưa có report tuần này.</div>
+                                return (
+                                  <table className="metrics-tbl" style={{ background: '#fff', borderRadius: 8, marginTop: 6 }}>
+                                    <thead><tr><th style={{ textAlign: 'left' }}>User</th><th>Created</th><th>Week end</th><th>Có data?</th></tr></thead>
                                     <tbody>
-                                      {expandData[b.brand].map(w => {
-                                        const g = gmvW(w, trendPlatform)
-                                        const c = cpW(w, trendPlatform)
-                                        return (
-                                          <tr key={w.week_num}>
-                                            <td>W{w.week_num}</td>
-                                            <td>{fmtNum(g)}</td>
-                                            <td>{fmtNum(c)}</td>
-                                            <td>{c > 0 ? (g / c).toFixed(2) + 'x' : '—'}</td>
-                                          </tr>
-                                        )
-                                      })}
+                                      {entries.map((e, i) => (
+                                        <tr key={i}>
+                                          <td>{e.username}</td>
+                                          <td>{fmtDate(e.created_at)}</td>
+                                          <td>{fmtDate(e.week_end)}</td>
+                                          <td>{e.has_data ? <span className="pct-good">Có</span> : <span className="pct-bad">Trống</span>}</td>
+                                        </tr>
+                                      ))}
                                     </tbody>
                                   </table>
-                                )}
+                                )
+                              })()}
                             </td>
                           </tr>
                         )}
                       </Fragment>
-                    ))}
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION C — DATA CONSISTENCY */}
+          <div className="an-sec"><h2>C — Data Consistency</h2><p>Row weekly_reports có chi phí + revenue nhưng thiếu engagement data</p></div>
+          <div className="an-block">
+            <div className="matrix-wrap">
+              <table className="metrics-tbl">
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left' }}>Brand</th>
+                    <th style={{ textAlign: 'left' }}>Tuần</th>
+                    <th style={{ textAlign: 'left' }}>User</th>
+                    <th style={{ textAlign: 'left' }}>Group</th>
+                    <th style={{ textAlign: 'left' }}>Missing</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(coverage?.consistency || []).length === 0 ? (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--success)', padding: 20 }}>Không có row inconsistent</td></tr>
+                  ) : coverage!.consistency.map((c, i) => (
+                    <tr key={i}>
+                      <td>{c.brand_name}</td>
+                      <td style={{ textAlign: 'left' }}>W{c.week_num}</td>
+                      <td style={{ textAlign: 'left' }}>{c.username}</td>
+                      <td style={{ textAlign: 'left' }}>{c.group}</td>
+                      <td style={{ textAlign: 'left', color: 'var(--error)', fontSize: '.78rem' }}>{c.issues.join(', ')}</td>
+                      <td>
+                        <Link href={`/hub/report?brand=${encodeURIComponent(c.brand_name)}`} style={{ fontSize: '.78rem', color: 'var(--blue)', fontWeight: 600 }}>→ Sửa</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION D — REPORT TIMING */}
+          <div className="an-sec"><h2>D — Report Timing</h2><p>Cadence theo user và theo ngày trong tháng</p></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, marginBottom: 28 }}>
+            <div className="an-block" style={{ padding: 0 }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1.5px solid var(--border)' }}>
+                <strong style={{ fontSize: '.88rem' }}>Per-user timing</strong>
+              </div>
+              <div className="matrix-wrap">
+                <table className="timing-tbl">
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left' }}>User</th>
+                      <th>Reports</th>
+                      <th>Trễ TB</th>
+                      <th>% On-time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(coverage?.timing || []).length === 0 ? (
+                      <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>—</td></tr>
+                    ) : coverage!.timing.map((t, i) => {
+                      const isLate = t.avg_delay_days > 2
+                      return (
+                        <tr key={t.username} style={{ background: i === 0 && isLate ? '#fff7ed' : undefined }}>
+                          <td>{t.username}{i === 0 && isLate ? <span style={{ marginLeft: 6, fontSize: '.7rem', color: 'var(--error)', fontWeight: 700 }}>● Slowest</span> : null}</td>
+                          <td>{t.count}</td>
+                          <td><span className={t.avg_delay_days > 2 ? 'pct-bad' : t.avg_delay_days > 1 ? 'pct-warn' : 'pct-good'}>{t.avg_delay_days.toFixed(1)}d</span></td>
+                          <td><span className={pctClass(t.on_time_pct)}>{fmtPct(t.on_time_pct, 0)}</span></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="an-block" style={{ padding: 16 }}>
+              <strong style={{ fontSize: '.88rem' }}>Daily report cadence</strong>
+              <div style={{ position: 'relative', height: 240, marginTop: 10 }}>
+                <canvas ref={cadenceRef} />
+              </div>
+            </div>
+          </div>
+
+          {/* COMPARISON TABLE */}
+          <div className="an-sec"><h2>Brand Comparison</h2><p>Click cột header để sort. Default: Brand asc.</p></div>
+          <div className="an-block">
+            <div className="matrix-wrap">
+              <table className="metrics-tbl">
+                <thead>
+                  <tr>
+                    <th onClick={() => onSort('brand')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'left' }}>Brand <ArrowIcon dir={arrowFor('brand')} /></th>
+                    <th onClick={() => onSort('plan_pct')} style={{ cursor: 'pointer', userSelect: 'none' }}>Plan % <ArrowIcon dir={arrowFor('plan_pct')} /></th>
+                    <th onClick={() => onSort('report_pct')} style={{ cursor: 'pointer', userSelect: 'none' }}>Report % <ArrowIcon dir={arrowFor('report_pct')} /></th>
+                    <th onClick={() => onSort('gmv_shopee')} style={{ cursor: 'pointer', userSelect: 'none' }}>GMV Shopee <ArrowIcon dir={arrowFor('gmv_shopee')} /></th>
+                    <th onClick={() => onSort('gmv_tiktok')} style={{ cursor: 'pointer', userSelect: 'none' }}>GMV TikTok <ArrowIcon dir={arrowFor('gmv_tiktok')} /></th>
+                    <th onClick={() => onSort('roas')} style={{ cursor: 'pointer', userSelect: 'none' }}>ROAS <ArrowIcon dir={arrowFor('roas')} /></th>
+                    <th onClick={() => onSort('last_reported')} style={{ cursor: 'pointer', userSelect: 'none' }}>Last reported <ArrowIcon dir={arrowFor('last_reported')} /></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedCompareRows.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--faint)', padding: 20 }}>Không có dữ liệu</td></tr>
+                  ) : sortedCompareRows.map(r => (
+                    <tr key={r.brand}>
+                      <td>{r.brand}</td>
+                      <td><span className={pctClass(r.plan_pct)}>{fmtPct(r.plan_pct, 0)}</span></td>
+                      <td><span className={pctClass(r.report_pct)}>{fmtPct(r.report_pct, 0)}</span></td>
+                      <td>{fmtNum(r.gmv_shopee)}</td>
+                      <td>{fmtNum(r.gmv_tiktok)}</td>
+                      <td>{r.roas > 0 ? r.roas.toFixed(2) + 'x' : '—'}</td>
+                      <td>{fmtDate(r.last_reported)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
