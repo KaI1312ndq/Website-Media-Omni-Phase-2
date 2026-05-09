@@ -8,7 +8,9 @@
  *   NEXT_PUBLIC_SANITY_DATASET
  *   SANITY_API_TOKEN          (must have read+write permission)
  */
-import 'dotenv/config'
+import { config } from 'dotenv'
+config({ path: '.env.local' })
+config()
 import { createClient } from '@sanity/client'
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID

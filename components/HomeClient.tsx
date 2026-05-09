@@ -44,6 +44,7 @@ export interface SanityBrand {
   _id: string
   name: string
   category: 'skincare' | 'fashion' | 'baby' | 'fmcg' | 'electronics'
+  logoUrl?: string
 }
 
 export interface LatestPost {
@@ -646,13 +647,12 @@ function BrandsSection({ brands }: { brands: SanityBrand[] }) {
   const rowOrder: SanityBrand['category'][] = ['skincare', 'fashion', 'baby', 'fmcg', 'electronics']
   const rows = rowOrder
     .map(cat => {
-      const names = source.filter(b => b.category === cat).map(b => b.name)
+      const items = source.filter(b => b.category === cat)
       const cfg = CATEGORY_ROWS[cat]
-      // Pace consistent across rows: total seconds proportional to item count.
-      const dur = `${Math.max(14, Math.round(names.length * cfg.perItem))}s`
-      return { cat, names, dur, rev: cfg.rev }
+      const dur = `${Math.max(14, Math.round(items.length * cfg.perItem))}s`
+      return { cat, items, dur, rev: cfg.rev }
     })
-    .filter(r => r.names.length > 0)
+    .filter(r => r.items.length > 0)
 
   return (
     <section id="brands">
@@ -670,9 +670,12 @@ function BrandsSection({ brands }: { brands: SanityBrand[] }) {
             className={`brands-track${row.rev ? ' brands-track-reverse' : ''}`}
             style={{ ['--marquee-speed' as string]: row.dur }}
           >
-            {/* Triplicate to keep the row fully populated as it loops; keyframe wraps every 1/3. */}
-            {[...row.names, ...row.names, ...row.names].map((name, j) => (
-              <div key={j} className="brand-pill">{name}</div>
+            {[...row.items, ...row.items, ...row.items].map((b, j) => (
+              <div key={j} className={`brand-pill${b.logoUrl ? ' brand-pill-logo' : ''}`} title={b.name}>
+                {b.logoUrl
+                  ? <img src={b.logoUrl} alt={b.name} loading="lazy" decoding="async" />
+                  : <span>{b.name}</span>}
+              </div>
             ))}
           </div>
         ))}

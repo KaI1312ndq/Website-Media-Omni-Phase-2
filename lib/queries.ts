@@ -49,6 +49,7 @@ export const teamQuery = groq`
 
 export const brandsQuery = groq`
   *[_type == "brand" && active != false] | order(category asc, order asc) {
-    _id, name, category
+    _id, name, category,
+    "logoUrl": logo.asset->url
   }
 `

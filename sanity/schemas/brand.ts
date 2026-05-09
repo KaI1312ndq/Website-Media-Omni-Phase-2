@@ -29,6 +29,13 @@ export const brand = defineType({
       validation: R => R.required(),
     }),
     defineField({
+      name: 'logo',
+      title: 'Logo (tuỳ chọn)',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Nếu upload logo → homepage sẽ hiển thị bằng logo thay vì text. Nên dùng PNG nền trong suốt.',
+    }),
+    defineField({
       name: 'active',
       title: 'Hiển thị trên website',
       type: 'boolean',

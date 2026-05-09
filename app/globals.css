@@ -719,7 +719,10 @@ svg{display:block}
 .brands-track-reverse{animation-direction:reverse}
 .brands-track:hover{animation-play-state:paused}
 .brand-pill{flex-shrink:0;height:56px;padding:0 40px;min-width:160px;background:var(--white);border:1px solid var(--border);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-family:var(--f-display);font-size:.88rem;font-weight:700;color:var(--muted);white-space:nowrap;transition:border-color .2s,color .2s,transform .2s}
-.brand-pill:hover{border-color:rgba(37,99,235,.3);color:var(--blue);transform:translateY(-2px)}
+.brand-pill:hover{border-color:rgba(37,99,235,.3);color:var(--blue);transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,.08)}
+.brand-pill-logo{padding:0 22px;min-width:140px}
+.brand-pill-logo img{max-height:36px;max-width:120px;width:auto;height:auto;object-fit:contain;filter:grayscale(.2);transition:filter .2s}
+.brand-pill-logo:hover img{filter:grayscale(0)}
 @keyframes brandsScroll{0%{transform:translateX(0)}100%{transform:translateX(calc(-100% / 3))}}
 
 /* ═══════════════════════════════════════
