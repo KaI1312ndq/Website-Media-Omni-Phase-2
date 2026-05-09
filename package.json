@@ -20,7 +20,8 @@
     "next-sanity": "^9.8.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sanity": "^3.62.0"
+    "sanity": "^3.62.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
