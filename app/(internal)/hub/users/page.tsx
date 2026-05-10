@@ -6,28 +6,70 @@ import { HubPageSkeleton } from '@/components/Skeleton'
 import { Icon } from '@/lib/icons'
 import '@/app/(internal)/dashboard/dashboard.css'
 
-type UserRow = { id: string; username: string; name: string; role: string; status: string; perms: Record<string, number> }
-type BrandAssign = { id: string; brand_name: string; assigned_members: string; isAll: boolean; included: boolean }
+type UserRow = {
+  id: string
+  username: string
+  name: string
+  role: string
+  status: string
+  perms: Record<string, number>
+}
+type BrandAssign = {
+  id: string
+  brand_name: string
+  assigned_members: string
+  isAll: boolean
+  included: boolean
+}
 
 const PERMS_DEF = [
-  { section: 'Quiz & Learning', items: [
-    { key: 'quiz_view',  ico: Icon.quiz(),    name: 'Quiz Hub',      desc: 'Làm bài kiểm tra kiến thức' },
-    { key: 'quiz_score', ico: Icon.score(),   name: 'Xem điểm team', desc: 'Xem bảng điểm tất cả thành viên' },
-  ]},
-  { section: 'Daily Tasks', items: [
-    { key: 'tasks_view',   ico: Icon.calendar(), name: 'Xem task', desc: 'Xem task được assign' },
-    { key: 'tasks_create', ico: Icon.plus(),     name: 'Tạo task', desc: 'Tạo và assign task cho người khác' },
-  ]},
-  { section: 'Blog & Content', items: [
-    { key: 'blog_view',    ico: Icon.book(),  name: 'Xem blog', desc: 'Đọc bài viết nội bộ' },
-    { key: 'blog_write',   ico: Icon.edit(),  name: 'Viết bài', desc: 'Tạo và chỉnh sửa bài viết' },
-    { key: 'blog_publish', ico: Icon.send(),  name: 'Publish',  desc: 'Xuất bản bài viết công khai' },
-    { key: 'blog_delete',  ico: Icon.trash(), name: 'Xóa bài',  desc: 'Xóa bài viết đã đăng' },
-  ]},
-  { section: 'Quản trị', items: [
-    { key: 'admin_users',  ico: Icon.users(),    name: 'Quản lý tài khoản', desc: 'Tạo, sửa, phân quyền user', locked: true },
-    { key: 'admin_scores', ico: Icon.trending(), name: 'Analytics',         desc: 'Thống kê toàn team',         locked: true },
-  ]},
+  {
+    section: 'Quiz & Learning',
+    items: [
+      { key: 'quiz_view', ico: Icon.quiz(), name: 'Quiz Hub', desc: 'Làm bài kiểm tra kiến thức' },
+      {
+        key: 'quiz_score',
+        ico: Icon.score(),
+        name: 'Xem điểm team',
+        desc: 'Xem bảng điểm tất cả thành viên',
+      },
+    ],
+  },
+  {
+    section: 'Daily Tasks',
+    items: [
+      { key: 'tasks_view', ico: Icon.calendar(), name: 'Xem task', desc: 'Xem task được assign' },
+      { key: 'tasks_create', ico: Icon.plus(), name: 'Tạo task', desc: 'Tạo và assign task cho người khác' },
+    ],
+  },
+  {
+    section: 'Blog & Content',
+    items: [
+      { key: 'blog_view', ico: Icon.book(), name: 'Xem blog', desc: 'Đọc bài viết nội bộ' },
+      { key: 'blog_write', ico: Icon.edit(), name: 'Viết bài', desc: 'Tạo và chỉnh sửa bài viết' },
+      { key: 'blog_publish', ico: Icon.send(), name: 'Publish', desc: 'Xuất bản bài viết công khai' },
+      { key: 'blog_delete', ico: Icon.trash(), name: 'Xóa bài', desc: 'Xóa bài viết đã đăng' },
+    ],
+  },
+  {
+    section: 'Quản trị',
+    items: [
+      {
+        key: 'admin_users',
+        ico: Icon.users(),
+        name: 'Quản lý tài khoản',
+        desc: 'Tạo, sửa, phân quyền user',
+        locked: true,
+      },
+      {
+        key: 'admin_scores',
+        ico: Icon.trending(),
+        name: 'Analytics',
+        desc: 'Thống kê toàn team',
+        locked: true,
+      },
+    ],
+  },
 ]
 
 export default function UsersPage() {
@@ -50,13 +92,20 @@ export default function UsersPage() {
   const [brandsLoading, setBrandsLoading] = useState(false)
   const [savingBrands, setSavingBrands] = useState(false)
 
-  function showToast(msg: string, type = 'success') { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
+  function showToast(msg: string, type = 'success') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   useEffect(() => {
     const u = getSession()
     if (!u) return
-    if (u.role !== 'admin') { router.push('/dashboard'); return }
-    setMe(u); loadUsers()
+    if (u.role !== 'admin') {
+      router.push('/dashboard')
+      return
+    }
+    setMe(u)
+    loadUsers()
   }, [router])
 
   async function loadUsers() {
@@ -66,7 +115,11 @@ export default function UsersPage() {
 
   function selectUser(u: UserRow) {
     setSelected(u)
-    setCurPerms(u.perms && Object.keys(u.perms).length > 0 ? u.perms : { ...ROLE_DEFAULTS[u.role as keyof typeof ROLE_DEFAULTS] })
+    setCurPerms(
+      u.perms && Object.keys(u.perms).length > 0
+        ? u.perms
+        : { ...ROLE_DEFAULTS[u.role as keyof typeof ROLE_DEFAULTS] },
+    )
     loadBrandAssign(u.username)
   }
 
@@ -79,7 +132,8 @@ export default function UsersPage() {
       // Include cả 'all' brands trong selection (hiện tích sẵn, có thể uncheck để revoke)
       setBrandSel(new Set(list.filter(b => b.included).map(b => b.id)))
     } catch {
-      setBrands([]); setBrandSel(new Set())
+      setBrands([])
+      setBrandSel(new Set())
     } finally {
       setBrandsLoading(false)
     }
@@ -88,7 +142,8 @@ export default function UsersPage() {
   function toggleBrand(id: string) {
     setBrandSel(prev => {
       const n = new Set(prev)
-      if (n.has(id)) n.delete(id); else n.add(id)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
       return n
     })
   }
@@ -113,7 +168,7 @@ export default function UsersPage() {
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Lỗi lưu phân quyền brand')
       await loadBrandAssign(selected.username)
-      showToast('✅ Đã lưu phân quyền brand!')
+      showToast('Đã lưu phân quyền brand!')
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Lỗi'
       showToast(msg, 'error')
@@ -132,45 +187,109 @@ export default function UsersPage() {
   async function savePerms() {
     if (!selected) return
     setSaving(true)
-    await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', username: selected.username, role: selected.role, perms: curPerms }) })
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update',
+        username: selected.username,
+        role: selected.role,
+        perms: curPerms,
+      }),
+    })
     await loadUsers()
-    showToast('✅ Đã lưu phân quyền!')
+    showToast('Đã lưu phân quyền!')
     setSaving(false)
   }
 
   async function resetPass() {
-    if (!newPass || newPass.length < 6) { showToast('Mật khẩu tối thiểu 6 ký tự', 'error'); return }
-    if (newPass !== cfmPass) { showToast('Mật khẩu xác nhận không khớp', 'error'); return }
-    await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', username: selected?.username, password: newPass }) })
-    showToast('✅ Đã đặt lại mật khẩu!'); setNewPass(''); setCfmPass('')
+    if (!newPass || newPass.length < 6) {
+      showToast('Mật khẩu tối thiểu 6 ký tự', 'error')
+      return
+    }
+    if (newPass !== cfmPass) {
+      showToast('Mật khẩu xác nhận không khớp', 'error')
+      return
+    }
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', username: selected?.username, password: newPass }),
+    })
+    showToast('Đã đặt lại mật khẩu!')
+    setNewPass('')
+    setCfmPass('')
   }
 
   async function toggleStatus() {
     if (!selected) return
     const ns = selected.status === 'disabled' ? 'active' : 'disabled'
-    await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', username: selected.username, status: ns }) })
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', username: selected.username, status: ns }),
+    })
     setSelected({ ...selected, status: ns })
-    await loadUsers(); showToast('✅ Đã cập nhật')
+    await loadUsers()
+    showToast('Đã cập nhật')
   }
 
   async function deleteUser() {
     if (!selected || !confirm(`Xóa vĩnh viễn @${selected.username}?`)) return
-    await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', username: selected.username }) })
-    setSelected(null); await loadUsers(); showToast('✅ Đã xóa')
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', username: selected.username }),
+    })
+    setSelected(null)
+    await loadUsers()
+    showToast('Đã xóa')
   }
 
   async function saveUser() {
-    if (!form.name || !form.username) { showToast('Vui lòng nhập đủ thông tin', 'error'); return }
-    if (!editing && !form.password) { showToast('Vui lòng nhập mật khẩu', 'error'); return }
+    if (!form.name || !form.username) {
+      showToast('Vui lòng nhập đủ thông tin', 'error')
+      return
+    }
+    if (!editing && !form.password) {
+      showToast('Vui lòng nhập mật khẩu', 'error')
+      return
+    }
     setSaving(true)
     if (editing) {
-      await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', username: form.username, name: form.name, role: form.role, status: form.status, ...(form.password ? { password: form.password } : {}) }) })
-      showToast('✅ Đã cập nhật!')
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          username: form.username,
+          name: form.name,
+          role: form.role,
+          status: form.status,
+          ...(form.password ? { password: form.password } : {}),
+        }),
+      })
+      showToast('Đã cập nhật!')
     } else {
-      await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', username: form.username, name: form.name, password: form.password, role: form.role, status: form.status, perms: ROLE_DEFAULTS[form.role as keyof typeof ROLE_DEFAULTS] }) })
-      showToast('✅ Đã tạo tài khoản mới!')
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          username: form.username,
+          name: form.name,
+          password: form.password,
+          role: form.role,
+          status: form.status,
+          perms: ROLE_DEFAULTS[form.role as keyof typeof ROLE_DEFAULTS],
+        }),
+      })
+      showToast('Đã tạo tài khoản mới!')
     }
-    setModal(false); setEditing(null); setSaving(false); await loadUsers()
+    setModal(false)
+    setEditing(null)
+    setSaving(false)
+    await loadUsers()
   }
 
   function openCreate() {
@@ -185,7 +304,8 @@ export default function UsersPage() {
     setModal(true)
   }
 
-  const avCls = (role: string) => role === 'admin' ? 'av-admin' : role === 'upbase' ? 'av-upbase' : 'av-member'
+  const avCls = (role: string) =>
+    role === 'admin' ? 'av-admin' : role === 'upbase' ? 'av-upbase' : 'av-member'
 
   if (!me) {
     return <HubPageSkeleton title="Đang tải users..." />
@@ -193,33 +313,92 @@ export default function UsersPage() {
 
   return (
     <>
-      {toast && <div className={`toast show ${toast.type || 'success'}`} style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}><div className="toast-dot" /><span>{toast.msg}</span></div>}
+      {toast && (
+        <div
+          className={`toast show ${toast.type || 'success'}`}
+          style={{
+            position: 'fixed',
+            bottom: '1.5rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+          }}
+        >
+          <div className="toast-dot" />
+          <span>{toast.msg}</span>
+        </div>
+      )}
 
       {modal && (
         <div className="um-modal-overlay open" onClick={() => setModal(false)}>
           <div className="um-modal" onClick={e => e.stopPropagation()}>
             <div className="um-modal-hdr">
               <h3>{editing ? 'Chỉnh sửa tài khoản' : 'Tạo tài khoản mới'}</h3>
-              <button className="um-modal-close" onClick={() => setModal(false)}>✕</button>
+              <button className="um-modal-close" onClick={() => setModal(false)}>
+                ✕
+              </button>
             </div>
             <div className="fp-grid">
-              <div className="fp-full"><label className="fp-label">Họ và tên *</label><input className="fp-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nguyễn Văn A" /></div>
-              <div><label className="fp-label">Username *</label><input className="fp-input" value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="nguyenvana" disabled={!!editing} /></div>
-              <div><label className="fp-label">Mật khẩu{editing ? ' (để trống = giữ nguyên)' : ' *'}</label><input className="fp-input" type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mật khẩu" /></div>
-              <div><label className="fp-label">Role</label>
-                <select className="fp-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-                  <option value="member">Member</option><option value="admin">Admin</option><option value="upbase">UpBase</option>
+              <div className="fp-full">
+                <label className="fp-label">Họ và tên *</label>
+                <input
+                  className="fp-input"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Nguyễn Văn A"
+                />
+              </div>
+              <div>
+                <label className="fp-label">Username *</label>
+                <input
+                  className="fp-input"
+                  value={form.username}
+                  onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                  placeholder="nguyenvana"
+                  disabled={!!editing}
+                />
+              </div>
+              <div>
+                <label className="fp-label">Mật khẩu{editing ? ' (để trống = giữ nguyên)' : ' *'}</label>
+                <input
+                  className="fp-input"
+                  type="password"
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder="Mật khẩu"
+                />
+              </div>
+              <div>
+                <label className="fp-label">Role</label>
+                <select
+                  className="fp-input"
+                  value={form.role}
+                  onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                  <option value="upbase">UpBase</option>
                 </select>
               </div>
-              <div><label className="fp-label">Trạng thái</label>
-                <select className="fp-input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                  <option value="active">Active</option><option value="disabled">Disabled</option>
+              <div>
+                <label className="fp-label">Trạng thái</label>
+                <select
+                  className="fp-input"
+                  value={form.status}
+                  onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                >
+                  <option value="active">Active</option>
+                  <option value="disabled">Disabled</option>
                 </select>
               </div>
             </div>
             <div className="fp-actions">
-              <button className="fp-cancel" onClick={() => setModal(false)}>Huỷ</button>
-              <button className="fp-submit" onClick={saveUser} disabled={saving}>{saving ? 'Đang lưu...' : editing ? 'Lưu thay đổi →' : 'Tạo tài khoản →'}</button>
+              <button className="fp-cancel" onClick={() => setModal(false)}>
+                Huỷ
+              </button>
+              <button className="fp-submit" onClick={saveUser} disabled={saving}>
+                {saving ? 'Đang lưu...' : editing ? 'Lưu thay đổi →' : 'Tạo tài khoản →'}
+              </button>
             </div>
           </div>
         </div>
@@ -227,15 +406,31 @@ export default function UsersPage() {
 
       <div className="users-wrap" style={{ paddingTop: 0 }}>
         <div className="users-hdr" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn-primary" onClick={openCreate}>＋ Tạo tài khoản</button>
+          <button className="btn-primary" onClick={openCreate}>
+            ＋ Tạo tài khoản
+          </button>
         </div>
 
         <div className="um-layout">
           <div className="um-left">
             <div className="um-search-wrap">
               {/* Honeypot fields absorb browser autofill attempts */}
-              <input type="text" name="username" autoComplete="username" style={{ display: 'none' }} tabIndex={-1} aria-hidden />
-              <input type="password" name="password" autoComplete="current-password" style={{ display: 'none' }} tabIndex={-1} aria-hidden />
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                style={{ display: 'none' }}
+                tabIndex={-1}
+                aria-hidden
+              />
+              <input
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                style={{ display: 'none' }}
+                tabIndex={-1}
+                aria-hidden
+              />
               <input
                 className="um-search"
                 type="text"
@@ -250,27 +445,49 @@ export default function UsersPage() {
               />
             </div>
             <div className="um-filter-row">
-              {['ALL','admin','member','upbase'].map(r => (
-                <button key={r} className={`umf${filter === r ? ' active' : ''}`} onClick={() => setFilter(r)}>{r === 'ALL' ? 'Tất cả' : r.charAt(0).toUpperCase() + r.slice(1)}</button>
+              {['ALL', 'admin', 'member', 'upbase'].map(r => (
+                <button
+                  key={r}
+                  className={`umf${filter === r ? ' active' : ''}`}
+                  onClick={() => setFilter(r)}
+                >
+                  {r === 'ALL' ? 'Tất cả' : r.charAt(0).toUpperCase() + r.slice(1)}
+                </button>
               ))}
             </div>
             <div className="um-user-list">
-              {filtered.length === 0 ? <div className="um-loading">Không tìm thấy.</div> : filtered.map(u => (
-                <div key={u.username} className={`um-user-item${selected?.username === u.username ? ' active' : ''}`} onClick={() => selectUser(u)}>
-                  <div className={`um-av ${avCls(u.role)}`}>{initials(u.name)}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="um-ui-name">{u.name}</div>
-                    <div className="um-ui-user">@{u.username}</div>
+              {filtered.length === 0 ? (
+                <div className="um-loading">Không tìm thấy.</div>
+              ) : (
+                filtered.map(u => (
+                  <div
+                    key={u.username}
+                    className={`um-user-item${selected?.username === u.username ? ' active' : ''}`}
+                    onClick={() => selectUser(u)}
+                  >
+                    <div className={`um-av ${avCls(u.role)}`}>{initials(u.name)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="um-ui-name">{u.name}</div>
+                      <div className="um-ui-user">@{u.username}</div>
+                    </div>
+                    <span className={`um-ui-badge uib-${u.status === 'disabled' ? 'disabled' : u.role}`}>
+                      {u.status === 'disabled' ? 'OFF' : u.role}
+                    </span>
                   </div>
-                  <span className={`um-ui-badge uib-${u.status === 'disabled' ? 'disabled' : u.role}`}>{u.status === 'disabled' ? 'OFF' : u.role}</span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
           <div className="um-right">
             {!selected ? (
-              <div className="um-empty-state"><div className="ue-ico">👆</div><div className="ue-title">Chọn thành viên</div><div className="ue-sub">Nhấn vào tên bên trái để xem và chỉnh sửa quyền</div></div>
+              <div className="um-empty-state">
+                <div className="ue-ico" style={{ display: 'inline-flex', color: '#94a3b8' }}>
+                  {Icon.users(36)}
+                </div>
+                <div className="ue-title">Chọn thành viên</div>
+                <div className="ue-sub">Nhấn vào tên bên trái để xem và chỉnh sửa quyền</div>
+              </div>
             ) : (
               <div className="um-detail">
                 <div className="um-detail-hdr">
@@ -280,42 +497,111 @@ export default function UsersPage() {
                     <div className="um-detail-meta">
                       <span className="um-detail-username">@{selected.username}</span>
                       <span className={`role-pill rp-${selected.role}`}>{selected.role}</span>
-                      <span className={`role-pill sp-${selected.status === 'disabled' ? 'disabled' : 'active'}`}>{selected.status === 'disabled' ? 'Disabled' : 'Active'}</span>
+                      <span
+                        className={`role-pill sp-${selected.status === 'disabled' ? 'disabled' : 'active'}`}
+                      >
+                        {selected.status === 'disabled' ? 'Disabled' : 'Active'}
+                      </span>
                     </div>
                   </div>
                   <div className="um-detail-actions">
-                    <button className="ud-btn" onClick={() => openEdit(selected)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex' }}>{Icon.edit(13)}</span>Sửa</button>
-                    <button className="ud-btn ud-btn-danger" onClick={toggleStatus}>{selected.status === 'disabled' ? 'Bật' : 'Tắt'}</button>
-                    {selected.username !== me?.username && <button className="ud-btn ud-btn-danger" onClick={deleteUser}>Xóa</button>}
+                    <button
+                      className="ud-btn"
+                      onClick={() => openEdit(selected)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <span style={{ display: 'inline-flex' }}>{Icon.edit(13)}</span>Sửa
+                    </button>
+                    <button className="ud-btn ud-btn-danger" onClick={toggleStatus}>
+                      {selected.status === 'disabled' ? 'Bật' : 'Tắt'}
+                    </button>
+                    {selected.username !== me?.username && (
+                      <button className="ud-btn ud-btn-danger" onClick={deleteUser}>
+                        Xóa
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--faint)', marginBottom: 10 }}>Role</div>
+                <div
+                  style={{
+                    fontFamily: 'var(--f-mono)',
+                    fontSize: '.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '.1em',
+                    color: 'var(--faint)',
+                    marginBottom: 10,
+                  }}
+                >
+                  Role
+                </div>
                 <div className="role-selector" style={{ marginBottom: 24, display: 'flex', gap: 10 }}>
-                  {(['admin','member','upbase'] as const).map(r => {
-                    const roleIcon = r === 'admin' ? Icon.users(22) : r === 'member' ? Icon.zap(22) : Icon.barChart(22)
+                  {(['admin', 'member', 'upbase'] as const).map(r => {
+                    const roleIcon =
+                      r === 'admin' ? Icon.users(22) : r === 'member' ? Icon.zap(22) : Icon.barChart(22)
                     const roleColor = r === 'admin' ? '#ef4444' : r === 'member' ? '#3b82f6' : '#10b981'
                     return (
-                      <div key={r} className={`role-opt${selected.role === r ? ' selected-' + r : ''}`} onClick={() => { setSelected({ ...selected, role: r }); setCurPerms({ ...ROLE_DEFAULTS[r] }) }}>
-                        <div className="ro-ico" style={{ display: 'inline-flex', justifyContent: 'center', color: roleColor }}>{roleIcon}</div>
-                        <div className="ro-name" style={{ color: roleColor }}>{r}</div>
-                        <div className="ro-desc">{r === 'admin' ? 'Toàn quyền' : r === 'member' ? 'Truy cập cơ bản' : 'Xem quiz'}</div>
+                      <div
+                        key={r}
+                        className={`role-opt${selected.role === r ? ' selected-' + r : ''}`}
+                        onClick={() => {
+                          setSelected({ ...selected, role: r })
+                          setCurPerms({ ...ROLE_DEFAULTS[r] })
+                        }}
+                      >
+                        <div
+                          className="ro-ico"
+                          style={{ display: 'inline-flex', justifyContent: 'center', color: roleColor }}
+                        >
+                          {roleIcon}
+                        </div>
+                        <div className="ro-name" style={{ color: roleColor }}>
+                          {r}
+                        </div>
+                        <div className="ro-desc">
+                          {r === 'admin' ? 'Toàn quyền' : r === 'member' ? 'Truy cập cơ bản' : 'Xem quiz'}
+                        </div>
                       </div>
                     )
                   })}
                 </div>
 
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--faint)', marginBottom: 14 }}>Phân quyền tính năng</div>
+                <div
+                  style={{
+                    fontFamily: 'var(--f-mono)',
+                    fontSize: '.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '.1em',
+                    color: 'var(--faint)',
+                    marginBottom: 14,
+                  }}
+                >
+                  Phân quyền tính năng
+                </div>
                 {PERMS_DEF.map(sec => (
                   <div key={sec.section} className="perm-section">
                     <div className="perm-section-title">{sec.section}</div>
                     <div className="perm-grid">
                       {sec.items.map(p => (
-                        <div key={p.key} className={`perm-item${curPerms[p.key] ? ' checked' : ''}${'locked' in p && p.locked ? ' locked' : ''}`}
-                          onClick={() => !('locked' in p && p.locked) && setCurPerms(cp => ({ ...cp, [p.key]: cp[p.key] ? 0 : 1 }))}>
+                        <div
+                          key={p.key}
+                          className={`perm-item${curPerms[p.key] ? ' checked' : ''}${'locked' in p && p.locked ? ' locked' : ''}`}
+                          onClick={() =>
+                            !('locked' in p && p.locked) &&
+                            setCurPerms(cp => ({ ...cp, [p.key]: cp[p.key] ? 0 : 1 }))
+                          }
+                        >
                           <div className="perm-checkbox" />
                           <div style={{ flex: 1 }}>
-                            <div className="perm-name" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: '#93c5fd' }}>{p.ico}</span>{p.name}</div>
+                            <div
+                              className="perm-name"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                            >
+                              <span style={{ display: 'inline-flex', color: '#93c5fd' }}>{p.ico}</span>
+                              {p.name}
+                            </div>
                             <div className="perm-desc">{p.desc}</div>
                           </div>
                         </div>
@@ -324,19 +610,70 @@ export default function UsersPage() {
                   </div>
                 ))}
 
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: '.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--faint)', marginBottom: 6, marginTop: 8 }}>Brand Assignment</div>
-                <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 14 }}>Chọn brands user này được phép xem trong Report Tool & Analytics</div>
+                <div
+                  style={{
+                    fontFamily: 'var(--f-mono)',
+                    fontSize: '.65rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '.1em',
+                    color: 'var(--faint)',
+                    marginBottom: 6,
+                    marginTop: 8,
+                  }}
+                >
+                  Brand Assignment
+                </div>
+                <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 14 }}>
+                  Chọn brands user này được phép xem trong Report Tool & Analytics
+                </div>
 
-                {(selected.role === 'admin' || (selected.role as string) === 'lead') ? (
-                  <div style={{ padding: '14px 16px', borderRadius: 10, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.25)', color: 'var(--muted)', fontStyle: 'italic', fontSize: '.85rem', marginBottom: 22, display: 'inline-flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' }}>
-                    <span style={{ display: 'inline-flex', color: '#fbbf24' }}>{Icon.check(16)}</span>Admin/Lead — thấy tất cả brands
+                {selected.role === 'admin' || (selected.role as string) === 'lead' ? (
+                  <div
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: 10,
+                      background: 'rgba(37,99,235,0.08)',
+                      border: '1px solid rgba(37,99,235,0.25)',
+                      color: 'var(--muted)',
+                      fontStyle: 'italic',
+                      fontSize: '.85rem',
+                      marginBottom: 22,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <span style={{ display: 'inline-flex', color: '#fbbf24' }}>{Icon.check(16)}</span>
+                    Admin/Lead — thấy tất cả brands
                   </div>
                 ) : (
                   <div style={{ marginBottom: 22 }}>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                      <button type="button" className="ud-btn" onClick={selectAllBrands}>Tất cả</button>
-                      <button type="button" className="ud-btn" onClick={clearAllBrands}>Bỏ chọn</button>
-                      <button type="button" className="ud-btn ud-btn-primary" onClick={saveBrandAssign} disabled={savingBrands} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{savingBrands ? 'Đang lưu...' : <><span style={{ display: 'inline-flex' }}>{Icon.save(14)}</span>Lưu phân quyền brand</>}</button>
+                      <button type="button" className="ud-btn" onClick={selectAllBrands}>
+                        Tất cả
+                      </button>
+                      <button type="button" className="ud-btn" onClick={clearAllBrands}>
+                        Bỏ chọn
+                      </button>
+                      <button
+                        type="button"
+                        className="ud-btn ud-btn-primary"
+                        onClick={saveBrandAssign}
+                        disabled={savingBrands}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      >
+                        {savingBrands ? (
+                          'Đang lưu...'
+                        ) : (
+                          <>
+                            <span style={{ display: 'inline-flex' }}>{Icon.save(14)}</span>Lưu phân quyền
+                            brand
+                          </>
+                        )}
+                      </button>
                     </div>
 
                     {brandsLoading ? (
@@ -344,22 +681,79 @@ export default function UsersPage() {
                     ) : brands.length === 0 ? (
                       <div style={{ color: 'var(--faint)', fontSize: '.8rem' }}>Chưa có brand nào.</div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                          gap: 8,
+                        }}
+                      >
                         {brands.map(b => {
                           const checked = brandSel.has(b.id)
                           const isAllOriginal = b.isAll
                           return (
-                            <div key={b.id} onClick={() => toggleBrand(b.id)}
-                              title={isAllOriginal ? 'Đang mở cho TẤT CẢ — uncheck để revoke quyền user này' : undefined}
-                              style={{ cursor: 'pointer', padding: '10px 12px', borderRadius: 8,
+                            <div
+                              key={b.id}
+                              onClick={() => toggleBrand(b.id)}
+                              title={
+                                isAllOriginal
+                                  ? 'Đang mở cho TẤT CẢ — uncheck để revoke quyền user này'
+                                  : undefined
+                              }
+                              style={{
+                                cursor: 'pointer',
+                                padding: '10px 12px',
+                                borderRadius: 8,
                                 background: checked ? 'rgba(37,99,235,0.3)' : 'rgba(255,255,255,0.05)',
                                 border: `1px solid ${checked ? 'rgba(37,99,235,0.6)' : 'rgba(255,255,255,0.08)'}`,
-                                display: 'flex', alignItems: 'center', gap: 8, fontSize: '.8rem',
-                                transition: 'background .15s, border-color .15s' }}>
-                              <span style={{ width: 14, height: 14, borderRadius: 3, border: '1.5px solid rgba(255,255,255,0.4)', background: checked ? '#2563eb' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', fontSize: 10, color: '#fff' }}>{checked ? '✓' : ''}</span>
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{b.brand_name}</span>
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: '.8rem',
+                                transition: 'background .15s, border-color .15s',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: 14,
+                                  height: 14,
+                                  borderRadius: 3,
+                                  border: '1.5px solid rgba(255,255,255,0.4)',
+                                  background: checked ? '#2563eb' : 'transparent',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flex: '0 0 auto',
+                                  fontSize: 10,
+                                  color: '#fff',
+                                }}
+                              >
+                                {checked ? '✓' : ''}
+                              </span>
+                              <span
+                                style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  flex: 1,
+                                }}
+                              >
+                                {b.brand_name}
+                              </span>
                               {isAllOriginal && checked && (
-                                <span style={{ fontFamily: 'var(--f-mono)', fontSize: '.55rem', padding: '2px 5px', borderRadius: 3, background: 'rgba(34,197,94,0.15)', color: '#34d399', flex: '0 0 auto' }}>ALL</span>
+                                <span
+                                  style={{
+                                    fontFamily: 'var(--f-mono)',
+                                    fontSize: '.55rem',
+                                    padding: '2px 5px',
+                                    borderRadius: 3,
+                                    background: 'rgba(34,197,94,0.15)',
+                                    color: '#34d399',
+                                    flex: '0 0 auto',
+                                  }}
+                                >
+                                  ALL
+                                </span>
                               )}
                             </div>
                           )
@@ -370,17 +764,59 @@ export default function UsersPage() {
                 )}
 
                 <div className="pass-section">
-                  <h4 style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: '#fbbf24' }}>{Icon.key(16)}</span>Đặt lại mật khẩu</h4>
+                  <h4 style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', color: '#fbbf24' }}>{Icon.key(16)}</span>Đặt lại
+                    mật khẩu
+                  </h4>
                   <div className="pass-grid">
-                    <div><label className="fp-label">Mật khẩu mới</label><input className="fp-input" type="password" autoComplete="new-password" data-lpignore="true" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Tối thiểu 6 ký tự" /></div>
-                    <div><label className="fp-label">Xác nhận</label><input className="fp-input" type="password" autoComplete="new-password" data-lpignore="true" value={cfmPass} onChange={e => setCfmPass(e.target.value)} placeholder="Nhập lại mật khẩu" /></div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end' }}><button className="pass-save-btn" onClick={resetPass}>Đặt lại mật khẩu</button></div>
+                    <div>
+                      <label className="fp-label">Mật khẩu mới</label>
+                      <input
+                        className="fp-input"
+                        type="password"
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        value={newPass}
+                        onChange={e => setNewPass(e.target.value)}
+                        placeholder="Tối thiểu 6 ký tự"
+                      />
+                    </div>
+                    <div>
+                      <label className="fp-label">Xác nhận</label>
+                      <input
+                        className="fp-input"
+                        type="password"
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        value={cfmPass}
+                        onChange={e => setCfmPass(e.target.value)}
+                        placeholder="Nhập lại mật khẩu"
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                      <button className="pass-save-btn" onClick={resetPass}>
+                        Đặt lại mật khẩu
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="save-bar">
                   <span>Nhấn lưu để áp dụng thay đổi quyền</span>
-                  <button className="ud-btn ud-btn-primary" onClick={savePerms} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{saving ? 'Đang lưu...' : <><span style={{ display: 'inline-flex' }}>{Icon.save(14)}</span>Lưu thay đổi</>}</button>
+                  <button
+                    className="ud-btn ud-btn-primary"
+                    onClick={savePerms}
+                    disabled={saving}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    {saving ? (
+                      'Đang lưu...'
+                    ) : (
+                      <>
+                        <span style={{ display: 'inline-flex' }}>{Icon.save(14)}</span>Lưu thay đổi
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             )}

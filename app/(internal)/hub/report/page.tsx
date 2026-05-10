@@ -711,9 +711,9 @@ function ReportPageInner() {
         tiktok_van_de: ai.tiktok_van_de || '',
         tiktok_giai_phap: ai.tiktok_giai_phap || '',
       })
-      showToast('✅ AI generate xong!')
+      showToast('AI generate xong!')
     } catch (e) {
-      showToast('❌ Lỗi AI: ' + String(e), 'error')
+      showToast('Lỗi AI: ' + String(e), 'error')
     } finally {
       setAiLoading(false)
     }
@@ -4163,7 +4163,7 @@ function ReportPageInner() {
                     }
                     if (typeof window !== 'undefined') localStorage.setItem('mo_openai_key', keyInput.trim())
                     setKeyModal(false)
-                    showToast('✅ Đã lưu OpenAI Key!')
+                    showToast('Đã lưu OpenAI Key!')
                   }}
                 >
                   Lưu Key
@@ -4222,7 +4222,7 @@ function ReportPageInner() {
                   onClick={() => {
                     if (typeof window !== 'undefined') localStorage.setItem('mo_ai_prompt', promptInput)
                     setPromptModal(false)
-                    showToast('✅ Đã lưu AI Prompt!')
+                    showToast('Đã lưu AI Prompt!')
                   }}
                 >
                   Lưu Prompt

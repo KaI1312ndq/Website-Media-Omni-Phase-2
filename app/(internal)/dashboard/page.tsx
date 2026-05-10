@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getSession, SessionUser, initials } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
+import { Icon } from '@/lib/icons'
 import './dashboard.css'
+
+import type { ReactElement } from 'react'
 
 type CardDef = {
   key: string
@@ -461,23 +464,23 @@ export default function DashboardPage() {
     )
   }
 
-  const notifications = [
+  const notifications: { icon: ReactElement; title: string; sub: string; date: string; cls: string }[] = [
     {
-      icon: '✉️',
+      icon: Icon.mail(20),
       title: 'Weekly Report đang mở để nhập liệu',
       sub: 'Hãy submit báo cáo brand của bạn trước thứ 6.',
       date: 'Hôm nay',
       cls: 'b1',
     },
     {
-      icon: '📋',
+      icon: Icon.quiz(20),
       title: 'Quiz Dạng 2 đã cập nhật câu hỏi mới',
       sub: 'Vào Quiz Hub để thử bài kiểm tra mới nhất.',
       date: 'Hôm qua',
       cls: 'b2',
     },
     {
-      icon: '📅',
+      icon: Icon.calendar(20),
       title: 'Training nội bộ — Thứ 6, lúc 10:00 AM',
       sub: 'Chủ đề: Optimize ROAS cho TikTok Shop.',
       date: '3 ngày tới',

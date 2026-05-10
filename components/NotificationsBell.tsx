@@ -44,7 +44,9 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
   const [items, setItems] = useState<NotificationItem[]>([])
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
   const router = useRouter()
 
   const load = useCallback(async () => {
@@ -79,15 +81,27 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
 
-  // Refresh when opening
+  // Refresh when opening + compute fixed position
   useEffect(() => {
-    if (open) load()
+    if (!open) return
+    load()
+    const updatePos = () => {
+      const r = btnRef.current?.getBoundingClientRect()
+      if (r) setPos({ top: r.bottom + 8, right: window.innerWidth - r.right })
+    }
+    updatePos()
+    window.addEventListener('resize', updatePos)
+    window.addEventListener('scroll', updatePos, true)
+    return () => {
+      window.removeEventListener('resize', updatePos)
+      window.removeEventListener('scroll', updatePos, true)
+    }
   }, [open, load])
 
   async function handleClickItem(n: NotificationItem) {
     if (!n.read_at) {
       // optimistic
-      setItems(prev => prev.map(x => x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x))
+      setItems(prev => prev.map(x => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)))
       setUnread(u => Math.max(0, u - 1))
       try {
         await fetch('/api/notifications/read', {
@@ -95,14 +109,16 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: n.id }),
         })
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     setOpen(false)
     if (n.link) router.push(n.link)
   }
 
   async function markAllRead() {
-    setItems(prev => prev.map(x => x.read_at ? x : { ...x, read_at: new Date().toISOString() }))
+    setItems(prev => prev.map(x => (x.read_at ? x : { ...x, read_at: new Date().toISOString() })))
     setUnread(0)
     try {
       await fetch('/api/notifications/read', {
@@ -110,50 +126,72 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ all: true }),
       })
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
+        ref={btnRef}
         type="button"
         className="ihd-icon"
         aria-label="Thông báo"
         onClick={() => setOpen(o => !o)}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 01-3.46 0"/>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 01-3.46 0" />
         </svg>
         {unread > 0 && (
           <span
             style={{
-              position: 'absolute', top: 6, right: 6,
-              minWidth: 16, height: 16, padding: '0 4px',
+              position: 'absolute',
+              top: 6,
+              right: 6,
+              minWidth: 16,
+              height: 16,
+              padding: '0 4px',
               borderRadius: 8,
-              background: '#ef4444', color: '#fff',
-              fontSize: 10, fontWeight: 700,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: '#ef4444',
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               border: '2px solid #0a1424',
               lineHeight: 1,
             }}
-          >{unread > 99 ? '99+' : unread}</span>
+          >
+            {unread > 99 ? '99+' : unread}
+          </span>
         )}
       </button>
 
-      {open && (
+      {open && pos && (
         <div
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
+            position: 'fixed',
+            top: pos.top,
+            right: pos.right,
             width: 'min(360px, calc(100vw - 32px))',
             maxHeight: '70vh',
             background: '#0a1424',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 12,
             boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
-            zIndex: 90,
+            zIndex: 1000,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -182,7 +220,9 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
                 cursor: unread === 0 ? 'default' : 'pointer',
                 padding: 0,
               }}
-            >Đánh dấu đã đọc tất cả</button>
+            >
+              Đánh dấu đã đọc tất cả
+            </button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -218,12 +258,20 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
                       cursor: 'pointer',
                       transition: 'background .15s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = isUnread ? 'rgba(37,99,235,0.12)' : 'rgba(255,255,255,0.04)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isUnread ? 'rgba(37,99,235,0.06)' : 'transparent' }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = isUnread
+                        ? 'rgba(37,99,235,0.12)'
+                        : 'rgba(255,255,255,0.04)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = isUnread ? 'rgba(37,99,235,0.06)' : 'transparent'
+                    }}
                   >
                     <div
                       style={{
-                        width: 32, height: 32, borderRadius: 8,
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
                         background: 'rgba(37,99,235,0.15)',
                         color: '#60a5fa',
                         display: 'inline-flex',
@@ -231,7 +279,9 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
                         justifyContent: 'center',
                         flexShrink: 0,
                       }}
-                    >{renderIcon(n.icon)}</div>
+                    >
+                      {renderIcon(n.icon)}
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div
@@ -244,24 +294,39 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
                             whiteSpace: 'nowrap',
                             flex: 1,
                           }}
-                        >{n.title}</div>
+                        >
+                          {n.title}
+                        </div>
                         {isUnread && (
-                          <span style={{
-                            width: 8, height: 8, borderRadius: '50%',
-                            background: '#3b82f6', flexShrink: 0,
-                          }}/>
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              background: '#3b82f6',
+                              flexShrink: 0,
+                            }}
+                          />
                         )}
                       </div>
                       {n.body && (
-                        <div style={{
-                          fontSize: 12, color: '#94a3b8', marginTop: 2,
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                        }}>{n.body}</div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: '#94a3b8',
+                            marginTop: 2,
+                            overflow: 'hidden',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                          }}
+                        >
+                          {n.body}
+                        </div>
                       )}
-                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{timeAgo(n.created_at)}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                        {timeAgo(n.created_at)}
+                      </div>
                     </div>
                   </button>
                 )
@@ -270,19 +335,29 @@ export default function NotificationsBell({ isAdmin = false }: { isAdmin?: boole
           </div>
 
           {isAdmin && items.length > 0 && (
-            <div style={{
-              borderTop: '1px solid rgba(255,255,255,0.08)',
-              padding: '8px 14px',
-              textAlign: 'center',
-            }}>
+            <div
+              style={{
+                borderTop: '1px solid rgba(255,255,255,0.08)',
+                padding: '8px 14px',
+                textAlign: 'center',
+              }}
+            >
               <button
                 type="button"
-                onClick={() => { setOpen(false); router.push('/admin/notifications') }}
-                style={{
-                  background: 'transparent', border: 'none',
-                  color: '#06b6d4', fontSize: 12, cursor: 'pointer',
+                onClick={() => {
+                  setOpen(false)
+                  router.push('/admin/notifications')
                 }}
-              >Xem tất cả →</button>
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#06b6d4',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Xem tất cả →
+              </button>
             </div>
           )}
         </div>

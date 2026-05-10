@@ -5,28 +5,42 @@ import Image from 'next/image'
 import { PortableText, type PortableTextBlock } from '@portabletext/react'
 import { client, urlFor } from '@/lib/sanity'
 import { sopBySlugQuery, sopSlugsQuery, relatedSopQuery } from '@/lib/queries'
+import { Icon } from '@/lib/icons'
+import type { ReactElement } from 'react'
 import '../sop.css'
 
 export const revalidate = 300
 export const dynamicParams = true
 
 const hasSanity = Boolean(
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID &&
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID !== 'placeholder'
+  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID && process.env.NEXT_PUBLIC_SANITY_PROJECT_ID !== 'placeholder',
 )
 
 const CATEGORY_LABEL: Record<string, string> = {
-  process: 'Quy trình', template: 'Templates', checklist: 'Checklists',
-  training: 'Training', playbook: 'Playbook', tools: 'Tools',
+  process: 'Quy trình',
+  template: 'Templates',
+  checklist: 'Checklists',
+  training: 'Training',
+  playbook: 'Playbook',
+  tools: 'Tools',
 }
 
-const CALLOUT_ICON: Record<string, string> = {
-  info: 'ℹ️', warning: '⚠️', success: '✅', danger: '🚫',
+const CALLOUT_ICON: Record<string, ReactElement> = {
+  info: Icon.info(18),
+  warning: Icon.alertTriangle(18),
+  success: Icon.checkCircle(18),
+  danger: Icon.ban(18),
 }
 
 const FILE_BADGE: Record<string, string> = {
-  pdf: 'PDF', xlsx: 'XLS', docx: 'DOC', figma: 'FIG',
-  drive: 'DRV', notion: 'NTN', sheet: 'SHT', other: 'FILE',
+  pdf: 'PDF',
+  xlsx: 'XLS',
+  docx: 'DOC',
+  figma: 'FIG',
+  drive: 'DRV',
+  notion: 'NTN',
+  sheet: 'SHT',
+  other: 'FILE',
 }
 
 function slugify(s: string): string {
@@ -51,9 +65,7 @@ export async function generateStaticParams() {
   return (slugs || []).map(slug => ({ slug }))
 }
 
-export async function generateMetadata(
-  { params }: { params: { slug: string } },
-): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   if (!hasSanity) return { title: 'SOP — Media Omni' }
   const doc = await client.fetch(sopBySlugQuery, { slug: params.slug }).catch(() => null)
   if (!doc) return { title: 'Tài liệu không tồn tại' }
@@ -98,22 +110,29 @@ export default async function SopDetailPage({ params }: { params: { slug: string
       ),
     },
     marks: {
-      code: ({ children }: { children?: React.ReactNode }) => (
-        <code className="sop-code">{children}</code>
-      ),
+      code: ({ children }: { children?: React.ReactNode }) => <code className="sop-code">{children}</code>,
       link: ({ children, value }: { children?: React.ReactNode; value?: { href?: string } }) => (
-        <a href={value?.href} target="_blank" rel="noopener noreferrer">{children}</a>
+        <a href={value?.href} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
       ),
     },
     types: {
       image: ({ value }: { value: { asset?: unknown; alt?: string; caption?: string } }) => {
         if (!value?.asset) return null
-        const src = urlFor(value.asset as Parameters<typeof urlFor>[0]).width(900).url()
+        const src = urlFor(value.asset as Parameters<typeof urlFor>[0])
+          .width(900)
+          .url()
         return (
           <figure className="sop-figure">
-            <Image src={src} alt={value.alt || ''} width={900} height={600}
+            <Image
+              src={src}
+              alt={value.alt || ''}
+              width={900}
+              height={600}
               sizes="(max-width: 768px) 100vw, 900px"
-              style={{ width: '100%', height: 'auto' }} />
+              style={{ width: '100%', height: 'auto' }}
+            />
             {value.caption && <figcaption>{value.caption}</figcaption>}
           </figure>
         )
@@ -122,7 +141,7 @@ export default async function SopDetailPage({ params }: { params: { slug: string
         const type = value?.type || 'info'
         return (
           <div className={`sop-callout sop-callout-${type}`}>
-            <span className="sop-callout-icon">{CALLOUT_ICON[type] || 'ℹ️'}</span>
+            <span className="sop-callout-icon">{CALLOUT_ICON[type] || Icon.info(18)}</span>
             <span>{value?.text}</span>
           </div>
         )
@@ -141,16 +160,32 @@ export default async function SopDetailPage({ params }: { params: { slug: string
   }
 
   const publishedDate = doc.publishedAt
-    ? new Date(doc.publishedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    ? new Date(doc.publishedAt).toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
     : null
   const updatedDate = doc._updatedAt
-    ? new Date(doc._updatedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    ? new Date(doc._updatedAt).toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
     : null
 
   return (
     <div className="sop-wrap">
       <Link href="/hub/sop" className="sop-detail-back">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        >
           <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
         Quay lại SOP Hub
@@ -165,14 +200,16 @@ export default async function SopDetailPage({ params }: { params: { slug: string
       </div>
 
       <header className="sop-detail-hero">
-        <div className="sop-detail-icon">{doc.icon || '📋'}</div>
+        <div className="sop-detail-icon">{doc.icon || Icon.bookOpen(22)}</div>
         <h1 className="sop-detail-title">{doc.title}</h1>
         <p className="sop-detail-excerpt">{doc.excerpt}</p>
         <div className="sop-detail-meta">
           <span className="sop-cat-badge">{CATEGORY_LABEL[doc.category] ?? doc.category}</span>
           {doc.level && <span className={`sop-level-pill ${doc.level}`}>{doc.level}</span>}
           {(doc.platform || []).map((p: string) => (
-            <span key={p} className="sop-plat-tag">{p}</span>
+            <span key={p} className="sop-plat-tag">
+              {p}
+            </span>
           ))}
           {doc.author && <span className="sop-meta-item">· {doc.author}</span>}
           {publishedDate && <span className="sop-meta-item">· {publishedDate}</span>}
@@ -198,7 +235,9 @@ export default async function SopDetailPage({ params }: { params: { slug: string
               <ul className="sop-toc-list">
                 {toc.map(t => (
                   <li key={t.id}>
-                    <a href={`#${t.id}`} className={t.level === 3 ? 'lvl-3' : ''}>{t.text}</a>
+                    <a href={`#${t.id}`} className={t.level === 3 ? 'lvl-3' : ''}>
+                      {t.text}
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -209,7 +248,11 @@ export default async function SopDetailPage({ params }: { params: { slug: string
             <div className="sop-side-card">
               <h4>Tags</h4>
               <div className="sop-tag-row">
-                {doc.tags.map((t: string) => <span key={t} className="sop-tag">{t}</span>)}
+                {doc.tags.map((t: string) => (
+                  <span key={t} className="sop-tag">
+                    {t}
+                  </span>
+                ))}
               </div>
             </div>
           )}
@@ -217,10 +260,20 @@ export default async function SopDetailPage({ params }: { params: { slug: string
           <div className="sop-side-card">
             <h4>Thông tin</h4>
             <div style={{ fontSize: '0.84rem', color: '#cbd5e1', lineHeight: 1.6 }}>
-              {doc.author && <div><b style={{ color: '#94a3b8', fontWeight: 500 }}>Tác giả:</b> {doc.author}</div>}
-              {publishedDate && <div><b style={{ color: '#94a3b8', fontWeight: 500 }}>Đăng:</b> {publishedDate}</div>}
+              {doc.author && (
+                <div>
+                  <b style={{ color: '#94a3b8', fontWeight: 500 }}>Tác giả:</b> {doc.author}
+                </div>
+              )}
+              {publishedDate && (
+                <div>
+                  <b style={{ color: '#94a3b8', fontWeight: 500 }}>Đăng:</b> {publishedDate}
+                </div>
+              )}
               {updatedDate && updatedDate !== publishedDate && (
-                <div><b style={{ color: '#94a3b8', fontWeight: 500 }}>Cập nhật:</b> {updatedDate}</div>
+                <div>
+                  <b style={{ color: '#94a3b8', fontWeight: 500 }}>Cập nhật:</b> {updatedDate}
+                </div>
               )}
             </div>
           </div>
@@ -231,9 +284,18 @@ export default async function SopDetailPage({ params }: { params: { slug: string
             rel="noopener noreferrer"
             className="sop-edit-link"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
             Sửa trong Sanity
           </a>
@@ -244,20 +306,27 @@ export default async function SopDetailPage({ params }: { params: { slug: string
         <div className="sop-related">
           <div className="sop-section-title">Tài liệu liên quan</div>
           <div className="sop-related-grid">
-            {related.map((r: {
-              _id: string; title: string; slug: { current: string };
-              category: string; icon?: string; excerpt: string; level?: string
-            }) => (
-              <Link key={r._id} href={`/hub/sop/${r.slug.current}`} className="sop-card">
-                <div className="sop-card-icon">{r.icon || '📋'}</div>
-                <div className="sop-card-title">{r.title}</div>
-                <div className="sop-card-excerpt">{r.excerpt}</div>
-                <div className="sop-card-foot">
-                  <span className="sop-cat-badge">{CATEGORY_LABEL[r.category] ?? r.category}</span>
-                  {r.level && <span className={`sop-level-pill ${r.level}`}>{r.level}</span>}
-                </div>
-              </Link>
-            ))}
+            {related.map(
+              (r: {
+                _id: string
+                title: string
+                slug: { current: string }
+                category: string
+                icon?: string
+                excerpt: string
+                level?: string
+              }) => (
+                <Link key={r._id} href={`/hub/sop/${r.slug.current}`} className="sop-card">
+                  <div className="sop-card-icon">{r.icon || Icon.bookOpen(22)}</div>
+                  <div className="sop-card-title">{r.title}</div>
+                  <div className="sop-card-excerpt">{r.excerpt}</div>
+                  <div className="sop-card-foot">
+                    <span className="sop-cat-badge">{CATEGORY_LABEL[r.category] ?? r.category}</span>
+                    {r.level && <span className={`sop-level-pill ${r.level}`}>{r.level}</span>}
+                  </div>
+                </Link>
+              ),
+            )}
           </div>
         </div>
       )}
