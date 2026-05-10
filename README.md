@@ -254,5 +254,7 @@ npm run format        # Prettier toàn bộ codebase
 ## 📝 Notes
 
 - `HomeClient.tsx` (~575 lines) là composition cho homepage. Các sub-section đã tách ra `components/home/sections.tsx` và imperative helpers ở `components/home/helpers.ts`. Nếu mở rộng tiếp, tách HeroSection / ServicesSection thành file riêng theo cùng pattern.
+- `hub/report` utilities + types + constants đã extract sang `lib/report/{types,utils,constants,ai-prompt}.ts`. AI prompt có thể override qua **Sanity Studio → Site Settings → tab "Internal — AI Prompt"** (fetch qua `/api/report/prompt`, cache 5min, fallback về `lib/report/ai-prompt.ts`). User cũng có thể override per-browser qua localStorage `mo_ai_prompt`.
+- PDF export `/hub/analytics`: bấm "Xuất PDF" → mở print dialog → Save as PDF. Dùng print media CSS — không cần dependency.
 - Image domains đã whitelist Sanity CDN + Facebook trong `next.config.mjs`. Thêm domain mới vào đó nếu dùng image source khác.
 - Avatar Team Lead trên homepage hiện link tới [nguyenducquang.website](https://nguyenducquang.website) (xem `components/home/helpers.ts → buildTeamCarousel`).

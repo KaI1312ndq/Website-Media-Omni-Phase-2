@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, SessionUser } from '@/lib/auth'
+import { HubPageSkeleton } from '@/components/Skeleton'
 import '@/app/(internal)/dashboard/dashboard.css'
 import '@/app/(internal)/hub/analytics/analytics.css'
 
@@ -36,7 +37,11 @@ interface ScoresResp {
   attempts: Attempt[]
 }
 
-interface UserRow { username: string; name: string; role: string }
+interface UserRow {
+  username: string
+  name: string
+  role: string
+}
 
 function fmtDateVN(s: string) {
   if (!s) return '—'
@@ -62,8 +67,10 @@ export default function ScoresPage() {
 
   // Filters — default last 30 days
   const today = new Date()
-  const last30 = new Date(today); last30.setDate(today.getDate() - 30)
-  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const last30 = new Date(today)
+  last30.setDate(today.getDate() - 30)
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const [fromDate, setFromDate] = useState(fmt(last30))
   const [toDate, setToDate] = useState(fmt(today))
   const [quizType, setQuizType] = useState<string>('')
@@ -89,9 +96,12 @@ export default function ScoresPage() {
   /* Load users list (admin only) */
   useEffect(() => {
     if (!user || user.role !== 'admin') return
-    fetch('/api/users').then(r => r.json()).then(j => {
-      setUsers((j.users || []).filter((u: UserRow) => u.role !== 'upbase'))
-    }).catch(() => setUsers([]))
+    fetch('/api/users')
+      .then(r => r.json())
+      .then(j => {
+        setUsers((j.users || []).filter((u: UserRow) => u.role !== 'upbase'))
+      })
+      .catch(() => setUsers([]))
   }, [user])
 
   /* Load data */
@@ -105,7 +115,10 @@ export default function ScoresPage() {
     if (filterUser) params.set('username', filterUser)
     fetch(`/api/scores?${params.toString()}`, { credentials: 'include' })
       .then(r => r.json())
-      .then(j => { setData(j); setPage(1) })
+      .then(j => {
+        setData(j)
+        setPage(1)
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false))
   }, [user, fromDate, toDate, quizType, filterUser])
@@ -124,12 +137,14 @@ export default function ScoresPage() {
         type: 'bar',
         data: {
           labels: data.distribution.map(d => d.range),
-          datasets: [{
-            label: 'Số bài',
-            data: data.distribution.map(d => d.count),
-            backgroundColor: colors,
-            borderRadius: 6,
-          }],
+          datasets: [
+            {
+              label: 'Số bài',
+              data: data.distribution.map(d => d.count),
+              backgroundColor: colors,
+              borderRadius: 6,
+            },
+          ],
         },
         options: {
           responsive: true,
@@ -137,12 +152,18 @@ export default function ScoresPage() {
           plugins: { legend: { display: false } },
           scales: {
             x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } },
-            y: { ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }, grid: { color: 'rgba(148,163,184,0.08)' }, beginAtZero: true },
+            y: {
+              ticks: { color: '#94a3b8', stepSize: 1, precision: 0 },
+              grid: { color: 'rgba(148,163,184,0.08)' },
+              beginAtZero: true,
+            },
           },
         },
       })
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [data])
 
   /* Top users chart */
@@ -159,12 +180,16 @@ export default function ScoresPage() {
         type: 'bar',
         data: {
           labels: items.map(u => u.name),
-          datasets: [{
-            label: 'Điểm trung bình (%)',
-            data: items.map(u => u.avg_pct),
-            backgroundColor: items.map(u => u.avg_pct >= 85 ? '#10b981' : u.avg_pct >= 70 ? '#22d3ee' : '#f59e0b'),
-            borderRadius: 6,
-          }],
+          datasets: [
+            {
+              label: 'Điểm trung bình (%)',
+              data: items.map(u => u.avg_pct),
+              backgroundColor: items.map(u =>
+                u.avg_pct >= 85 ? '#10b981' : u.avg_pct >= 70 ? '#22d3ee' : '#f59e0b',
+              ),
+              borderRadius: 6,
+            },
+          ],
         },
         options: {
           indexAxis: 'y',
@@ -172,13 +197,19 @@ export default function ScoresPage() {
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
-            x: { max: 100, ticks: { color: '#94a3b8', font: { size: 10 }, callback: (v) => v + '%' }, grid: { color: 'rgba(148,163,184,0.08)' } },
+            x: {
+              max: 100,
+              ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '%' },
+              grid: { color: 'rgba(148,163,184,0.08)' },
+            },
             y: { ticks: { color: '#cbd5e1', font: { size: 11 } }, grid: { display: false } },
           },
         },
       })
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [data])
 
   /* Pagination slice */
@@ -189,27 +220,37 @@ export default function ScoresPage() {
   /* Quiz types options derived from data */
   const quizTypes = useMemo(() => {
     const s = new Set<string>()
-    attempts.forEach(a => { if (a.quiz_type) s.add(a.quiz_type) })
+    attempts.forEach(a => {
+      if (a.quiz_type) s.add(a.quiz_type)
+    })
     return Array.from(s)
   }, [attempts])
 
-  if (!user) return null
+  if (!user) return <HubPageSkeleton title="Đang tải scores..." />
 
   const isAdmin = user.role === 'admin'
 
   return (
     <>
       <div className="an2">
-
         {/* Filters */}
         <div className="an2-filters">
           <span className="lbl">Quiz</span>
           <select className="an2-sel" value={quizType} onChange={e => setQuizType(e.target.value)}>
             <option value="">Tất cả</option>
-            {quizTypes.map(q => <option key={q} value={q}>{q}</option>)}
+            {quizTypes.map(q => (
+              <option key={q} value={q}>
+                {q}
+              </option>
+            ))}
           </select>
           <span className="lbl">Từ ngày</span>
-          <input className="an2-sel" type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+          <input
+            className="an2-sel"
+            type="date"
+            value={fromDate}
+            onChange={e => setFromDate(e.target.value)}
+          />
           <span className="lbl">Đến</span>
           <input className="an2-sel" type="date" value={toDate} onChange={e => setToDate(e.target.value)} />
           {isAdmin && (
@@ -217,13 +258,25 @@ export default function ScoresPage() {
               <span className="lbl">User</span>
               <select className="an2-sel" value={filterUser} onChange={e => setFilterUser(e.target.value)}>
                 <option value="">Tất cả</option>
-                {users.map(u => <option key={u.username} value={u.username}>{u.name}</option>)}
+                {users.map(u => (
+                  <option key={u.username} value={u.username}>
+                    {u.name}
+                  </option>
+                ))}
               </select>
             </>
           )}
-          <button className="an2-refresh" onClick={() => {
-            setFromDate(fmt(last30)); setToDate(fmt(today)); setQuizType(''); setFilterUser('')
-          }}>↻ Reset</button>
+          <button
+            className="an2-refresh"
+            onClick={() => {
+              setFromDate(fmt(last30))
+              setToDate(fmt(today))
+              setQuizType('')
+              setFilterUser('')
+            }}
+          >
+            ↻ Reset
+          </button>
         </div>
 
         {loading ? (
@@ -247,7 +300,9 @@ export default function ScoresPage() {
                   {data?.summary.top_user?.name || '—'}
                 </div>
                 <div className="an2-stat-lbl">Top performer</div>
-                <div className="an2-stat-sub">{data?.summary.top_user ? data.summary.top_user.pct + '%' : ''}</div>
+                <div className="an2-stat-sub">
+                  {data?.summary.top_user ? data.summary.top_user.pct + '%' : ''}
+                </div>
               </div>
               <div className="an2-card">
                 <div className="an2-stat-val">{data?.summary.active_users || 0}</div>
@@ -268,7 +323,9 @@ export default function ScoresPage() {
                 <div className="an2-chart-wrap" style={{ height: 260 }}>
                   {(data?.topUsers || []).length === 0 ? (
                     <div className="an2-empty">Chưa có dữ liệu.</div>
-                  ) : <canvas ref={topChartRef} />}
+                  ) : (
+                    <canvas ref={topChartRef} />
+                  )}
                 </div>
               </div>
             </div>
@@ -286,26 +343,39 @@ export default function ScoresPage() {
                 <thead>
                   <tr>
                     <th style={{ textAlign: 'left' }}>User</th>
-                    {(data?.matrix.topics || []).map(t => <th key={t}>{t}</th>)}
+                    {(data?.matrix.topics || []).map(t => (
+                      <th key={t}>{t}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(data?.matrix.users || []).length === 0 ? (
-                    <tr><td colSpan={1 + (data?.matrix.topics.length || 0)} className="an2-empty">Không có dữ liệu</td></tr>
-                  ) : data!.matrix.users.map(u => (
-                    <tr key={u.username}>
-                      <td className="left">{u.name}</td>
-                      {data!.matrix.topics.map(t => {
-                        const v = data!.matrix.scores[u.username]?.[t]
-                        if (v === undefined) return <td key={t} className="muted">—</td>
-                        return (
-                          <td key={t} style={{ background: pctBg(v), fontWeight: 700 }}>
-                            <span className={pctClass(v)}>{v}%</span>
-                          </td>
-                        )
-                      })}
+                    <tr>
+                      <td colSpan={1 + (data?.matrix.topics.length || 0)} className="an2-empty">
+                        Không có dữ liệu
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    data!.matrix.users.map(u => (
+                      <tr key={u.username}>
+                        <td className="left">{u.name}</td>
+                        {data!.matrix.topics.map(t => {
+                          const v = data!.matrix.scores[u.username]?.[t]
+                          if (v === undefined)
+                            return (
+                              <td key={t} className="muted">
+                                —
+                              </td>
+                            )
+                          return (
+                            <td key={t} style={{ background: pctBg(v), fontWeight: 700 }}>
+                              <span className={pctClass(v)}>{v}%</span>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -332,28 +402,52 @@ export default function ScoresPage() {
                 </thead>
                 <tbody>
                   {slice.length === 0 ? (
-                    <tr><td colSpan={6} className="an2-empty">Không có bài làm nào</td></tr>
-                  ) : slice.map((r, i) => {
-                    const p = r.percentage ?? (r.total ? Math.round((r.score || 0) / r.total * 100) : 0)
-                    return (
-                      <tr key={r.id || `${r.username}-${i}-${r.created_at}`}>
-                        <td className="left">{r.name || r.username}</td>
-                        <td className="left">{r.quiz_type || '—'}</td>
-                        <td className="left">{r.topic || '—'}</td>
-                        <td>{r.score ?? 0}/{r.total ?? 0}</td>
-                        <td><span className={pctClass(p)}>{p}%</span></td>
-                        <td>{fmtDateVN(r.created_at)}</td>
-                      </tr>
-                    )
-                  })}
+                    <tr>
+                      <td colSpan={6} className="an2-empty">
+                        Không có bài làm nào
+                      </td>
+                    </tr>
+                  ) : (
+                    slice.map((r, i) => {
+                      const p = r.percentage ?? (r.total ? Math.round(((r.score || 0) / r.total) * 100) : 0)
+                      return (
+                        <tr key={r.id || `${r.username}-${i}-${r.created_at}`}>
+                          <td className="left">{r.name || r.username}</td>
+                          <td className="left">{r.quiz_type || '—'}</td>
+                          <td className="left">{r.topic || '—'}</td>
+                          <td>
+                            {r.score ?? 0}/{r.total ?? 0}
+                          </td>
+                          <td>
+                            <span className={pctClass(p)}>{p}%</span>
+                          </td>
+                          <td>{fmtDateVN(r.created_at)}</td>
+                        </tr>
+                      )
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
             {pages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 14 }}>
-                <button className="an2-refresh" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>←</button>
-                <span style={{ alignSelf: 'center', color: '#94a3b8', fontSize: '.85rem' }}>Trang {page}/{pages}</span>
-                <button className="an2-refresh" onClick={() => setPage(p => Math.min(pages, p + 1))} disabled={page >= pages}>→</button>
+                <button
+                  className="an2-refresh"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                >
+                  ←
+                </button>
+                <span style={{ alignSelf: 'center', color: '#94a3b8', fontSize: '.85rem' }}>
+                  Trang {page}/{pages}
+                </span>
+                <button
+                  className="an2-refresh"
+                  onClick={() => setPage(p => Math.min(pages, p + 1))}
+                  disabled={page >= pages}
+                >
+                  →
+                </button>
               </div>
             )}
           </>

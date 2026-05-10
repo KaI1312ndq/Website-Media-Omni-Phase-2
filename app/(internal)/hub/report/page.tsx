@@ -8,279 +8,29 @@ import * as XLSX from 'xlsx'
 import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables)
 import { DEFAULT_SYS_PROMPT } from '@/lib/report/ai-prompt'
-
-/* ── Types ── */
-type Brand = { id: string; brand_name: string }
-
-type PlanData = Record<string, { w1: number; w2: number; w3: number; w4: number; w5: number; month: number }>
-
-type WeekInfo = {
-  weekNum: number
-  month: number
-  year: number
-  quarter: number
-  label: string
-  start: string // dd/MM/yyyy
-  end: string
-  startISO: string // yyyy-MM-dd
-  endISO: string
-  days: number
-  isFull: boolean
-}
-
-type ShopeeData = {
-  s_cpc_doanh_so: number
-  s_cpc_chi_phi: number
-  s_cpc_luot_xem: number
-  s_cpc_luot_click: number
-  s_cpc_don_hang: number
-  s_nd_gmv: number
-  s_nd_chi_phi: number
-  s_nd_luot_xem: number
-  s_nd_luot_click: number
-  s_live_gmv: number
-  s_live_chi_phi: number
-  s_live_luot_xem: number
-}
-
-type TiktokData = {
-  t_pgm_doanh_so: number
-  t_pgm_chi_phi: number
-  t_pgm_luot_xem: number
-  t_pgm_luot_click: number
-  t_pgm_don_hang: number
-  t_lgm_doanhthu: number
-  t_lgm_chi_phi: number
-  t_con_nguoi: number
-  t_con_chi_phi: number
-  t_brd_view: number
-  t_brd_follow: number
-  t_brd_chi_phi: number
-}
-
-type AIResult = {
-  highlight: string
-  lowlight: string
-  shopee_thuc_trang: string
-  shopee_van_de: string
-  shopee_giai_phap: string
-  tiktok_thuc_trang: string
-  tiktok_van_de: string
-  tiktok_giai_phap: string
-}
-
-/* ── Helpers ── */
-function fmtDate(d: Date): string {
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-}
-function toISO(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-function fmtNum(n: number, unit: string): string {
-  if (!n && n !== 0) return '—'
-  if (unit === '₫') return n.toLocaleString('vi-VN')
-  if (unit === 'x') return n.toFixed(2)
-  if (unit === '%') return n.toFixed(2) + '%'
-  if (unit === '‰') return n.toFixed(0) + '‰'
-  return n.toLocaleString('vi-VN')
-}
-/* Format integer with Vietnamese thousand separator (dot) */
-function fmtVN(v: number | string): string {
-  const raw = String(v ?? '').replace(/[^\d-]/g, '')
-  if (!raw || raw === '-') return ''
-  const num = parseInt(raw, 10)
-  if (isNaN(num)) return ''
-  return num.toLocaleString('vi-VN')
-}
-/* Parse VN-formatted input (handles dots, commas, math expressions safely) */
-function parseVN(s: string): number {
-  if (!s) return 0
-  return (
-    parseFloat(
-      String(s)
-        .replace(/[.,\s]/g, '')
-        .replace(/[^\d.-]/g, ''),
-    ) || 0
-  )
-}
-/* Evaluate math expression like "100+200" → 300; returns NaN if invalid */
-function evalExpr(s: string): number {
-  const stripped = s.replace(/[.,\s]/g, '')
-  if (!/[+\-*/]/.test(stripped)) return NaN
-  if (!/^[\d+\-*/().]+$/.test(stripped)) return NaN
-  try {
-    const r = Function('"use strict";return(' + stripped + ')')()
-    if (!isFinite(r) || isNaN(r)) return NaN
-    return Math.round(Number(r))
-  } catch {
-    return NaN
-  }
-}
-function pct(actual: number, plan: number | undefined): number | null {
-  if (!plan) return null
-  return parseFloat(((actual / plan) * 100).toFixed(1))
-}
-function pctClass(p: number | null): string {
-  if (p === null) return ''
-  if (p >= 100) return 'g'
-  if (p >= 80) return 'y'
-  return 'r'
-}
-function n(v: string | number | null | undefined): number {
-  return parseFloat(String(v ?? 0)) || 0
-}
-
-/* ── Week calculation (UpBase calendar: week starts Friday, ends Thursday) ── */
-function getWeekInfo(month: number, year: number, weekNum: number): WeekInfo {
-  // Find the Nth Friday of the month
-  const firstDay = new Date(year, month - 1, 1)
-  let fridays: Date[] = []
-  const d = new Date(firstDay)
-  while (d.getMonth() === month - 1) {
-    if (d.getDay() === 5) fridays.push(new Date(d))
-    d.setDate(d.getDate() + 1)
-  }
-  const friday = fridays[weekNum - 1] || fridays[0]
-  const thursday = new Date(friday)
-  thursday.setDate(friday.getDate() + 6)
-  const lastDay = new Date(year, month - 1, new Date(year, month, 0).getDate())
-  const weekEnd = thursday > lastDay ? lastDay : thursday
-  const days = Math.round((weekEnd.getTime() - friday.getTime()) / (1000 * 60 * 60 * 24)) + 1
-  const quarter = Math.ceil(month / 3)
-  return {
-    weekNum,
-    month,
-    year,
-    quarter,
-    label: `W${weekNum} Tháng ${month} Q${quarter}.${year}`,
-    start: fmtDate(friday),
-    end: fmtDate(weekEnd),
-    startISO: toISO(friday),
-    endISO: toISO(weekEnd),
-    days,
-    isFull: days === 7,
-  }
-}
-
-function getWeeksInMonth(month: number, year: number): number {
-  const d = new Date(year, month - 1, 1)
-  let count = 0
-  while (d.getMonth() === month - 1) {
-    if (d.getDay() === 5) count++
-    d.setDate(d.getDate() + 1)
-  }
-  return count || 4
-}
-
-function getCurrentWeekDefault(month: number, year: number): number {
-  const today = new Date()
-  const d = new Date(year, month - 1, 1)
-  let weekNum = 0
-  while (d <= today && d.getMonth() === month - 1) {
-    if (d.getDay() === 5) weekNum++
-    d.setDate(d.getDate() + 1)
-  }
-  return weekNum || 1
-}
-
-/* Ordered list of all actual metric keys — used for paste fill direction */
-const ACTUAL_KEYS_ORDER = [
-  's_cpc_doanh_so',
-  's_cpc_chi_phi',
-  's_cpc_luot_xem',
-  's_cpc_luot_click',
-  's_cpc_don_hang',
-  's_nd_gmv',
-  's_nd_chi_phi',
-  's_nd_luot_xem',
-  's_nd_luot_click',
-  's_live_gmv',
-  's_live_chi_phi',
-  's_live_luot_xem',
-  't_pgm_doanh_so',
-  't_pgm_chi_phi',
-  't_pgm_luot_xem',
-  't_pgm_luot_click',
-  't_pgm_don_hang',
-  't_lgm_doanhthu',
-  't_lgm_chi_phi',
-  't_con_nguoi',
-  't_con_chi_phi',
-  't_brd_view',
-  't_brd_follow',
-  't_brd_chi_phi',
-]
-const PLAN_PERIODS_ORDER = ['month', 'w1', 'w2', 'w3', 'w4', 'w5'] as const
-
-const EMPTY_SHOPEE: ShopeeData = {
-  s_cpc_doanh_so: 0,
-  s_cpc_chi_phi: 0,
-  s_cpc_luot_xem: 0,
-  s_cpc_luot_click: 0,
-  s_cpc_don_hang: 0,
-  s_nd_gmv: 0,
-  s_nd_chi_phi: 0,
-  s_nd_luot_xem: 0,
-  s_nd_luot_click: 0,
-  s_live_gmv: 0,
-  s_live_chi_phi: 0,
-  s_live_luot_xem: 0,
-}
-const EMPTY_TIKTOK: TiktokData = {
-  t_pgm_doanh_so: 0,
-  t_pgm_chi_phi: 0,
-  t_pgm_luot_xem: 0,
-  t_pgm_luot_click: 0,
-  t_pgm_don_hang: 0,
-  t_lgm_doanhthu: 0,
-  t_lgm_chi_phi: 0,
-  t_con_nguoi: 0,
-  t_con_chi_phi: 0,
-  t_brd_view: 0,
-  t_brd_follow: 0,
-  t_brd_chi_phi: 0,
-}
-
-/* ── Calc helpers per sub-section ── */
-function calcCPC(d: ShopeeData) {
-  const roas = d.s_cpc_chi_phi ? +(d.s_cpc_doanh_so / d.s_cpc_chi_phi).toFixed(2) : 0
-  const cpc = d.s_cpc_luot_click ? +(d.s_cpc_chi_phi / d.s_cpc_luot_click).toFixed(0) : 0
-  const ctr = d.s_cpc_luot_xem ? +((d.s_cpc_luot_click / d.s_cpc_luot_xem) * 100).toFixed(2) : 0
-  const cr = d.s_cpc_luot_click ? +((d.s_cpc_don_hang / d.s_cpc_luot_click) * 100).toFixed(2) : 0
-  const aov = d.s_cpc_don_hang ? +(d.s_cpc_doanh_so / d.s_cpc_don_hang).toFixed(0) : 0
-  return { roas, cpc, ctr, cr, aov }
-}
-function calcND(d: ShopeeData) {
-  const roas = d.s_nd_chi_phi ? +(d.s_nd_gmv / d.s_nd_chi_phi).toFixed(2) : 0
-  const cpc = d.s_nd_luot_click ? +(d.s_nd_chi_phi / d.s_nd_luot_click).toFixed(0) : 0
-  const ctr = d.s_nd_luot_xem ? +((d.s_nd_luot_click / d.s_nd_luot_xem) * 100).toFixed(2) : 0
-  return { roas, cpc, ctr }
-}
-function calcLive(d: ShopeeData) {
-  const roas = d.s_live_chi_phi ? +(d.s_live_gmv / d.s_live_chi_phi).toFixed(2) : 0
-  return { roas }
-}
-function calcPGM(d: TiktokData) {
-  const roas = d.t_pgm_chi_phi ? +(d.t_pgm_doanh_so / d.t_pgm_chi_phi).toFixed(2) : 0
-  const cpc = d.t_pgm_luot_click ? +(d.t_pgm_chi_phi / d.t_pgm_luot_click).toFixed(0) : 0
-  const ctr = d.t_pgm_luot_xem ? +((d.t_pgm_luot_click / d.t_pgm_luot_xem) * 100).toFixed(2) : 0
-  const cr = d.t_pgm_luot_click ? +((d.t_pgm_don_hang / d.t_pgm_luot_click) * 100).toFixed(2) : 0
-  const cpm = d.t_pgm_luot_xem ? +((d.t_pgm_chi_phi / d.t_pgm_luot_xem) * 1000).toFixed(0) : 0
-  const aov = d.t_pgm_don_hang ? +(d.t_pgm_doanh_so / d.t_pgm_don_hang).toFixed(0) : 0
-  return { roas, cpc, ctr, cr, cpm, aov }
-}
-function calcLGM(d: TiktokData) {
-  const roi = d.t_lgm_chi_phi ? +(d.t_lgm_doanhthu / d.t_lgm_chi_phi).toFixed(2) : 0
-  return { roi }
-}
-function calcCon(d: TiktokData) {
-  const cpa = d.t_con_nguoi ? +(d.t_con_chi_phi / d.t_con_nguoi).toFixed(0) : 0
-  return { cpa }
-}
-function calcBrd(d: TiktokData) {
-  const cpa = d.t_brd_follow ? +(d.t_brd_chi_phi / d.t_brd_follow).toFixed(0) : 0
-  return { cpa }
-}
+import type { Brand, PlanData, WeekInfo, ShopeeData, TiktokData, AIResult } from '@/lib/report/types'
+import {
+  fmtDate,
+  toISO,
+  fmtNum,
+  fmtVN,
+  parseVN,
+  evalExpr,
+  pct,
+  pctClass,
+  n,
+  getWeekInfo,
+  getWeeksInMonth,
+  getCurrentWeekDefault,
+  calcCPC,
+  calcND,
+  calcLive,
+  calcPGM,
+  calcLGM,
+  calcCon,
+  calcBrd,
+} from '@/lib/report/utils'
+import { ACTUAL_KEYS_ORDER, PLAN_PERIODS_ORDER, EMPTY_SHOPEE, EMPTY_TIKTOK } from '@/lib/report/constants'
 
 /* ════════════════════════════════════════════════
    MAIN COMPONENT
@@ -298,6 +48,23 @@ function ReportPageInner() {
   const [user, setUser] = useState<SessionUser | null>(null)
   const [step, setStep] = useState(1)
   const [toast, setToast] = useState<{ msg: string; type?: string } | null>(null)
+  const [sanityPrompt, setSanityPrompt] = useState<string>('')
+
+  // Fetch admin-tunable prompt from Sanity siteSettings (cached on mount)
+  useEffect(() => {
+    fetch('/api/report/prompt', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (j?.prompt && typeof j.prompt === 'string') setSanityPrompt(j.prompt)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Resolve effective system prompt: localStorage user override → Sanity admin → default
+  const effectivePrompt =
+    (typeof window !== 'undefined' ? localStorage.getItem('mo_ai_prompt') : null) ||
+    sanityPrompt ||
+    DEFAULT_SYS_PROMPT
 
   // Step 1 state
   const [brands, setBrands] = useState<Brand[]>([])
@@ -678,8 +445,7 @@ function ReportPageInner() {
     }
     void wKey // suppress unused var warning
 
-    const sysPrompt =
-      (typeof window !== 'undefined' ? localStorage.getItem('mo_ai_prompt') : null) || DEFAULT_SYS_PROMPT
+    const sysPrompt = effectivePrompt
 
     try {
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -3094,10 +2860,7 @@ function ReportPageInner() {
                 className="btn-s"
                 style={{ fontSize: '.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 onClick={() => {
-                  setPromptInput(
-                    (typeof window !== 'undefined' ? localStorage.getItem('mo_ai_prompt') : null) ||
-                      DEFAULT_SYS_PROMPT,
-                  )
+                  setPromptInput(effectivePrompt)
                   setPromptModal(true)
                 }}
               >
