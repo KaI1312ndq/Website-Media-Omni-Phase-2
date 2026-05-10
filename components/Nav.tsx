@@ -12,37 +12,42 @@ interface SessionUser {
   avatar_url?: string | null
 }
 
+const INTERNAL_ROUTES = ['/studio', '/dashboard', '/hub', '/quiz']
+
 export default function Nav() {
   const pathname = usePathname()
-  // Hide public Nav on internal routes (Studio, Dashboard, Hub, Quiz)
-  const internalRoutes = ['/studio', '/dashboard', '/hub', '/quiz']
-  if (pathname && internalRoutes.some(p => pathname.startsWith(p))) return null
+  const isInternal = !!pathname && INTERNAL_ROUTES.some(p => pathname.startsWith(p))
   const isHome = pathname === '/'
   const [menuOpen, setMenuOpen] = useState(false)
   const [user, setUser] = useState<SessionUser | null>(null)
   const navRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    if (isInternal) return
     let cancelled = false
     fetch('/api/auth', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(j => { if (!cancelled && j?.user) setUser(j.user) })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (!cancelled && j?.user) setUser(j.user)
+      })
       .catch(() => {})
-    return () => { cancelled = true }
-  }, [pathname])
+    return () => {
+      cancelled = true
+    }
+  }, [pathname, isInternal])
 
   useEffect(() => {
+    if (isInternal) return
     const nav = navRef.current
     if (!nav) return
     const sp = document.getElementById('sp')
 
     const onScroll = () => {
       const y = window.scrollY
-      // Always show dark nav on non-home pages; on home page only after scroll
       nav.classList.toggle('scrolled', !isHome || y > 10)
       if (sp) {
         const max = document.documentElement.scrollHeight - window.innerHeight
-        sp.style.width = max > 0 ? (y / max * 100) + '%' : '0%'
+        sp.style.width = max > 0 ? (y / max) * 100 + '%' : '0%'
       }
     }
     onScroll()
@@ -52,11 +57,14 @@ export default function Nav() {
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
     }
-  }, [])
+  }, [isHome, isInternal])
 
   useEffect(() => {
     setMenuOpen(false)
   }, [pathname])
+
+  // Hide public Nav on internal routes (Studio, Dashboard, Hub, Quiz)
+  if (isInternal) return null
 
   const navLinks = isHome
     ? [
@@ -91,9 +99,24 @@ export default function Nav() {
             {user ? (
               <Link href="/dashboard" className="nav-cta" title={`Đăng nhập với ${user.name}`}>
                 {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" width={20} height={20} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+                  <img
+                    src={user.avatar_url}
+                    alt=""
+                    width={20}
+                    height={20}
+                    style={{ borderRadius: '50%', objectFit: 'cover' }}
+                  />
                 ) : (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <circle cx="12" cy="8" r="4" />
                     <path d="M4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2" />
                   </svg>
@@ -102,7 +125,16 @@ export default function Nav() {
               </Link>
             ) : (
               <button className="nav-cta" onClick={() => openLoginModal()}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <rect x="3" y="11" width="18" height="11" rx="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
@@ -116,7 +148,9 @@ export default function Nav() {
             aria-label="Menu"
             onClick={() => setMenuOpen(o => !o)}
           >
-            <span /><span /><span />
+            <span />
+            <span />
+            <span />
           </button>
         </div>
         <div className={`nav-mob${menuOpen ? ' open' : ''}`} id="nav-mob">
@@ -130,15 +164,19 @@ export default function Nav() {
               {user.name} → Dashboard
             </Link>
           ) : (
-            <button className="nav-mob-cta" onClick={() => { setMenuOpen(false); openLoginModal() }}>
+            <button
+              className="nav-mob-cta"
+              onClick={() => {
+                setMenuOpen(false)
+                openLoginModal()
+              }}
+            >
               Đăng nhập
             </button>
           )}
         </div>
       </nav>
-      {menuOpen && (
-        <div className="mob-overlay open" onClick={() => setMenuOpen(false)} />
-      )}
+      {menuOpen && <div className="mob-overlay open" onClick={() => setMenuOpen(false)} />}
     </>
   )
 }
