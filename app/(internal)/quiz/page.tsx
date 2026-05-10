@@ -698,6 +698,7 @@ export default function QuizPage() {
   const [d2Score, setD2Score] = useState(0)
   const [d2Time, setD2Time] = useState(SECONDS_PER_QUESTION)
   const [d2Streak, setD2Streak] = useState(0)
+  const [d2NextIn, setD2NextIn] = useState<number | null>(null)
   const [saved, setSaved] = useState(false)
   const [toast, setToast] = useState('')
 
@@ -745,17 +746,22 @@ export default function QuizPage() {
     const newAns = [...d2Ans]
     newAns[d2Idx] = optIdx
     setD2Ans(newAns)
-    if (optIdx === D2_DATA[d2Idx].ans) setD2Streak(s => s + 1)
+    const correct = optIdx === D2_DATA[d2Idx].ans
+    if (correct) setD2Streak(s => s + 1)
     else setD2Streak(0)
+    // Auto-advance: shorter for correct (read explanation briefly), longer for wrong
+    setD2NextIn(correct ? 1500 : 3000)
   }
 
   function d2Goto(target: number) {
     if (target < 0 || target >= D2_DATA.length) return
     setD2Idx(target)
     setD2Time(d2Ans[target] === -1 ? SECONDS_PER_QUESTION : 0)
+    setD2NextIn(null)
   }
 
   function d2Next() {
+    setD2NextIn(null)
     if (d2Idx < D2_DATA.length - 1) {
       d2Goto(d2Idx + 1)
       return
@@ -764,6 +770,22 @@ export default function QuizPage() {
     setD2Score(sc)
     setScreen('d2-result')
   }
+
+  // Auto-advance for D2 after pick (or timeout)
+  useEffect(() => {
+    if (screen !== 'd2-quiz') return
+    if (d2NextIn === null) return
+    const t = setTimeout(d2Next, d2NextIn)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d2NextIn, screen, d2Idx])
+
+  // Auto-schedule next when timeout (-2) recorded
+  useEffect(() => {
+    if (screen !== 'd2-quiz') return
+    if (d2Ans[d2Idx] === -2 && d2NextIn === null) setD2NextIn(2500)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d2Ans, d2Idx, screen])
 
   async function saveScore(quizType: string, score: number, total: number) {
     if (saved || !user) return
@@ -938,10 +960,16 @@ export default function QuizPage() {
                     </button>
                     {answered && (
                       <button className="qz-btn qz-btn-primary" onClick={d2Next}>
-                        {d2Idx === D2_DATA.length - 1 ? 'Nộp bài' : 'Câu tiếp'} {Icon.arrowRight(14)}
+                        {d2Idx === D2_DATA.length - 1 ? 'Nộp bài' : 'Bỏ qua chờ'} {Icon.arrowRight(14)}
                       </button>
                     )}
                   </div>
+                  {answered && d2NextIn !== null && (
+                    <div className="qz-autonext">
+                      <div className="qz-autonext-bar" style={{ animationDuration: `${d2NextIn}ms` }} />
+                      <span>{d2Idx === D2_DATA.length - 1 ? 'Đang chấm điểm…' : 'Tự chuyển câu tiếp…'}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ marginTop: 16, textAlign: 'center' }}>
@@ -1058,6 +1086,7 @@ function D1Quiz({
   const [done, setDone] = useState(false)
   const [mastered, setMastered] = useState(0)
   const [time, setTime] = useState(SECONDS_PER_QUESTION)
+  const [nextIn, setNextIn] = useState<number | null>(null)
   const [saved, setSaved] = useState(false)
   const startedRef = useRef(false)
 
@@ -1127,11 +1156,28 @@ function D1Quiz({
       setFails(f => f + 1)
       if (!retries.includes(id)) setRetries(r => [...r, id])
     }
+    setNextIn(ok ? 1500 : 3000)
   }
+
+  // Auto-advance D1 after pick or timeout
+  useEffect(() => {
+    if (!started || done) return
+    if (nextIn === null) return
+    const t = setTimeout(() => next(), nextIn)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextIn, started, done])
+
+  // Auto-schedule when timeout (-1) recorded
+  useEffect(() => {
+    if (!started || done) return
+    if (picked === -1 && nextIn === null) setNextIn(2500)
+  }, [picked, started, done, nextIn])
 
   function next() {
     setPicked(null)
     setTime(SECONDS_PER_QUESTION)
+    setNextIn(null)
     const nextQi = qi + 1
     if (nextQi >= queue.length) {
       if (retries.length === 0) {
@@ -1336,11 +1382,17 @@ function D1Quiz({
                 ? 'Xem kết quả'
                 : qi + 1 >= queue.length
                   ? 'Ôn câu sai'
-                  : 'Câu tiếp'}{' '}
+                  : 'Bỏ qua chờ'}{' '}
               {Icon.arrowRight(14)}
             </button>
           )}
         </div>
+        {picked !== null && nextIn !== null && (
+          <div className="qz-autonext">
+            <div className="qz-autonext-bar" style={{ animationDuration: `${nextIn}ms` }} />
+            <span>Tự chuyển câu tiếp…</span>
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 16, textAlign: 'center' }}>

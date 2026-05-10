@@ -645,3 +645,36 @@
     font-size: 2.6rem;
   }
 }
+
+/* Auto-next countdown indicator */
+.qz-autonext {
+  position: relative;
+  margin-top: 16px;
+  padding: 10px 14px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  color: #94a3b8;
+  text-align: center;
+  overflow: hidden;
+}
+.qz-autonext-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  transform-origin: left center;
+  animation: qz-shrink linear forwards;
+}
+@keyframes qz-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
