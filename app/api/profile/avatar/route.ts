@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@sanity/client'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getSessionFromCookie } from '@/lib/session-server'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       matchedTeamName = tm.name
     }
   } catch (e) {
-    console.error('[avatar] Sanity sync error:', e)
+    logger.error({ err: e, ctx: 'avatar Sanity sync' }, 'sanity sync failed')
   }
 
   // Revalidate homepage để Team section show ảnh mới (revalidate luôn cả khi không sync Sanity, vì có thể HomeClient sẽ đọc từ users.avatar_url ở phase sau)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getSessionFromCookie } from '@/lib/session-server'
+import { logger } from '@/lib/logger'
 
 /* POST /api/notifications/read — body: { id?: string, all?: boolean } */
 export async function POST(req: NextRequest) {
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Missing id or all' }, { status: 400 })
   } catch (e) {
-    console.error('POST /api/notifications/read:', e)
+    logger.error({ err: e, ctx: 'POST /api/notifications/read' }, 'mark-read failed')
     return NextResponse.json({ error: 'Lỗi server' }, { status: 500 })
   }
 }

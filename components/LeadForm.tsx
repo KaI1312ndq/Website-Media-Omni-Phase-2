@@ -1,7 +1,19 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
+import Script from 'next/script'
 import { Icon } from '@/lib/icons'
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: string | HTMLElement, opts: { sitekey: string; callback?: (t: string) => void; 'expired-callback'?: () => void; size?: string }) => string
+      reset: (id?: string) => void
+    }
+  }
+}
 
 type Channel = 'shopee' | 'tiktok' | 'meta' | 'google' | 'livestream'
 type Budget = '<50M' | '50-200M' | '200-500M' | '>500M'
@@ -41,6 +53,28 @@ export default function LeadForm() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileWidgetRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return
+    let cancelled = false
+    const tryRender = () => {
+      if (cancelled || turnstileWidgetRef.current) return
+      const el = document.getElementById('turnstile-widget')
+      if (window.turnstile && el) {
+        turnstileWidgetRef.current = window.turnstile.render(el, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (t: string) => setTurnstileToken(t),
+          'expired-callback': () => setTurnstileToken(''),
+        })
+      } else {
+        setTimeout(tryRender, 200)
+      }
+    }
+    tryRender()
+    return () => { cancelled = true }
+  }, [])
 
   function update<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm(f => ({ ...f, [k]: v }))
@@ -71,6 +105,10 @@ export default function LeadForm() {
     ev.preventDefault()
     setServerError('')
     if (!validate()) return
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setServerError('Vui lòng hoàn tất xác thực bảo mật phía dưới.')
+      return
+    }
     setSubmitting(true)
     try {
       const utmParams = new URLSearchParams(window.location.search)
@@ -79,6 +117,7 @@ export default function LeadForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          turnstile_token: turnstileToken || undefined,
           utm_source: utmParams.get('utm_source') || undefined,
           utm_medium: utmParams.get('utm_medium') || undefined,
           utm_campaign: utmParams.get('utm_campaign') || undefined,
@@ -100,6 +139,10 @@ export default function LeadForm() {
       setSuccess(true)
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Lỗi gửi')
+      if (window.turnstile && turnstileWidgetRef.current) {
+        window.turnstile.reset(turnstileWidgetRef.current)
+        setTurnstileToken('')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -114,6 +157,10 @@ export default function LeadForm() {
   }
 
   return (
+    <>
+    {TURNSTILE_SITE_KEY && (
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" async defer />
+    )}
     <section id="lead-form" className="lead-form-section">
       <div className="lead-form-glow-1" />
       <div className="lead-form-glow-2" />
@@ -244,6 +291,10 @@ export default function LeadForm() {
                   />
                 </div>
 
+                {TURNSTILE_SITE_KEY && (
+                  <div id="turnstile-widget" style={{ marginBottom: 12, minHeight: 65 }} />
+                )}
+
                 {serverError && <div className="lf-error" style={{ marginBottom: 8 }}>{serverError}</div>}
 
                 <button type="submit" className="lf-submit" disabled={submitting}>
@@ -263,5 +314,6 @@ export default function LeadForm() {
         </div>
       </div>
     </section>
+    </>
   )
 }

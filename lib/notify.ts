@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase'
+import { logger } from './logger'
 
 interface NotifyArgs {
   recipient: string         // username
@@ -22,7 +23,7 @@ export async function notify(args: NotifyArgs) {
       priority: args.priority || 'normal',
     })
   } catch (e) {
-    console.error('[notify] failed:', e)
+    logger.error({ err: e, ctx: 'notify' }, 'notify failed')
   }
 }
 
@@ -40,7 +41,7 @@ export async function notifyMany(recipients: string[], args: Omit<NotifyArgs, 'r
   try {
     await supabaseAdmin.from('notifications').insert(rows)
   } catch (e) {
-    console.error('[notifyMany] failed:', e)
+    logger.error({ err: e, ctx: 'notifyMany' }, 'notifyMany failed')
   }
 }
 
@@ -53,6 +54,6 @@ export async function notifyAdmins(args: Omit<NotifyArgs, 'recipient'>) {
       .eq('status', 'active')
     await notifyMany((data || []).map((u: { username: string }) => u.username), args)
   } catch (e) {
-    console.error('[notifyAdmins] failed:', e)
+    logger.error({ err: e, ctx: 'notifyAdmins' }, 'notifyAdmins failed')
   }
 }

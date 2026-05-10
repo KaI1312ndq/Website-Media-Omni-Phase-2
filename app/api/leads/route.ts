@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getSessionFromCookie } from '@/lib/session-server'
 import { notifyAdmins } from '@/lib/notify'
+import { checkRateLimit, clientIp } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 /* ── Validation helpers ── */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -19,25 +21,6 @@ function isAdmin(session: { role?: string } | null): boolean {
   if (!session) return false
   const r = String(session.role || '').toLowerCase()
   return r === 'admin' || r === 'lead'
-}
-
-/* ── Simple in-memory rate limit: 3/hour per IP ── */
-const rateMap: Map<string, { count: number; resetAt: number }> = (() => {
-  const g = globalThis as unknown as { __leadsRate?: Map<string, { count: number; resetAt: number }> }
-  if (!g.__leadsRate) g.__leadsRate = new Map()
-  return g.__leadsRate
-})()
-
-function rateLimit(ip: string): boolean {
-  const now = Date.now()
-  const entry = rateMap.get(ip)
-  if (!entry || entry.resetAt < now) {
-    rateMap.set(ip, { count: 1, resetAt: now + 3600_000 })
-    return true
-  }
-  if (entry.count >= 3) return false
-  entry.count++
-  return true
 }
 
 /* ── POST /api/leads — public ── */
@@ -60,11 +43,27 @@ export async function POST(req: NextRequest) {
     if (channels.length === 0) return NextResponse.json({ error: 'Vui lòng chọn ít nhất 1 kênh' }, { status: 400 })
     if (!VALID_BUDGETS.includes(monthly_budget)) return NextResponse.json({ error: 'Vui lòng chọn budget' }, { status: 400 })
 
-    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || req.headers.get('x-real-ip') || ''
+    const ip = clientIp(req)
     const ua = req.headers.get('user-agent') || ''
 
-    if (ip && !rateLimit(ip)) {
+    if (ip !== 'unknown' && !checkRateLimit('leads', ip, 3, 60 * 60_000)) {
       return NextResponse.json({ error: 'Quá nhiều yêu cầu, vui lòng thử lại sau' }, { status: 429 })
+    }
+
+    // Cloudflare Turnstile verify (only when configured)
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY
+    if (turnstileSecret) {
+      const token = typeof body.turnstile_token === 'string' ? body.turnstile_token : ''
+      if (!token) return NextResponse.json({ error: 'Thiếu xác thực bảo mật' }, { status: 400 })
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret: turnstileSecret, response: token, remoteip: ip }),
+      })
+      const verifyJson = (await verifyRes.json().catch(() => ({}))) as { success?: boolean }
+      if (!verifyJson.success) {
+        return NextResponse.json({ error: 'Xác thực bảo mật thất bại' }, { status: 400 })
+      }
     }
 
     const insert = {
@@ -81,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabaseAdmin.from('leads').insert(insert).select('id').single()
     if (error) {
-      console.error('Insert lead failed:', error)
+      logger.error({ err: error, ctx: 'POST /api/leads insert' }, 'insert lead failed')
       return NextResponse.json({ error: 'Không thể lưu lead' }, { status: 500 })
     }
 
@@ -97,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, lead_id: data.id })
   } catch (err) {
-    console.error('POST /api/leads error:', err)
+    logger.error({ err, ctx: 'POST /api/leads' }, 'unhandled error')
     return NextResponse.json({ error: 'Lỗi server' }, { status: 500 })
   }
 }
@@ -121,7 +120,7 @@ export async function GET(req: NextRequest) {
 
   const { data: leads, error } = await query
   if (error) {
-    console.error('GET /api/leads error:', error)
+    logger.error({ err: error, ctx: 'GET /api/leads' }, 'fetch leads failed')
     return NextResponse.json({ error: 'Không thể tải leads' }, { status: 500 })
   }
 
@@ -159,12 +158,12 @@ export async function PATCH(req: NextRequest) {
 
     const { error } = await supabaseAdmin.from('leads').update(update).eq('id', id)
     if (error) {
-      console.error('PATCH lead failed:', error)
+      logger.error({ err: error, ctx: 'PATCH /api/leads update' }, 'update lead failed')
       return NextResponse.json({ error: 'Không thể cập nhật' }, { status: 500 })
     }
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('PATCH /api/leads error:', err)
+    logger.error({ err, ctx: 'PATCH /api/leads' }, 'unhandled error')
     return NextResponse.json({ error: 'Lỗi server' }, { status: 500 })
   }
 }
@@ -180,7 +179,7 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await supabaseAdmin.from('leads').delete().eq('id', id)
   if (error) {
-    console.error('DELETE lead failed:', error)
+    logger.error({ err: error, ctx: 'DELETE /api/leads' }, 'delete lead failed')
     return NextResponse.json({ error: 'Không thể xóa' }, { status: 500 })
   }
   return NextResponse.json({ ok: true })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getSessionFromCookie } from '@/lib/session-server'
+import { logger } from '@/lib/logger'
 
 /* GET /api/notifications?unread_only=true&limit=20 */
 export async function GET(req: NextRequest) {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
       total: total || 0,
     })
   } catch (e) {
-    console.error('GET /api/notifications:', e)
+    logger.error({ err: e, ctx: 'GET /api/notifications' }, 'fetch notifications failed')
     return NextResponse.json({ error: 'Lỗi server' }, { status: 500 })
   }
 }
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (error) throw error
     return NextResponse.json({ ok: true })
   } catch (e) {
-    console.error('POST /api/notifications:', e)
+    logger.error({ err: e, ctx: 'POST /api/notifications' }, 'create notification failed')
     return NextResponse.json({ error: 'Lỗi server' }, { status: 500 })
   }
 }
@@ -100,7 +101,7 @@ export async function DELETE(req: NextRequest) {
     if (error) throw error
     return NextResponse.json({ ok: true })
   } catch (e) {
-    console.error('DELETE /api/notifications:', e)
+    logger.error({ err: e, ctx: 'DELETE /api/notifications' }, 'delete notification failed')
     return NextResponse.json({ error: 'Lỗi server' }, { status: 500 })
   }
 }

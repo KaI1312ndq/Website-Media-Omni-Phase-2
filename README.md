@@ -149,7 +149,10 @@ npm run dev
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Service role (server-only) |
 | `OPENAI_API_KEY` | ✅ | Cho Weekly Report AI generation |
 | `NEXT_PUBLIC_GA_ID` | optional | GA4 Measurement ID |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional | Cloudflare Turnstile site key (CAPTCHA cho lead form) |
+| `TURNSTILE_SECRET_KEY` | optional | Turnstile secret (server verify). Nếu trống → CAPTCHA bị skip |
 | `INTERNAL_API_KEY` | optional | Bảo vệ internal API endpoints |
+| `LOG_LEVEL` | optional | `debug`, `info` (default prod), `warn`, `error` |
 
 ---
 
@@ -200,9 +203,16 @@ npm run start         # production server
 npm run lint          # eslint
 npm run seed:sanity   # seed CMS lần đầu
 npm run db:migrate    # apply Supabase migrations qua psql (cần DATABASE_URL)
+npm run audit:passwords  # liệt kê user còn dùng plain-text password
 ```
 
 ---
+
+## 🩺 Health & Monitoring
+
+- `GET /api/health` → `{ status, db, sanity, version, env, time }` (200 nếu mọi thứ ok, 503 khi degraded). Hook lên uptime monitor (BetterStack / UptimeRobot, free tier).
+- Logger: `lib/logger.ts` (Pino) — JSON structured, auto-redact credential. Vercel UI parse được ra field `level`, `time`, `msg`, `ctx`.
+- Sentry: `@sentry/nextjs` đã wired (sentry.client/server/edge.config.ts). Set `NEXT_PUBLIC_SENTRY_DSN` để bật.
 
 ## 🛡️ Auth model
 

@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
+import { checkRateLimit, clientIp } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
+  const ip = clientIp(req)
+  if (!checkRateLimit('auth-login', ip, 5, 15 * 60_000)) {
+    return NextResponse.json({ error: 'Quá nhiều lần đăng nhập sai. Vui lòng thử lại sau 15 phút.' }, { status: 429 })
+  }
+
   const { username, password } = await req.json()
 
   if (!username || !password) {
