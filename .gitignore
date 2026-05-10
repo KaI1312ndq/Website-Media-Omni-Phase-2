@@ -42,3 +42,8 @@ next-env.d.ts
 
 # Claude
 .claude/
+
+# Test artifacts
+playwright-report/
+test-results/
+

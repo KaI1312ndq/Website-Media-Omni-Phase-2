@@ -5,6 +5,7 @@ import { SessionUser, setSession } from '@/lib/auth'
 import InternalSidebar from './InternalSidebar'
 import InternalHeader from './InternalHeader'
 import ProfileModal from './ProfileModal'
+import CommandPalette from './CommandPalette'
 
 interface Props {
   user: SessionUser
@@ -20,7 +21,9 @@ export default function InternalLayout({ user, onLogout, children, greeting, sub
   const [profileOpen, setProfileOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState(user)
 
-  useEffect(() => { setCurrentUser(user) }, [user])
+  useEffect(() => {
+    setCurrentUser(user)
+  }, [user])
 
   useEffect(() => {
     try {
@@ -31,7 +34,9 @@ export default function InternalLayout({ user, onLogout, children, greeting, sub
 
   function toggleCollapsed(v: boolean) {
     setCollapsed(v)
-    try { localStorage.setItem('mo_sidebar_collapsed', v ? '1' : '0') } catch {}
+    try {
+      localStorage.setItem('mo_sidebar_collapsed', v ? '1' : '0')
+    } catch {}
   }
 
   const styleVar = { '--sb-w': collapsed ? '64px' : '250px' } as CSSProperties
@@ -62,9 +67,13 @@ export default function InternalLayout({ user, onLogout, children, greeting, sub
         <ProfileModal
           user={currentUser}
           onClose={() => setProfileOpen(false)}
-          onUpdate={(u) => { setCurrentUser(u); setSession(u) }}
+          onUpdate={u => {
+            setCurrentUser(u)
+            setSession(u)
+          }}
         />
       )}
+      <CommandPalette />
     </div>
   )
 }

@@ -9,17 +9,17 @@ Website + internal operations hub cho **Media Omni** (UpBase Vietnam) — agency
 
 ## 🧱 Tech Stack
 
-| Layer | Tech |
-|---|---|
-| Framework | **Next.js 14** (App Router, RSC, ISR) |
-| Language | TypeScript |
-| Styling | Tailwind CSS + global CSS |
-| CMS | **Sanity v3** (embedded studio at `/studio`) |
-| Database | **Supabase** (Postgres + Auth via cookie session) |
-| Charts | Chart.js |
-| AI | OpenAI (Weekly Report generation) |
-| Hosting | Vercel |
-| Analytics | Google Analytics 4 (optional) |
+| Layer     | Tech                                              |
+| --------- | ------------------------------------------------- |
+| Framework | **Next.js 14** (App Router, RSC, ISR)             |
+| Language  | TypeScript                                        |
+| Styling   | Tailwind CSS + global CSS                         |
+| CMS       | **Sanity v3** (embedded studio at `/studio`)      |
+| Database  | **Supabase** (Postgres + Auth via cookie session) |
+| Charts    | Chart.js                                          |
+| AI        | OpenAI (Weekly Report generation)                 |
+| Hosting   | Vercel                                            |
+| Analytics | Google Analytics 4 (optional)                     |
 
 ---
 
@@ -101,11 +101,13 @@ Website + internal operations hub cho **Media Omni** (UpBase Vietnam) — agency
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
+
 - Node 18+
 - Supabase project (Postgres)
 - Sanity project (free tier OK)
 
 ### 2. Install
+
 ```bash
 npm install
 cp .env.example .env.local
@@ -115,6 +117,7 @@ cp .env.example .env.local
 ### 3. Apply Supabase migrations
 
 **Option A — CLI (requires `psql`):**
+
 ```bash
 DATABASE_URL="postgres://..." npm run db:migrate
 ```
@@ -122,12 +125,15 @@ DATABASE_URL="postgres://..." npm run db:migrate
 **Option B — Supabase Dashboard:** mở SQL Editor, chạy lần lượt từng file trong `scripts/migrations/` theo thứ tự `00-` → `03-`.
 
 ### 4. Seed Sanity (lần đầu)
+
 ```bash
 npm run seed:sanity
 ```
+
 Tạo: site settings, 42 brands, 12 team members, 3 case studies, 5 SOPs.
 
 ### 5. Dev
+
 ```bash
 npm run dev
 # http://localhost:3000
@@ -138,48 +144,51 @@ npm run dev
 
 ## 🔐 Environment Variables
 
-| Var | Required | Mô tả |
-|---|---|---|
-| `NEXT_PUBLIC_SANITY_PROJECT_ID` | ✅ | Sanity project ID |
-| `NEXT_PUBLIC_SANITY_DATASET` | ✅ | thường là `production` |
-| `SANITY_API_TOKEN` | ✅ | Editor token (read+write) — cần cho seed & revalidate |
-| `SANITY_REVALIDATE_SECRET` | ✅ | Webhook secret cho `/api/revalidate` |
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Service role (server-only) |
-| `OPENAI_API_KEY` | ✅ | Cho Weekly Report AI generation |
-| `NEXT_PUBLIC_GA_ID` | optional | GA4 Measurement ID |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional | Cloudflare Turnstile site key (CAPTCHA cho lead form) |
-| `TURNSTILE_SECRET_KEY` | optional | Turnstile secret (server verify). Nếu trống → CAPTCHA bị skip |
-| `INTERNAL_API_KEY` | optional | Bảo vệ internal API endpoints |
-| `LOG_LEVEL` | optional | `debug`, `info` (default prod), `warn`, `error` |
+| Var                              | Required | Mô tả                                                         |
+| -------------------------------- | -------- | ------------------------------------------------------------- |
+| `NEXT_PUBLIC_SANITY_PROJECT_ID`  | ✅       | Sanity project ID                                             |
+| `NEXT_PUBLIC_SANITY_DATASET`     | ✅       | thường là `production`                                        |
+| `SANITY_API_TOKEN`               | ✅       | Editor token (read+write) — cần cho seed & revalidate         |
+| `SANITY_REVALIDATE_SECRET`       | ✅       | Webhook secret cho `/api/revalidate`                          |
+| `NEXT_PUBLIC_SUPABASE_URL`       | ✅       | Supabase project URL                                          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`  | ✅       | Anon key                                                      |
+| `SUPABASE_SERVICE_ROLE_KEY`      | ✅       | Service role (server-only)                                    |
+| `OPENAI_API_KEY`                 | ✅       | Cho Weekly Report AI generation                               |
+| `NEXT_PUBLIC_GA_ID`              | optional | GA4 Measurement ID                                            |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional | Cloudflare Turnstile site key (CAPTCHA cho lead form)         |
+| `TURNSTILE_SECRET_KEY`           | optional | Turnstile secret (server verify). Nếu trống → CAPTCHA bị skip |
+| `INTERNAL_API_KEY`               | optional | Bảo vệ internal API endpoints                                 |
+| `LOG_LEVEL`                      | optional | `debug`, `info` (default prod), `warn`, `error`               |
 
 ---
 
 ## 🧭 Routes Map
 
 ### Public
-| Route | Mô tả |
-|---|---|
-| `/` | Homepage (hero, services, team, brands, case studies, blog, FAQ, lead form) |
-| `/blog`, `/blog/[slug]` | Blog (ISR 10 phút) |
-| `/case-studies`, `/case-studies/[slug]` | Case studies CMS |
-| `/studio` | Sanity Studio |
+
+| Route                                   | Mô tả                                                                       |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `/`                                     | Homepage (hero, services, team, brands, case studies, blog, FAQ, lead form) |
+| `/blog`, `/blog/[slug]`                 | Blog (ISR 10 phút)                                                          |
+| `/case-studies`, `/case-studies/[slug]` | Case studies CMS                                                            |
+| `/studio`                               | Sanity Studio                                                               |
 
 ### Internal (cần đăng nhập)
-| Route | Quyền | Mô tả |
-|---|---|---|
-| `/dashboard` | mọi user | Tổng quan cá nhân |
-| `/quiz` | mọi user | Quiz Hub (D1 Benchmark, D2 Ads) |
-| `/hub/tasks` | mọi user | My Day / Team / Create |
-| `/hub/scores` | mọi user | Charts + matrix điểm quiz |
-| `/hub/report` | mọi user | Báo cáo tuần (plan + AI + XLSX + preview) |
-| `/hub/analytics` | upbase/admin | Operations dashboard |
-| `/hub/sop` | mọi user | SOP & tài liệu nội bộ |
-| `/hub/users` | admin | User CRUD + brand assign |
-| `/admin/leads` | admin | Quản lý lead + CSV export |
+
+| Route            | Quyền        | Mô tả                                     |
+| ---------------- | ------------ | ----------------------------------------- |
+| `/dashboard`     | mọi user     | Tổng quan cá nhân                         |
+| `/quiz`          | mọi user     | Quiz Hub (D1 Benchmark, D2 Ads)           |
+| `/hub/tasks`     | mọi user     | My Day / Team / Create                    |
+| `/hub/scores`    | mọi user     | Charts + matrix điểm quiz                 |
+| `/hub/report`    | mọi user     | Báo cáo tuần (plan + AI + XLSX + preview) |
+| `/hub/analytics` | upbase/admin | Operations dashboard                      |
+| `/hub/sop`       | mọi user     | SOP & tài liệu nội bộ                     |
+| `/hub/users`     | admin        | User CRUD + brand assign                  |
+| `/admin/leads`   | admin        | Quản lý lead + CSV export                 |
 
 ### API
+
 `/api/auth`, `/api/leads`, `/api/tasks`, `/api/scores`, `/api/quiz`, `/api/users`, `/api/brands`, `/api/brands/assign`, `/api/dashboard`, `/api/analytics`, `/api/report`, `/api/profile/avatar`, `/api/profile/password`, `/api/revalidate`.
 
 ---
@@ -187,9 +196,11 @@ npm run dev
 ## 🗄️ Data Model
 
 ### Supabase tables
+
 `users`, `brands`, `monthly_plans`, `weekly_reports`, `quiz_scores`, `tasks`, `leads`, `notifications`.
 
 ### Sanity schemas
+
 `siteSettings` (singleton), `blogPost`, `brand`, `teamMember`, `caseStudy`, `sopDoc`.
 
 ---
@@ -204,9 +215,19 @@ npm run lint          # eslint
 npm run seed:sanity   # seed CMS lần đầu
 npm run db:migrate    # apply Supabase migrations qua psql (cần DATABASE_URL)
 npm run audit:passwords  # liệt kê user còn dùng plain-text password
+npm run test:e2e      # chạy Playwright e2e tests
+npm run test:e2e:ui   # mở Playwright UI mode (dev)
+npm run format        # Prettier toàn bộ codebase
 ```
 
 ---
+
+## ✅ Tests & CI
+
+- E2E tests: `tests/e2e/*.spec.ts` (Playwright). Run local: `npm run test:e2e` (auto-build + start). Set `PLAYWRIGHT_BASE_URL=https://www.mediaomni.site` để chạy với prod.
+- CI: `.github/workflows/ci.yml` (lint + typecheck + build + e2e). Configure secrets ở GitHub repo settings: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SANITY_PROJECT_ID`, `SANITY_API_TOKEN`. E2E job chỉ chạy khi secrets set.
+- Pre-commit: Husky + lint-staged tự format + lint file changed trước khi commit.
+- E2E live login (optional): set `E2E_TEST_USER`, `E2E_TEST_PASS` để bật test login flow thực.
 
 ## 🩺 Health & Monitoring
 
