@@ -13,7 +13,7 @@
   margin: 18px 0 22px;
 }
 .an2-pageHdr h1 {
-  font-family: var(--font-display);
+  font-family: var(--font-display), 'Be Vietnam Pro', system-ui, sans-serif;
   font-size: 2rem;
   font-weight: 800;
   margin: 0 0 6px;
@@ -226,14 +226,14 @@
   border-radius: 10px;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(6, 182, 212, 0.2));
   color: #60a5fa;
-  font-family: var(--font-display);
+  font-family: var(--font-display), 'Be Vietnam Pro', system-ui, sans-serif;
   font-weight: 800;
   font-size: 0.95rem;
   letter-spacing: 0.04em;
   border: 1px solid rgba(96, 165, 250, 0.3);
 }
 .an2-sec-text h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-display), 'Be Vietnam Pro', system-ui, sans-serif;
   font-size: 1.15rem;
   font-weight: 700;
   color: #fff;
@@ -274,7 +274,7 @@
 }
 
 .an2-stat-val {
-  font-family: var(--font-display);
+  font-family: var(--font-display), 'Be Vietnam Pro', system-ui, sans-serif;
   font-size: 2.2rem;
   font-weight: 800;
   background: linear-gradient(135deg, #60a5fa, #22d3ee);
@@ -325,7 +325,7 @@
 }
 .an2-platHdr {
   padding: 14px 18px;
-  font-family: var(--font-display);
+  font-family: var(--font-display), 'Be Vietnam Pro', system-ui, sans-serif;
   font-weight: 700;
   font-size: 1rem;
   color: #fff;
@@ -351,7 +351,7 @@
   padding: 12px 14px;
 }
 .an2-platStat .v {
-  font-family: var(--font-display);
+  font-family: var(--font-display), 'Be Vietnam Pro', system-ui, sans-serif;
   font-size: 1.4rem;
   font-weight: 800;
   color: #fff;

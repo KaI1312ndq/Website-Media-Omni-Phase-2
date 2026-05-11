@@ -4,8 +4,12 @@ import Script from 'next/script'
 import './globals.css'
 import Nav from '@/components/Nav'
 
+// NOTE: Sora và Roboto Mono trên Google Fonts không có subset 'vietnamese' riêng
+// nhưng có 'latin-ext' bao gồm các glyph Vietnamese (ư, ơ, đ, ấ, ầ, ...).
+// Be Vietnam Pro dùng subset 'vietnamese' chuẩn cho body.
+// CSS fallback chuỗi (xem globals.css) đảm bảo glyph thiếu sẽ fallback Be Vietnam Pro.
 const sora = Sora({
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext'],
   weight: ['600', '700', '800'],
   variable: '--font-display',
   display: 'swap',
@@ -21,7 +25,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 })
 
 const robotoMono = Roboto_Mono({
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext'],
   weight: ['400', '500'],
   variable: '--font-mono',
   display: 'swap',
@@ -45,9 +49,17 @@ export const metadata: Metadata = {
   description:
     'Media Omni vận hành performance marketing đa kênh cho 100+ brands — TikTok Shop, Shopee, Meta, Google. 356B NMV · >7x ROAS · 12 Growth Operators.',
   keywords: [
-    'performance marketing Vietnam', 'media agency Vietnam', 'TikTok Shop partner',
-    'Shopee ads', 'Meta ads CPAS', 'Google ads', 'ecommerce marketing Vietnam',
-    'UpBase Vietnam', 'Media Omni', 'agency performance', 'quảng cáo đa kênh',
+    'performance marketing Vietnam',
+    'media agency Vietnam',
+    'TikTok Shop partner',
+    'Shopee ads',
+    'Meta ads CPAS',
+    'Google ads',
+    'ecommerce marketing Vietnam',
+    'UpBase Vietnam',
+    'Media Omni',
+    'agency performance',
+    'quảng cáo đa kênh',
   ],
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
   alternates: { canonical: 'https://www.mediaomni.site' },
@@ -90,9 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 'Performance marketing agency vận hành đa kênh cho 100+ brands ecommerce tại Việt Nam.',
               parentOrganization: { '@type': 'Organization', name: 'UpBase Vietnam' },
               areaServed: 'VN',
-              knowsAbout: [
-                'Performance Marketing', 'TikTok Shop', 'Shopee Ads', 'Meta Ads', 'Google Ads',
-              ],
+              knowsAbout: ['Performance Marketing', 'TikTok Shop', 'Shopee Ads', 'Meta Ads', 'Google Ads'],
             }),
           }}
         />
