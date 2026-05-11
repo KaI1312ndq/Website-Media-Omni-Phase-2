@@ -97,6 +97,7 @@ function ReportPageInner() {
   })
   const [shopeePivot, setShopeePivot] = useState<ShopeePivot | null>(null)
   const [parsing, setParsing] = useState(false)
+  const [parseError, setParseError] = useState<string>('')
   // Context khi upload — dùng để auto-clear khi user đổi brand/tuần ở Step 1.
   const [uploadContext, setUploadContext] = useState<string>('')
 
@@ -398,41 +399,51 @@ function ReportPageInner() {
     setUploadedFiles({ shopee_cpc: null, shopee_branding: null, shopee_live: null })
     setShopeePivot(null)
     setUploadContext('')
+    setParseError('')
     showToast('Đã xoá data CSV')
   }
 
   /* ── Step 1.5 → parse uploaded files into pivot ── */
-  async function parseUploadedFiles() {
-    const types: ShopeeFileType[] = ['shopee_cpc', 'shopee_branding', 'shopee_live']
-    setParsing(true)
-    try {
-      const results: Record<ShopeeFileType, PivotRow[]> = {
-        shopee_cpc: [],
-        shopee_branding: [],
-        shopee_live: [],
+  const parseUploadedFiles = useCallback(
+    async (filesArg?: UploadedFiles) => {
+      const files = filesArg ?? uploadedFiles
+      const types: ShopeeFileType[] = ['shopee_cpc', 'shopee_branding', 'shopee_live']
+      setParsing(true)
+      setParseError('')
+      try {
+        const results: Record<ShopeeFileType, PivotRow[]> = {
+          shopee_cpc: [],
+          shopee_branding: [],
+          shopee_live: [],
+        }
+        for (const t of types) {
+          const f = files[t]
+          if (!f) continue
+          results[t] = await parseShopeeFile(f, t)
+        }
+        const pivot = buildShopeePivot(results.shopee_cpc, results.shopee_branding, results.shopee_live)
+        setShopeePivot(pivot)
+        setUploadContext(`${selectedBrand}|${selMonth}|${selYear}|${selWeek}`)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Lỗi parse file'
+        setParseError(msg)
+        setShopeePivot(null)
+      } finally {
+        setParsing(false)
       }
-      for (const t of types) {
-        const f = uploadedFiles[t]
-        if (!f) continue
-        results[t] = await parseShopeeFile(f, t)
-      }
-      const pivot = buildShopeePivot(results.shopee_cpc, results.shopee_branding, results.shopee_live)
-      setShopeePivot(pivot)
-      setUploadContext(`${selectedBrand}|${selMonth}|${selYear}|${selWeek}`)
-      const missing: string[] = []
-      if (!uploadedFiles.shopee_cpc) missing.push('CPC')
-      if (!uploadedFiles.shopee_branding) missing.push('Branding')
-      if (!uploadedFiles.shopee_live) missing.push('Live')
-      if (missing.length > 0 && missing.length < 3) {
-        showToast(`Thiếu file ${missing.join(', ')} — field tương ứng sẽ = 0`)
-      }
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Lỗi parse file', 'error')
-      setShopeePivot(null)
-    } finally {
-      setParsing(false)
-    }
-  }
+    },
+    [uploadedFiles, selectedBrand, selMonth, selYear, selWeek],
+  )
+
+  // Auto-parse khi user upload file (nếu có ít nhất 1 file mới)
+  useEffect(() => {
+    if (step !== 1.5) return
+    const hasAny = uploadedFiles.shopee_cpc || uploadedFiles.shopee_branding || uploadedFiles.shopee_live
+    if (!hasAny) return
+    // debounce nhẹ: chờ user upload xong nhiều file
+    const t = setTimeout(() => parseUploadedFiles(uploadedFiles), 250)
+    return () => clearTimeout(t)
+  }, [uploadedFiles, step, parseUploadedFiles])
 
   /* ── Apply pivot → 12 Shopee fields in Step 2 ── */
   function applyAutoFillAndContinue() {
@@ -2986,11 +2997,11 @@ function ReportPageInner() {
         <div style={{ display: 'flex', gap: 6, marginBottom: 24, overflowX: 'auto' }}>
           {(
             [
-              { n: 1, label: 'Context' },
-              ...(shopeeChecked ? [{ n: 1.5, label: 'Upload CSV', dispLabel: '1.5' }] : []),
-              { n: 2, label: 'Nhập Data' },
-              { n: 3, label: 'Preview & Copy' },
-            ] as { n: number; label: string; dispLabel?: string }[]
+              { n: 1, label: 'Context', dispLabel: '1' },
+              ...(shopeeChecked ? [{ n: 1.5, label: 'Upload CSV', dispLabel: '2' }] : []),
+              { n: 2, label: 'Nhập Data', dispLabel: shopeeChecked ? '3' : '2' },
+              { n: 3, label: 'Preview & Copy', dispLabel: shopeeChecked ? '4' : '3' },
+            ] as { n: number; label: string; dispLabel: string }[]
           ).map(s => (
             <div
               key={s.n}
@@ -2999,7 +3010,7 @@ function ReportPageInner() {
                 if (step > s.n) setStep(s.n)
               }}
             >
-              <span className="step-num">BƯỚC {s.dispLabel ?? s.n}</span>
+              <span className="step-num">BƯỚC {s.dispLabel}</span>
               <span className="step-name">{s.label}</span>
             </div>
           ))}
@@ -3137,83 +3148,239 @@ function ReportPageInner() {
         )}
 
         {/* ══════════════ STEP 1.5 — Upload Shopee CSV ══════════════ */}
-        {step === 1.5 && weekInfo && (
-          <div className="rc">
-            <h2>Upload file Shopee</h2>
-            <p style={{ color: 'var(--muted)', fontSize: '.9rem', marginBottom: 16 }}>
-              Brand: <strong>{selectedBrand}</strong> · Tuần: <strong>{weekInfo.label}</strong>
-              <br />
-              Upload 3 file CSV xuất từ Shopee Seller Center (CPC / Branding / Livestream) — tool sẽ parse +
-              auto-fill 12 field Shopee. Có thể bỏ qua để nhập tay.
-            </p>
+        {step === 1.5 &&
+          weekInfo &&
+          (() => {
+            const hasAnyFile =
+              !!uploadedFiles.shopee_cpc || !!uploadedFiles.shopee_branding || !!uploadedFiles.shopee_live
+            const missing: string[] = []
+            if (!uploadedFiles.shopee_cpc) missing.push('CPC')
+            if (!uploadedFiles.shopee_branding) missing.push('Branding')
+            if (!uploadedFiles.shopee_live) missing.push('Live')
+            const allThree = missing.length === 0
+            const someMissing = hasAnyFile && missing.length > 0
+            const ctxNow = `${selectedBrand}|${selMonth}|${selYear}|${selWeek}`
+            const ctxStale = !!uploadContext && uploadContext !== ctxNow
 
-            <FileUploadZone
-              files={uploadedFiles}
-              onChange={setUploadedFiles}
-              onError={msg => showToast(msg, 'error')}
-            />
-
-            <div style={{ marginTop: 18, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button
-                className="btn-p"
-                onClick={parseUploadedFiles}
-                disabled={
-                  parsing ||
-                  (!uploadedFiles.shopee_cpc && !uploadedFiles.shopee_branding && !uploadedFiles.shopee_live)
-                }
-              >
-                {parsing ? 'Đang parse...' : 'Parse + Preview'}
-              </button>
-              {(uploadedFiles.shopee_cpc ||
-                uploadedFiles.shopee_branding ||
-                uploadedFiles.shopee_live ||
-                shopeePivot) && (
-                <button
-                  type="button"
-                  className="btn-s"
-                  onClick={clearUploadedData}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fca5a5' }}
-                  title="Xoá toàn bộ file đã upload + preview"
+            return (
+              <div className="rc">
+                <h2 style={{ marginBottom: 4 }}>Upload file Shopee</h2>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    marginBottom: 14,
+                    fontSize: '.85rem',
+                  }}
                 >
-                  {Icon.trash(13)} Xoá data CSV
-                </button>
-              )}
-              {shopeePivot && (
-                <span style={{ color: '#34d399', fontSize: 13 }}>
-                  {Icon.checkCircle(13)} Đã parse {shopeePivot.rows.length} row
-                  {uploadContext &&
-                    uploadContext !== `${selectedBrand}|${selMonth}|${selYear}|${selWeek}` && (
-                      <span style={{ color: '#fbbf24', marginLeft: 8 }}>(data từ context cũ — nên xoá)</span>
-                    )}
-                </span>
-              )}
-            </div>
+                  <span
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 999,
+                      background: 'rgba(59,130,246,.12)',
+                      color: '#60a5fa',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {selectedBrand || '—'}
+                  </span>
+                  <span
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 999,
+                      background: 'rgba(255,255,255,.05)',
+                      color: '#cbd5e1',
+                    }}
+                  >
+                    {weekInfo.label}
+                  </span>
+                  <span style={{ color: 'var(--muted)' }}>
+                    · {weekInfo.start} → {weekInfo.end}
+                  </span>
+                </div>
+                <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: 16, lineHeight: 1.55 }}>
+                  Upload 1–3 file CSV xuất từ Shopee Seller Center (CPC / Branding / Livestream). Tool tự
+                  parse + preview pivot. File thiếu → field tương ứng = 0 (vẫn auto-fill được).
+                </p>
 
-            {shopeePivot && (
-              <>
-                <h3 style={{ marginTop: 22, marginBottom: 12, fontSize: '1.05rem' }}>Preview Pivot Table</h3>
-                <ShopeePivotPreview pivot={shopeePivot} />
-              </>
-            )}
+                <FileUploadZone
+                  files={uploadedFiles}
+                  onChange={setUploadedFiles}
+                  onError={msg => showToast(msg, 'error')}
+                />
 
-            <div className="btn-row" style={{ marginTop: 22 }}>
-              <button className="btn-s" onClick={() => setStep(1)}>
-                ← Quay lại
-              </button>
-              <button className="btn-s" onClick={skipUploadStep}>
-                Bỏ qua, nhập tay
-              </button>
-              <button
-                className="btn-p"
-                onClick={applyAutoFillAndContinue}
-                disabled={!shopeePivot}
-                title={!shopeePivot ? 'Parse file trước' : 'Auto-fill 12 field Shopee'}
-              >
-                Auto-fill & tiếp tục →
-              </button>
-            </div>
-          </div>
-        )}
+                {/* Status row */}
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: 'flex',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    minHeight: 32,
+                  }}
+                >
+                  {parsing && (
+                    <span
+                      style={{
+                        color: '#60a5fa',
+                        fontSize: 13,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      {Icon.clock(13)} Đang parse...
+                    </span>
+                  )}
+                  {!parsing && shopeePivot && (
+                    <span
+                      style={{
+                        color: '#34d399',
+                        fontSize: 13,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      {Icon.checkCircle(13)} Đã parse {shopeePivot.rows.length} row
+                    </span>
+                  )}
+                  {!parsing && hasAnyFile && (
+                    <button
+                      type="button"
+                      onClick={clearUploadedData}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(239,68,68,.25)',
+                        color: '#fca5a5',
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                      }}
+                      title="Xoá toàn bộ file đã upload + preview"
+                    >
+                      {Icon.trash(12)} Xoá data CSV
+                    </button>
+                  )}
+                </div>
+
+                {/* Inline error */}
+                {parseError && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: '10px 14px',
+                      background: 'rgba(239,68,68,.08)',
+                      border: '1px solid rgba(239,68,68,.25)',
+                      borderRadius: 8,
+                      color: '#fca5a5',
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
+                    <div>
+                      <strong>Lỗi parse file:</strong> {parseError}
+                      <div style={{ fontSize: 11, marginTop: 4, color: '#fca5a5', opacity: 0.8 }}>
+                        Kiểm tra file đúng định dạng Shopee Seller Center, hoặc bỏ qua để nhập tay.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Context stale warning */}
+                {ctxStale && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: '10px 14px',
+                      background: 'rgba(251,191,36,.08)',
+                      border: '1px solid rgba(251,191,36,.3)',
+                      borderRadius: 8,
+                      color: '#fbbf24',
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ flexShrink: 0 }}>{Icon.alertTriangle(13)}</span>
+                    Pivot đang hiển thị dữ liệu từ context khác. Nhấn "Xoá data CSV" rồi upload lại.
+                  </div>
+                )}
+
+                {/* Missing files banner (when has some but not all) */}
+                {!parsing && !parseError && someMissing && shopeePivot && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: '8px 12px',
+                      background: 'rgba(59,130,246,.06)',
+                      border: '1px solid rgba(59,130,246,.2)',
+                      borderRadius: 8,
+                      color: '#93c5fd',
+                      fontSize: 12,
+                    }}
+                  >
+                    {Icon.info(12)} Thiếu file <strong>{missing.join(', ')}</strong> — field tương ứng sẽ = 0
+                    khi auto-fill.
+                  </div>
+                )}
+
+                {!parsing && !parseError && allThree && shopeePivot && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: '8px 12px',
+                      background: 'rgba(16,185,129,.06)',
+                      border: '1px solid rgba(16,185,129,.2)',
+                      borderRadius: 8,
+                      color: '#6ee7b7',
+                      fontSize: 12,
+                    }}
+                  >
+                    {Icon.checkCircle(12)} Đầy đủ 3 file — sẵn sàng auto-fill 12 field Shopee.
+                  </div>
+                )}
+
+                {shopeePivot && (
+                  <>
+                    <h3 style={{ marginTop: 22, marginBottom: 12, fontSize: '1.05rem' }}>
+                      Preview Pivot Table
+                    </h3>
+                    <ShopeePivotPreview pivot={shopeePivot} />
+                  </>
+                )}
+
+                <div className="btn-row" style={{ marginTop: 22 }}>
+                  <button className="btn-s" onClick={() => setStep(1)}>
+                    ← Quay lại
+                  </button>
+                  <button className="btn-s" onClick={skipUploadStep}>
+                    Bỏ qua, nhập tay
+                  </button>
+                  <button
+                    className="btn-p"
+                    onClick={applyAutoFillAndContinue}
+                    disabled={!shopeePivot || parsing}
+                    title={!shopeePivot ? 'Upload file để parse pivot' : 'Auto-fill 12 field Shopee'}
+                  >
+                    Auto-fill & tiếp tục →
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
 
         {/* ══════════════ STEP 2 ══════════════ */}
         {step === 2 && weekInfo && (

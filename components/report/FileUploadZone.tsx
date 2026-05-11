@@ -114,10 +114,17 @@ export default function FileUploadZone({ files, onChange, onError }: Props) {
       >
         <div style={{ display: 'inline-flex', color: '#60a5fa', marginBottom: 10 }}>{Icon.send(28)}</div>
         <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: 6 }}>
-          Kéo thả file CSV vào đây hoặc click để chọn
+          {(() => {
+            const count = [files.shopee_cpc, files.shopee_branding, files.shopee_live].filter(Boolean).length
+            return count === 0
+              ? 'Kéo thả file CSV vào đây hoặc click để chọn'
+              : count === 3
+                ? 'Đã đủ 3 file — kéo thêm để thay thế'
+                : `Đã có ${count}/3 file — kéo thêm hoặc thay thế`
+          })()}
         </div>
         <div style={{ fontSize: 12, color: '#94a3b8' }}>
-          Hỗ trợ: CPC, Branding, Livestream · Tối đa 10MB / file · Có thể chọn nhiều file 1 lần
+          Hỗ trợ: CPC, Branding, Livestream · Tối đa 10MB / file · Auto parse sau khi upload
         </div>
         <input
           id="shopee-file-input"
