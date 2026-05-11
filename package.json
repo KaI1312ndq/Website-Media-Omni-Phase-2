@@ -10,6 +10,7 @@
     "seed:sanity": "tsx scripts/seed-sanity.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "audit:passwords": "tsx scripts/audit-passwords.ts",
+    "test:parsers": "tsx scripts/test-parsers.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
