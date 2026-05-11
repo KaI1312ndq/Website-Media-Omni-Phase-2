@@ -97,6 +97,8 @@ function ReportPageInner() {
   })
   const [shopeePivot, setShopeePivot] = useState<ShopeePivot | null>(null)
   const [parsing, setParsing] = useState(false)
+  // Context khi upload — dùng để auto-clear khi user đổi brand/tuần ở Step 1.
+  const [uploadContext, setUploadContext] = useState<string>('')
 
   // Step 2 state
   const [shopeePlan, setShopeePlan] = useState<PlanData | null>(null)
@@ -377,12 +379,26 @@ function ReportPageInner() {
           tiktok_giai_phap: '',
         })
       }
+      // Auto-clear stale upload data if brand/week changed since last upload.
+      const currentCtx = `${selectedBrand}|${selMonth}|${selYear}|${selWeek}`
+      if (uploadContext && uploadContext !== currentCtx) {
+        setUploadedFiles({ shopee_cpc: null, shopee_branding: null, shopee_live: null })
+        setShopeePivot(null)
+        setUploadContext('')
+      }
       // If Shopee enabled → offer CSV upload (Step 1.5). Else → straight to Step 2.
       setStep(shopeeChecked ? 1.5 : 2)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       showToast('Lỗi tải dữ liệu', 'error')
     }
+  }
+
+  function clearUploadedData() {
+    setUploadedFiles({ shopee_cpc: null, shopee_branding: null, shopee_live: null })
+    setShopeePivot(null)
+    setUploadContext('')
+    showToast('Đã xoá data CSV')
   }
 
   /* ── Step 1.5 → parse uploaded files into pivot ── */
@@ -402,6 +418,7 @@ function ReportPageInner() {
       }
       const pivot = buildShopeePivot(results.shopee_cpc, results.shopee_branding, results.shopee_live)
       setShopeePivot(pivot)
+      setUploadContext(`${selectedBrand}|${selMonth}|${selYear}|${selWeek}`)
       const missing: string[] = []
       if (!uploadedFiles.shopee_cpc) missing.push('CPC')
       if (!uploadedFiles.shopee_branding) missing.push('Branding')
@@ -3136,7 +3153,7 @@ function ReportPageInner() {
               onError={msg => showToast(msg, 'error')}
             />
 
-            <div style={{ marginTop: 18, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 18, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 className="btn-p"
                 onClick={parseUploadedFiles}
@@ -3147,9 +3164,27 @@ function ReportPageInner() {
               >
                 {parsing ? 'Đang parse...' : 'Parse + Preview'}
               </button>
+              {(uploadedFiles.shopee_cpc ||
+                uploadedFiles.shopee_branding ||
+                uploadedFiles.shopee_live ||
+                shopeePivot) && (
+                <button
+                  type="button"
+                  className="btn-s"
+                  onClick={clearUploadedData}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fca5a5' }}
+                  title="Xoá toàn bộ file đã upload + preview"
+                >
+                  {Icon.trash(13)} Xoá data CSV
+                </button>
+              )}
               {shopeePivot && (
-                <span style={{ color: '#34d399', fontSize: 13, alignSelf: 'center' }}>
-                  ✓ Đã parse {shopeePivot.rows.length} row
+                <span style={{ color: '#34d399', fontSize: 13 }}>
+                  {Icon.checkCircle(13)} Đã parse {shopeePivot.rows.length} row
+                  {uploadContext &&
+                    uploadContext !== `${selectedBrand}|${selMonth}|${selYear}|${selWeek}` && (
+                      <span style={{ color: '#fbbf24', marginLeft: 8 }}>(data từ context cũ — nên xoá)</span>
+                    )}
                 </span>
               )}
             </div>
