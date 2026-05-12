@@ -35,12 +35,21 @@ import {
   parseShopeeFile,
   buildShopeePivot,
   pivotToAutoFill,
+  parseTiktokPGM,
+  parseTiktokLGM,
+  buildTiktokPivot,
+  tiktokToAutoFill,
   type ShopeeFileType,
   type ShopeePivot,
   type PivotRow,
+  type TiktokPGMData,
+  type TiktokLGMData,
+  type TiktokPivot,
 } from '@/lib/report/parsers'
 import FileUploadZone, { type UploadedFiles } from '@/components/report/FileUploadZone'
 import ShopeePivotPreview from '@/components/report/ShopeePivotPreview'
+import TiktokFileUploadZone, { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
+import TiktokPivotPreview from '@/components/report/TiktokPivotPreview'
 
 /* ════════════════════════════════════════════════
    MAIN COMPONENT
@@ -100,6 +109,17 @@ function ReportPageInner() {
   const [parseError, setParseError] = useState<string>('')
   // Context khi upload — dùng để auto-clear khi user đổi brand/tuần ở Step 1.
   const [uploadContext, setUploadContext] = useState<string>('')
+
+  // Step 1.5 — TikTok xlsx upload + parse (Phase 2B)
+  const [tiktokFiles, setTiktokFiles] = useState<TiktokUploadedFiles>({
+    tiktok_pgm: null,
+    tiktok_lgm: null,
+  })
+  const [tiktokPGMData, setTiktokPGMData] = useState<TiktokPGMData | null>(null)
+  const [tiktokLGMData, setTiktokLGMData] = useState<TiktokLGMData | null>(null)
+  const [tiktokPivot, setTiktokPivot] = useState<TiktokPivot | null>(null)
+  const [parsingTiktok, setParsingTiktok] = useState(false)
+  const [tiktokParseError, setTiktokParseError] = useState<string>('')
 
   // Step 2 state
   const [shopeePlan, setShopeePlan] = useState<PlanData | null>(null)
@@ -386,9 +406,14 @@ function ReportPageInner() {
         setUploadedFiles({ shopee_cpc: null, shopee_branding: null, shopee_live: null })
         setShopeePivot(null)
         setUploadContext('')
+        // Also clear TikTok stale data
+        setTiktokFiles({ tiktok_pgm: null, tiktok_lgm: null })
+        setTiktokPGMData(null)
+        setTiktokLGMData(null)
+        setTiktokPivot(null)
       }
-      // If Shopee enabled → offer CSV upload (Step 1.5). Else → straight to Step 2.
-      setStep(shopeeChecked ? 1.5 : 2)
+      // Step 1.5 (Upload) shown when EITHER platform is enabled (user can upload partially).
+      setStep(shopeeChecked || tiktokChecked ? 1.5 : 2)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       showToast('Lỗi tải dữ liệu', 'error')
@@ -402,6 +427,49 @@ function ReportPageInner() {
     setParseError('')
     showToast('Đã xoá data CSV')
   }
+
+  function clearTiktokData() {
+    setTiktokFiles({ tiktok_pgm: null, tiktok_lgm: null })
+    setTiktokPGMData(null)
+    setTiktokLGMData(null)
+    setTiktokPivot(null)
+    setTiktokParseError('')
+    showToast('Đã xoá data TikTok')
+  }
+
+  /* ── Step 1.5 → parse TikTok files ── */
+  const parseTiktokFiles = useCallback(
+    async (filesArg?: TiktokUploadedFiles) => {
+      const files = filesArg ?? tiktokFiles
+      setParsingTiktok(true)
+      setTiktokParseError('')
+      try {
+        const pgm = files.tiktok_pgm ? await parseTiktokPGM(files.tiktok_pgm) : null
+        const lgm = files.tiktok_lgm ? await parseTiktokLGM(files.tiktok_lgm) : null
+        setTiktokPGMData(pgm)
+        setTiktokLGMData(lgm)
+        const pivot = buildTiktokPivot(pgm, lgm)
+        setTiktokPivot(pivot)
+        setUploadContext(`${selectedBrand}|${selMonth}|${selYear}|${selWeek}`)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Lỗi parse file TikTok'
+        setTiktokParseError(msg)
+        setTiktokPivot(null)
+      } finally {
+        setParsingTiktok(false)
+      }
+    },
+    [tiktokFiles, selectedBrand, selMonth, selYear, selWeek],
+  )
+
+  // Auto-parse khi user upload TikTok file
+  useEffect(() => {
+    if (step !== 1.5) return
+    const hasAny = tiktokFiles.tiktok_pgm || tiktokFiles.tiktok_lgm
+    if (!hasAny) return
+    const t = setTimeout(() => parseTiktokFiles(tiktokFiles), 250)
+    return () => clearTimeout(t)
+  }, [tiktokFiles, step, parseTiktokFiles])
 
   /* ── Step 1.5 → parse uploaded files into pivot ── */
   const parseUploadedFiles = useCallback(
@@ -445,24 +513,46 @@ function ReportPageInner() {
     return () => clearTimeout(t)
   }, [uploadedFiles, step, parseUploadedFiles])
 
-  /* ── Apply pivot → 12 Shopee fields in Step 2 ── */
+  /* ── Apply pivot → Step 2 fields (Shopee 12 + TikTok 7) ── */
   function applyAutoFillAndContinue() {
-    if (!shopeePivot) {
-      setStep(2)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-    const fill = pivotToAutoFill(shopeePivot)
-    setShopeeData(prev => ({ ...prev, ...fill }))
-    setRawInputs(prev => {
-      const next = { ...prev }
-      ;(Object.keys(fill) as (keyof typeof fill)[]).forEach(k => {
-        const v = fill[k]
-        next[k as string] = v ? v.toLocaleString('vi-VN') : ''
+    let filledShopee = 0
+    let filledTiktok = 0
+
+    if (shopeePivot) {
+      const fill = pivotToAutoFill(shopeePivot)
+      setShopeeData(prev => ({ ...prev, ...fill }))
+      setRawInputs(prev => {
+        const next = { ...prev }
+        ;(Object.keys(fill) as (keyof typeof fill)[]).forEach(k => {
+          const v = fill[k]
+          next[k as string] = v ? v.toLocaleString('vi-VN') : ''
+        })
+        return next
       })
-      return next
-    })
-    showToast('Đã auto-fill 12 field Shopee')
+      filledShopee = 12
+    }
+
+    if (tiktokPGMData || tiktokLGMData) {
+      const tFill = tiktokToAutoFill(tiktokPGMData, tiktokLGMData)
+      setTiktokData(prev => ({ ...prev, ...tFill }))
+      setRawInputs(prev => {
+        const next = { ...prev }
+        ;(Object.keys(tFill) as (keyof typeof tFill)[]).forEach(k => {
+          const v = tFill[k]
+          next[k as string] = v ? v.toLocaleString('vi-VN') : ''
+        })
+        return next
+      })
+      filledTiktok = 7
+    }
+
+    if (filledShopee || filledTiktok) {
+      const parts: string[] = []
+      if (filledShopee) parts.push(`${filledShopee} field Shopee`)
+      if (filledTiktok) parts.push(`${filledTiktok} field TikTok`)
+      showToast(`Đã auto-fill ${parts.join(' + ')}`)
+    }
+
     setStep(2)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -2998,9 +3088,22 @@ function ReportPageInner() {
           {(
             [
               { n: 1, label: 'Context', dispLabel: '1' },
-              ...(shopeeChecked ? [{ n: 1.5, label: 'Upload CSV', dispLabel: '2' }] : []),
-              { n: 2, label: 'Nhập Data', dispLabel: shopeeChecked ? '3' : '2' },
-              { n: 3, label: 'Preview & Copy', dispLabel: shopeeChecked ? '4' : '3' },
+              ...(shopeeChecked || tiktokChecked
+                ? [
+                    {
+                      n: 1.5,
+                      label:
+                        shopeeChecked && tiktokChecked
+                          ? 'Upload file'
+                          : shopeeChecked
+                            ? 'Upload Shopee'
+                            : 'Upload TikTok',
+                      dispLabel: '2',
+                    },
+                  ]
+                : []),
+              { n: 2, label: 'Nhập Data', dispLabel: shopeeChecked || tiktokChecked ? '3' : '2' },
+              { n: 3, label: 'Preview & Copy', dispLabel: shopeeChecked || tiktokChecked ? '4' : '3' },
             ] as { n: number; label: string; dispLabel: string }[]
           ).map(s => (
             <div
@@ -3151,218 +3254,377 @@ function ReportPageInner() {
         {step === 1.5 &&
           weekInfo &&
           (() => {
-            const hasAnyFile =
+            const hasAnyShopeeFile =
               !!uploadedFiles.shopee_cpc || !!uploadedFiles.shopee_branding || !!uploadedFiles.shopee_live
-            const missing: string[] = []
-            if (!uploadedFiles.shopee_cpc) missing.push('CPC')
-            if (!uploadedFiles.shopee_branding) missing.push('Branding')
-            if (!uploadedFiles.shopee_live) missing.push('Live')
-            const allThree = missing.length === 0
-            const someMissing = hasAnyFile && missing.length > 0
+            const missingShopee: string[] = []
+            if (!uploadedFiles.shopee_cpc) missingShopee.push('CPC')
+            if (!uploadedFiles.shopee_branding) missingShopee.push('Branding')
+            if (!uploadedFiles.shopee_live) missingShopee.push('Live')
+            const allThreeShopee = missingShopee.length === 0
+            const someShopeeMissing = hasAnyShopeeFile && missingShopee.length > 0
+
+            const hasAnyTiktokFile = !!tiktokFiles.tiktok_pgm || !!tiktokFiles.tiktok_lgm
+            const missingTiktok: string[] = []
+            if (!tiktokFiles.tiktok_pgm) missingTiktok.push('PGM')
+            if (!tiktokFiles.tiktok_lgm) missingTiktok.push('LGM')
+            const allBothTiktok = missingTiktok.length === 0
+            const someTiktokMissing = hasAnyTiktokFile && missingTiktok.length > 0
+
             const ctxNow = `${selectedBrand}|${selMonth}|${selYear}|${selWeek}`
             const ctxStale = !!uploadContext && uploadContext !== ctxNow
 
+            const canAutoFill = !!shopeePivot || !!tiktokPivot
+
             return (
-              <div className="rc">
-                <h2 style={{ marginBottom: 4 }}>Upload file Shopee</h2>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    marginBottom: 14,
-                    fontSize: '.85rem',
-                  }}
-                >
-                  <span
-                    style={{
-                      padding: '3px 10px',
-                      borderRadius: 999,
-                      background: 'rgba(59,130,246,.12)',
-                      color: '#60a5fa',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {selectedBrand || '—'}
-                  </span>
-                  <span
-                    style={{
-                      padding: '3px 10px',
-                      borderRadius: 999,
-                      background: 'rgba(255,255,255,.05)',
-                      color: '#cbd5e1',
-                    }}
-                  >
-                    {weekInfo.label}
-                  </span>
-                  <span style={{ color: 'var(--muted)' }}>
-                    · {weekInfo.start} → {weekInfo.end}
-                  </span>
-                </div>
-                <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: 16, lineHeight: 1.55 }}>
-                  Upload 1–3 file CSV xuất từ Shopee Seller Center (CPC / Branding / Livestream). Tool tự
-                  parse + preview pivot. File thiếu → field tương ứng = 0 (vẫn auto-fill được).
-                </p>
-
-                <FileUploadZone
-                  files={uploadedFiles}
-                  onChange={setUploadedFiles}
-                  onError={msg => showToast(msg, 'error')}
-                />
-
-                {/* Status row */}
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: 'flex',
-                    gap: 10,
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    minHeight: 32,
-                  }}
-                >
-                  {parsing && (
-                    <span
-                      style={{
-                        color: '#60a5fa',
-                        fontSize: 13,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
-                      {Icon.clock(13)} Đang parse...
-                    </span>
-                  )}
-                  {!parsing && shopeePivot && (
-                    <span
-                      style={{
-                        color: '#34d399',
-                        fontSize: 13,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
-                      {Icon.checkCircle(13)} Đã parse {shopeePivot.rows.length} row
-                    </span>
-                  )}
-                  {!parsing && hasAnyFile && (
-                    <button
-                      type="button"
-                      onClick={clearUploadedData}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid rgba(239,68,68,.25)',
-                        color: '#fca5a5',
-                        padding: '4px 10px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                      }}
-                      title="Xoá toàn bộ file đã upload + preview"
-                    >
-                      {Icon.trash(12)} Xoá data CSV
-                    </button>
-                  )}
-                </div>
-
-                {/* Inline error */}
-                {parseError && (
+              <>
+                {/* Context bar */}
+                <div className="rc" style={{ marginBottom: 14 }}>
                   <div
                     style={{
-                      marginTop: 12,
-                      padding: '10px 14px',
-                      background: 'rgba(239,68,68,.08)',
-                      border: '1px solid rgba(239,68,68,.25)',
-                      borderRadius: 8,
-                      color: '#fca5a5',
-                      fontSize: 13,
                       display: 'flex',
-                      alignItems: 'flex-start',
                       gap: 8,
-                    }}
-                  >
-                    <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
-                    <div>
-                      <strong>Lỗi parse file:</strong> {parseError}
-                      <div style={{ fontSize: 11, marginTop: 4, color: '#fca5a5', opacity: 0.8 }}>
-                        Kiểm tra file đúng định dạng Shopee Seller Center, hoặc bỏ qua để nhập tay.
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Context stale warning */}
-                {ctxStale && (
-                  <div
-                    style={{
-                      marginTop: 12,
-                      padding: '10px 14px',
-                      background: 'rgba(251,191,36,.08)',
-                      border: '1px solid rgba(251,191,36,.3)',
-                      borderRadius: 8,
-                      color: '#fbbf24',
-                      fontSize: 12,
-                      display: 'flex',
+                      flexWrap: 'wrap',
                       alignItems: 'center',
-                      gap: 8,
+                      fontSize: '.88rem',
                     }}
                   >
-                    <span style={{ flexShrink: 0 }}>{Icon.alertTriangle(13)}</span>
-                    Pivot đang hiển thị dữ liệu từ context khác. Nhấn "Xoá data CSV" rồi upload lại.
+                    <span
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: 999,
+                        background: 'rgba(59,130,246,.12)',
+                        color: '#60a5fa',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {selectedBrand || '—'}
+                    </span>
+                    <span
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: 999,
+                        background: 'rgba(255,255,255,.05)',
+                        color: '#cbd5e1',
+                      }}
+                    >
+                      {weekInfo.label}
+                    </span>
+                    <span style={{ color: 'var(--muted)' }}>
+                      · {weekInfo.start} → {weekInfo.end}
+                    </span>
                   </div>
-                )}
-
-                {/* Missing files banner (when has some but not all) */}
-                {!parsing && !parseError && someMissing && shopeePivot && (
-                  <div
+                  <p
                     style={{
-                      marginTop: 12,
-                      padding: '8px 12px',
-                      background: 'rgba(59,130,246,.06)',
-                      border: '1px solid rgba(59,130,246,.2)',
-                      borderRadius: 8,
-                      color: '#93c5fd',
-                      fontSize: 12,
+                      color: 'var(--muted)',
+                      fontSize: '.85rem',
+                      marginTop: 10,
+                      marginBottom: 0,
+                      lineHeight: 1.55,
                     }}
                   >
-                    {Icon.info(12)} Thiếu file <strong>{missing.join(', ')}</strong> — field tương ứng sẽ = 0
-                    khi auto-fill.
+                    Upload file xuất từ Shopee Seller Center và TikTok Ads Manager — tool tự parse + preview
+                    pivot. File thiếu → field tương ứng = 0 (vẫn auto-fill được). Có thể bỏ qua để nhập tay.
+                  </p>
+                  {ctxStale && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: '10px 14px',
+                        background: 'rgba(251,191,36,.08)',
+                        border: '1px solid rgba(251,191,36,.3)',
+                        borderRadius: 8,
+                        color: '#fbbf24',
+                        fontSize: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ flexShrink: 0 }}>{Icon.alertTriangle(13)}</span>
+                      Pivot đang hiển thị dữ liệu từ context khác. Xoá data + upload lại.
+                    </div>
+                  )}
+                </div>
+
+                {/* ── SHOPEE zone ── */}
+                {shopeeChecked && (
+                  <div className="rc" style={{ marginBottom: 14 }}>
+                    <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>Shopee</h2>
+                    <p style={{ color: 'var(--muted)', fontSize: '.82rem', marginBottom: 14 }}>
+                      Upload 1–3 file CSV (CPC / Branding / Livestream)
+                    </p>
+
+                    <FileUploadZone
+                      files={uploadedFiles}
+                      onChange={setUploadedFiles}
+                      onError={msg => showToast(msg, 'error')}
+                    />
+
+                    <div
+                      style={{
+                        marginTop: 14,
+                        display: 'flex',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        minHeight: 32,
+                      }}
+                    >
+                      {parsing && (
+                        <span
+                          style={{
+                            color: '#60a5fa',
+                            fontSize: 13,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          {Icon.clock(13)} Đang parse...
+                        </span>
+                      )}
+                      {!parsing && shopeePivot && (
+                        <span
+                          style={{
+                            color: '#34d399',
+                            fontSize: 13,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          {Icon.checkCircle(13)} Đã parse {shopeePivot.rows.length} row
+                        </span>
+                      )}
+                      {!parsing && hasAnyShopeeFile && (
+                        <button
+                          type="button"
+                          onClick={clearUploadedData}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(239,68,68,.25)',
+                            color: '#fca5a5',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                          }}
+                        >
+                          {Icon.trash(12)} Xoá data Shopee
+                        </button>
+                      )}
+                    </div>
+
+                    {parseError && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: '10px 14px',
+                          background: 'rgba(239,68,68,.08)',
+                          border: '1px solid rgba(239,68,68,.25)',
+                          borderRadius: 8,
+                          color: '#fca5a5',
+                          fontSize: 13,
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 8,
+                        }}
+                      >
+                        <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
+                        <div>
+                          <strong>Lỗi parse:</strong> {parseError}
+                        </div>
+                      </div>
+                    )}
+
+                    {!parsing && !parseError && someShopeeMissing && shopeePivot && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: '8px 12px',
+                          background: 'rgba(59,130,246,.06)',
+                          border: '1px solid rgba(59,130,246,.2)',
+                          borderRadius: 8,
+                          color: '#93c5fd',
+                          fontSize: 12,
+                        }}
+                      >
+                        {Icon.info(12)} Thiếu file <strong>{missingShopee.join(', ')}</strong> — field tương
+                        ứng sẽ = 0.
+                      </div>
+                    )}
+                    {!parsing && !parseError && allThreeShopee && shopeePivot && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: '8px 12px',
+                          background: 'rgba(16,185,129,.06)',
+                          border: '1px solid rgba(16,185,129,.2)',
+                          borderRadius: 8,
+                          color: '#6ee7b7',
+                          fontSize: 12,
+                        }}
+                      >
+                        {Icon.checkCircle(12)} Đầy đủ 3 file — sẵn sàng auto-fill 12 field Shopee.
+                      </div>
+                    )}
+
+                    {shopeePivot && (
+                      <>
+                        <h3 style={{ marginTop: 20, marginBottom: 10, fontSize: '1rem' }}>
+                          Preview Shopee Pivot
+                        </h3>
+                        <ShopeePivotPreview pivot={shopeePivot} />
+                      </>
+                    )}
                   </div>
                 )}
 
-                {!parsing && !parseError && allThree && shopeePivot && (
-                  <div
-                    style={{
-                      marginTop: 12,
-                      padding: '8px 12px',
-                      background: 'rgba(16,185,129,.06)',
-                      border: '1px solid rgba(16,185,129,.2)',
-                      borderRadius: 8,
-                      color: '#6ee7b7',
-                      fontSize: 12,
-                    }}
-                  >
-                    {Icon.checkCircle(12)} Đầy đủ 3 file — sẵn sàng auto-fill 12 field Shopee.
+                {/* ── TIKTOK zone ── */}
+                {tiktokChecked && (
+                  <div className="rc" style={{ marginBottom: 14 }}>
+                    <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>TikTok</h2>
+                    <p style={{ color: 'var(--muted)', fontSize: '.82rem', marginBottom: 14 }}>
+                      Upload 1–2 file xlsx (PGM Product Campaigns / LGM Live Campaigns). Consideration_Ads +
+                      Branding_Ads vẫn nhập tay.
+                    </p>
+
+                    <TiktokFileUploadZone
+                      files={tiktokFiles}
+                      onChange={setTiktokFiles}
+                      onError={msg => showToast(msg, 'error')}
+                    />
+
+                    <div
+                      style={{
+                        marginTop: 14,
+                        display: 'flex',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        minHeight: 32,
+                      }}
+                    >
+                      {parsingTiktok && (
+                        <span
+                          style={{
+                            color: '#a78bfa',
+                            fontSize: 13,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          {Icon.clock(13)} Đang parse... (PGM có thể tới 33K rows)
+                        </span>
+                      )}
+                      {!parsingTiktok && tiktokPivot && (
+                        <span
+                          style={{
+                            color: '#34d399',
+                            fontSize: 13,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          {Icon.checkCircle(13)} Đã parse {tiktokPivot.rows.length} row
+                        </span>
+                      )}
+                      {!parsingTiktok && hasAnyTiktokFile && (
+                        <button
+                          type="button"
+                          onClick={clearTiktokData}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(239,68,68,.25)',
+                            color: '#fca5a5',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                          }}
+                        >
+                          {Icon.trash(12)} Xoá data TikTok
+                        </button>
+                      )}
+                    </div>
+
+                    {tiktokParseError && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: '10px 14px',
+                          background: 'rgba(239,68,68,.08)',
+                          border: '1px solid rgba(239,68,68,.25)',
+                          borderRadius: 8,
+                          color: '#fca5a5',
+                          fontSize: 13,
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 8,
+                        }}
+                      >
+                        <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
+                        <div>
+                          <strong>Lỗi parse TikTok:</strong> {tiktokParseError}
+                        </div>
+                      </div>
+                    )}
+
+                    {!parsingTiktok && !tiktokParseError && someTiktokMissing && tiktokPivot && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: '8px 12px',
+                          background: 'rgba(168,85,247,.08)',
+                          border: '1px solid rgba(168,85,247,.25)',
+                          borderRadius: 8,
+                          color: '#c4b5fd',
+                          fontSize: 12,
+                        }}
+                      >
+                        {Icon.info(12)} Thiếu file <strong>{missingTiktok.join(', ')}</strong> — field tương
+                        ứng sẽ = 0.
+                      </div>
+                    )}
+                    {!parsingTiktok && !tiktokParseError && allBothTiktok && tiktokPivot && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: '8px 12px',
+                          background: 'rgba(16,185,129,.06)',
+                          border: '1px solid rgba(16,185,129,.2)',
+                          borderRadius: 8,
+                          color: '#6ee7b7',
+                          fontSize: 12,
+                        }}
+                      >
+                        {Icon.checkCircle(12)} Đầy đủ 2 file PGM + LGM — sẵn sàng auto-fill 7 field TikTok.
+                      </div>
+                    )}
+
+                    {tiktokPivot && (
+                      <>
+                        <h3 style={{ marginTop: 20, marginBottom: 10, fontSize: '1rem' }}>
+                          Preview TikTok Pivot
+                        </h3>
+                        <TiktokPivotPreview pivot={tiktokPivot} />
+                      </>
+                    )}
                   </div>
                 )}
 
-                {shopeePivot && (
-                  <>
-                    <h3 style={{ marginTop: 22, marginBottom: 12, fontSize: '1.05rem' }}>
-                      Preview Pivot Table
-                    </h3>
-                    <ShopeePivotPreview pivot={shopeePivot} />
-                  </>
-                )}
-
-                <div className="btn-row" style={{ marginTop: 22 }}>
+                {/* Action bar */}
+                <div className="btn-row" style={{ marginTop: 16 }}>
                   <button className="btn-s" onClick={() => setStep(1)}>
                     ← Quay lại
                   </button>
@@ -3372,13 +3634,17 @@ function ReportPageInner() {
                   <button
                     className="btn-p"
                     onClick={applyAutoFillAndContinue}
-                    disabled={!shopeePivot || parsing}
-                    title={!shopeePivot ? 'Upload file để parse pivot' : 'Auto-fill 12 field Shopee'}
+                    disabled={!canAutoFill || parsing || parsingTiktok}
+                    title={
+                      !canAutoFill
+                        ? 'Upload ít nhất 1 file để parse pivot'
+                        : 'Auto-fill field theo pivot đã parse'
+                    }
                   >
                     Auto-fill & tiếp tục →
                   </button>
                 </div>
-              </div>
+              </>
             )
           })()}
 
@@ -4169,7 +4435,7 @@ function ReportPageInner() {
 
             {/* Navigation */}
             <div className="btn-row">
-              <button className="btn-s" onClick={() => setStep(shopeeChecked ? 1.5 : 1)}>
+              <button className="btn-s" onClick={() => setStep(shopeeChecked || tiktokChecked ? 1.5 : 1)}>
                 ← Quay lại
               </button>
               <button className="btn-p" onClick={goStep3}>

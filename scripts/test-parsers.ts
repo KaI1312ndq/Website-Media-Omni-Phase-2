@@ -11,6 +11,11 @@ import {
   buildShopeePivot,
   pivotToAutoFill,
   detectFileType,
+  parseTiktokPGM,
+  parseTiktokLGM,
+  buildTiktokPivot,
+  tiktokToAutoFill,
+  detectTiktokFileType,
 } from '../lib/report/parsers'
 
 const FIXTURES = join(process.cwd(), 'tests/fixtures/report')
@@ -137,6 +142,120 @@ async function main() {
   assertEq(fill.s_live_gmv, 1584000, 's_live_gmv')
   assertEq(fill.s_live_chi_phi, 213230, 's_live_chi_phi')
   assertEq(fill.s_live_luot_xem, 5847, 's_live_luot_xem')
+
+  /* ════════════════════════════════════════════════════════════
+     TIKTOK — Phase 2B
+     Expected values per Brief V9.2 mục 13 (sample 01/05 – 11/05/2026):
+       PGM gmv=932_069_592.16, cost=116_329_700.01, hien_thi=1_790_062, clicks=82_791, orders=5_232
+       LGM gmv=694_520_019.29, cost=70_068_541
+       Total: GMV ≈ 1_626_589_611.45, Cost ≈ 186_398_241.01, ROI ≈ 8.73
+       PGM derived: ROAS≈8.01, CPC≈1.405, CTR≈4.63%, CR≈6.32%, CPM≈64.986, AOV≈178.148
+       LGM ROI ≈ 9.91
+  ════════════════════════════════════════════════════════════ */
+  console.log('\n=== detectTiktokFileType ===')
+  assertEq(
+    detectTiktokFileType('creative data for product campaigns (2026-05-01 00 ~ 2026-05-11 23).xlsx'),
+    'tiktok_pgm',
+    'PGM filename',
+  )
+  assertEq(
+    detectTiktokFileType('livestream data for live campaigns (2026-05-01 00 ~ 2026-05-11 23).xlsx'),
+    'tiktok_lgm',
+    'LGM filename',
+  )
+  assertEq(detectTiktokFileType('random.xlsx'), null, 'Unknown filename → null')
+
+  console.log('\n=== parseTiktokPGM ===')
+  const pgmFile = await readAsFile(join(FIXTURES, 'tiktok_pgm_sample.xlsx'), 'pgm.xlsx')
+  const pgm = await parseTiktokPGM(pgmFile)
+  assert(Math.abs(pgm.gmv - 932_069_592.16) < 1, `PGM gmv ≈ 932,069,592.16 (got ${pgm.gmv})`)
+  assert(Math.abs(pgm.cost - 116_329_700.01) < 1, `PGM cost ≈ 116,329,700.01 (got ${pgm.cost})`)
+  assertEq(pgm.hien_thi, 1_790_062, 'PGM hien_thi = 1,790,062')
+  assertEq(pgm.clicks, 82_791, 'PGM clicks = 82,791')
+  assertEq(pgm.orders, 5_232, 'PGM orders = 5,232')
+
+  console.log('\n=== parseTiktokLGM ===')
+  const lgmFile = await readAsFile(join(FIXTURES, 'tiktok_lgm_sample.xlsx'), 'lgm.xlsx')
+  const lgm = await parseTiktokLGM(lgmFile)
+  assert(Math.abs(lgm.gmv - 694_520_019.29) < 1, `LGM gmv ≈ 694,520,019.29 (got ${lgm.gmv})`)
+  assertEq(lgm.cost, 70_068_541, 'LGM cost = 70,068,541')
+
+  console.log('\n=== buildTiktokPivot ===')
+  const tPivot = buildTiktokPivot(pgm, lgm)
+  // 3 Ads_Total + 11 Ads_PGM + 3 Ads_LGM + 3 Consideration + 4 Branding = 24 rows
+  assertEq(tPivot.rows.length, 24, 'pivot has 24 rows')
+
+  const totalGmvRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_Total' && r.metric === 'Doanh thu Ads')
+  assert(Math.abs((totalGmvRow?.value ?? 0) - 1_626_589_611.45) < 1, 'Ads_Total Doanh thu Ads')
+  const totalCostRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_Total' && r.metric === 'Chi phí Ads')
+  assert(Math.abs((totalCostRow?.value ?? 0) - 186_398_241.01) < 1, 'Ads_Total Chi phí Ads')
+  const totalRoiRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_Total' && r.metric === 'ROI')
+  assertEq(totalRoiRow?.value, 8.73, 'Ads_Total ROI = 8.73')
+  assert(totalRoiRow?.isBold === true, 'Ads_Total rows are bold')
+
+  const pgmRoasRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_PGM' && r.metric === 'ROAS')
+  assertEq(pgmRoasRow?.value, 8.01, 'PGM ROAS = 8.01')
+  const pgmCpcRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_PGM' && r.metric === 'CPC')
+  assertEq(pgmCpcRow?.value, 1405, 'PGM CPC = 1,405')
+  const pgmCtrRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_PGM' && r.metric === 'CTR')
+  assertEq(pgmCtrRow?.value, 4.63, 'PGM CTR = 4.63%')
+  const pgmCrRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_PGM' && r.metric === 'CR')
+  assertEq(pgmCrRow?.value, 6.32, 'PGM CR = 6.32%')
+  const pgmCpmRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_PGM' && r.metric === 'CPM')
+  assertEq(pgmCpmRow?.value, 64986, 'PGM CPM = 64,986')
+  const pgmAovRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_PGM' && r.metric === 'AOV')
+  assertEq(pgmAovRow?.value, 178148, 'PGM AOV = 178,148')
+
+  const lgmRoiRow = tPivot.rows.find(r => r.hinh_thuc === 'Ads_LGM' && r.metric === 'ROI')
+  assertEq(lgmRoiRow?.value, 9.91, 'LGM ROI = 9.91')
+
+  const considerationRows = tPivot.rows.filter(r => r.hinh_thuc === 'Consideration_Ads')
+  assertEq(considerationRows.length, 3, 'Consideration_Ads has 3 rows')
+  assert(
+    considerationRows.every(r => r.value === null),
+    'Consideration_Ads all null',
+  )
+
+  const brandingRows = tPivot.rows.filter(r => r.hinh_thuc === 'Branding_Ads')
+  assertEq(brandingRows.length, 4, 'Branding_Ads has 4 rows')
+  assert(
+    brandingRows.every(r => r.value === null),
+    'Branding_Ads all null',
+  )
+
+  // Verify ordering
+  const order = tPivot.rows.map(r => r.hinh_thuc)
+  const firstAdsTotal = order.indexOf('Ads_Total')
+  const firstPGM = order.indexOf('Ads_PGM')
+  const firstLGM = order.indexOf('Ads_LGM')
+  const firstConsid = order.indexOf('Consideration_Ads')
+  const firstBranding = order.indexOf('Branding_Ads')
+  assert(
+    firstAdsTotal === 0 &&
+      firstAdsTotal < firstPGM &&
+      firstPGM < firstLGM &&
+      firstLGM < firstConsid &&
+      firstConsid < firstBranding,
+    'Order: Total → PGM → LGM → Consideration → Branding',
+  )
+
+  console.log('\n=== tiktokToAutoFill ===')
+  const tFill = tiktokToAutoFill(pgm, lgm)
+  assertEq(tFill.t_pgm_doanh_so, pgm.gmv, 't_pgm_doanh_so = PGM gmv')
+  assertEq(tFill.t_pgm_chi_phi, pgm.cost, 't_pgm_chi_phi = PGM cost')
+  assertEq(tFill.t_pgm_luot_xem, 1_790_062, 't_pgm_luot_xem = 1,790,062')
+  assertEq(tFill.t_pgm_luot_click, 82_791, 't_pgm_luot_click = 82,791')
+  assertEq(tFill.t_pgm_don_hang, 5_232, 't_pgm_don_hang = 5,232')
+  assertEq(tFill.t_lgm_doanhthu, lgm.gmv, 't_lgm_doanhthu = LGM gmv')
+  assertEq(tFill.t_lgm_chi_phi, 70_068_541, 't_lgm_chi_phi = 70,068,541')
+
+  // Missing-file scenarios
+  const tPivotPGMOnly = buildTiktokPivot(pgm, null)
+  const lgmInPGMOnly = tPivotPGMOnly.rows.find(r => r.hinh_thuc === 'Ads_LGM' && r.metric === 'Doanh thu LGM')
+  assertEq(lgmInPGMOnly?.value, 0, 'LGM = 0 when only PGM uploaded')
+  const tPivotEmpty = buildTiktokPivot(null, null)
+  const totalEmptyRoi = tPivotEmpty.rows.find(r => r.hinh_thuc === 'Ads_Total' && r.metric === 'ROI')
+  assertEq(totalEmptyRoi?.value, null, 'Empty pivot: Total ROI = null')
 
   console.log(`\n${'─'.repeat(40)}`)
   console.log(`Passed: ${passed}   Failed: ${failed}`)

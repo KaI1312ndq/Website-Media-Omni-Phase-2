@@ -63,3 +63,52 @@ export interface ShopeeAutoFill {
   s_live_chi_phi: number
   s_live_luot_xem: number
 }
+
+/* ════════════════════════════════════════════════════════════
+   TikTok — Phase 2B
+════════════════════════════════════════════════════════════ */
+
+export type TiktokFileType = 'tiktok_pgm' | 'tiktok_lgm'
+
+export interface TiktokPGMData {
+  gmv: number
+  cost: number
+  hien_thi: number
+  clicks: number
+  orders: number
+}
+
+export interface TiktokLGMData {
+  gmv: number
+  cost: number
+}
+
+export type TiktokHinhThuc = 'Ads_Total' | 'Ads_PGM' | 'Ads_LGM' | 'Consideration_Ads' | 'Branding_Ads'
+export type TiktokValueFormat = 'integer' | 'decimal' | 'percent'
+
+export interface TiktokPivotRow {
+  hinh_thuc: TiktokHinhThuc
+  metric: string
+  value: number | null // null → render "—"
+  format: TiktokValueFormat
+  isBold: boolean // true for Ads_Total rows
+}
+
+export interface TiktokPivot {
+  rows: TiktokPivotRow[]
+  metadata: {
+    pgm_present: boolean
+    lgm_present: boolean
+  }
+}
+
+/** Aggregated TikTok actuals → maps into 7 of Step 2's TikTok fields (PGM 5 + LGM 2). */
+export interface TiktokAutoFill {
+  t_pgm_doanh_so: number
+  t_pgm_chi_phi: number
+  t_pgm_luot_xem: number
+  t_pgm_luot_click: number
+  t_pgm_don_hang: number
+  t_lgm_doanhthu: number
+  t_lgm_chi_phi: number
+}

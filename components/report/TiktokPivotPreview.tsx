@@ -1,0 +1,229 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import { Icon } from '@/lib/icons'
+import type { TiktokPivot, TiktokPivotRow, TiktokValueFormat } from '@/lib/report/parsers'
+
+interface Props {
+  pivot: TiktokPivot
+}
+
+const VN_INT = new Intl.NumberFormat('vi-VN')
+const VN_DEC = new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+function fmt(value: number | null, format: TiktokValueFormat): string {
+  if (value === null || !isFinite(value)) return '—'
+  if (format === 'percent') return VN_DEC.format(value) + '%'
+  if (format === 'decimal') return VN_DEC.format(value)
+  return VN_INT.format(Math.round(value))
+}
+
+/** Compute rowspan per group of consecutive same hinh_thuc rows. */
+function computeRowSpans(rows: TiktokPivotRow[]): number[] {
+  const spans = new Array(rows.length).fill(0)
+  let i = 0
+  while (i < rows.length) {
+    let j = i
+    while (j < rows.length && rows[j].hinh_thuc === rows[i].hinh_thuc) j++
+    spans[i] = j - i
+    i = j
+  }
+  return spans
+}
+
+const HINH_THUC_COLOR: Record<string, { bg: string; text: string }> = {
+  Ads_Total: { bg: 'rgba(37,99,235,.12)', text: '#93c5fd' },
+  Ads_PGM: { bg: 'rgba(168,85,247,.1)', text: '#c4b5fd' },
+  Ads_LGM: { bg: 'rgba(249,115,22,.1)', text: '#fdba74' },
+  Consideration_Ads: { bg: 'rgba(255,255,255,.04)', text: '#94a3b8' },
+  Branding_Ads: { bg: 'rgba(255,255,255,.04)', text: '#94a3b8' },
+}
+
+export default function TiktokPivotPreview({ pivot }: Props) {
+  const [copied, setCopied] = useState(false)
+
+  const tsv = useMemo(() => {
+    const header = ['Hình thức', 'Metric', 'Thực hiện'].join('\t')
+    const rows = pivot.rows.map(r => [r.hinh_thuc, r.metric, fmt(r.value, r.format)].join('\t'))
+    return [header, ...rows].join('\n')
+  }, [pivot])
+
+  async function copyTsv() {
+    try {
+      await navigator.clipboard.writeText(tsv)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = tsv
+      document.body.appendChild(ta)
+      ta.select()
+      try {
+        document.execCommand('copy')
+      } catch {
+        /* ignore */
+      }
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const spans = computeRowSpans(pivot.rows)
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 10,
+          gap: 10,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ fontSize: 12, color: '#94a3b8' }}>
+          Tip: kéo chuột chọn ô để copy — hoặc bấm nút bên phải để copy toàn bảng
+        </div>
+        <button
+          type="button"
+          onClick={copyTsv}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            background: copied ? 'rgba(16,185,129,.15)' : 'rgba(59,130,246,.12)',
+            border: `1px solid ${copied ? 'rgba(16,185,129,.4)' : 'rgba(59,130,246,.3)'}`,
+            color: copied ? '#34d399' : '#60a5fa',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: 600,
+            transition: 'all .15s',
+          }}
+        >
+          {copied ? Icon.check(13) : Icon.send(13)}
+          {copied ? 'Đã copy bảng!' : 'Copy bảng (TSV)'}
+        </button>
+      </div>
+
+      <div
+        style={{
+          overflowX: 'auto',
+          borderRadius: 10,
+          border: '1px solid rgba(255,255,255,.08)',
+          userSelect: 'text',
+        }}
+      >
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: 13,
+            color: '#cbd5e1',
+            userSelect: 'text',
+          }}
+        >
+          <thead>
+            <tr style={{ background: 'rgba(255,255,255,.04)' }}>
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: '#94a3b8',
+                  letterSpacing: '.04em',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid rgba(255,255,255,.08)',
+                  borderRight: '1px solid rgba(255,255,255,.04)',
+                  width: 180,
+                }}
+              >
+                Hình thức
+              </th>
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: '#94a3b8',
+                  letterSpacing: '.04em',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid rgba(255,255,255,.08)',
+                  borderRight: '1px solid rgba(255,255,255,.04)',
+                }}
+              >
+                Metric
+              </th>
+              <th
+                style={{
+                  textAlign: 'right',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: '#94a3b8',
+                  letterSpacing: '.04em',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid rgba(255,255,255,.08)',
+                  width: 200,
+                }}
+              >
+                Thực hiện
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {pivot.rows.map((row, i) => {
+              const span = spans[i]
+              const showHinhThuc = span > 0
+              const color = HINH_THUC_COLOR[row.hinh_thuc] ?? HINH_THUC_COLOR.Branding_Ads
+              return (
+                <tr
+                  key={i}
+                  style={{
+                    background: row.isBold ? color.bg : 'transparent',
+                    fontWeight: row.isBold ? 700 : 400,
+                    color: row.isBold ? '#e2e8f0' : '#cbd5e1',
+                    borderTop: '1px solid rgba(255,255,255,.04)',
+                  }}
+                >
+                  {showHinhThuc && (
+                    <td
+                      rowSpan={span}
+                      style={{
+                        padding: '10px 14px',
+                        verticalAlign: 'middle',
+                        background: color.bg,
+                        color: color.text,
+                        fontWeight: 700,
+                        fontSize: 12.5,
+                        borderRight: '1px solid rgba(255,255,255,.06)',
+                      }}
+                    >
+                      {row.hinh_thuc}
+                    </td>
+                  )}
+                  <td style={{ padding: '8px 14px', borderRight: '1px solid rgba(255,255,255,.04)' }}>
+                    {row.metric}
+                  </td>
+                  <td
+                    style={{
+                      padding: '8px 14px',
+                      textAlign: 'right',
+                      fontFamily: 'var(--font-mono), "Be Vietnam Pro", ui-monospace, monospace',
+                      fontSize: 12.5,
+                    }}
+                  >
+                    {fmt(row.value, row.format)}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}

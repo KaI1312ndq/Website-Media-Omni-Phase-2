@@ -1,26 +1,25 @@
-import type { ShopeeFileType, PivotRow } from './types'
+import type { ShopeeFileType, TiktokFileType, PivotRow, TiktokPGMData, TiktokLGMData } from './types'
 import { parseShopeeCPC } from './shopee-cpc'
 import { parseShopeeBranding } from './shopee-branding'
 import { parseShopeeLive } from './shopee-live'
+import { parseTiktokPGM } from './tiktok-pgm'
+import { parseTiktokLGM } from './tiktok-lgm'
 
 export * from './types'
 export { parseShopeeCPC, parseShopeeBranding, parseShopeeLive }
+export { parseTiktokPGM, parseTiktokLGM }
 export { buildShopeePivot, pivotToAutoFill } from './pivot'
+export { buildTiktokPivot, tiktokToAutoFill } from './tiktok-pivot'
 
 /**
  * Detect Shopee file type by filename. Returns null if not matched (user
  * should pick manually). Case-insensitive, normalized.
- *
- * Real filenames from Seller Center:
- *   CPC:       "Dữ liệu Dịch vụ Hiển thị Shopee-..." OR "Dữ+liệu+Dịch+vụ+Hiển+thị+Shopee-..."
- *   Branding:  "Dữ liệu Dịch vụ Hiển thị Tăng nhận diện thương hiệu trên Trang kết quả tìm kiếm-..."
- *   Live:      "Dữ-Liệu-Quảng-Cáo-Livestream-..." (uses hyphens instead of spaces)
  */
 export function detectFileType(filename: string): ShopeeFileType | null {
   const norm = filename
     .normalize('NFC')
     .toLowerCase()
-    .replace(/[+_\-\s]+/g, ' ') // collapse separators to single space
+    .replace(/[+_\-\s]+/g, ' ')
 
   if (/quảng cáo livestream/.test(norm)) return 'shopee_live'
   if (/tăng nhận diện thương hiệu/.test(norm)) return 'shopee_branding'
@@ -28,7 +27,23 @@ export function detectFileType(filename: string): ShopeeFileType | null {
   return null
 }
 
-/** Dispatch parser by type. */
+/**
+ * Detect TikTok file type by filename. Real names from TikTok Ads Manager:
+ *   PGM: creative_data_for_product_campaigns__{from}___{to}_.xlsx
+ *   LGM: livestream_data_for_live_campaigns__{from}___{to}_.xlsx
+ */
+export function detectTiktokFileType(filename: string): TiktokFileType | null {
+  const norm = filename
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[+_\-\s]+/g, ' ')
+
+  if (/livestream data for live campaigns/.test(norm)) return 'tiktok_lgm'
+  if (/creative data for product campaigns/.test(norm)) return 'tiktok_pgm'
+  return null
+}
+
+/** Dispatch Shopee parser by type. */
 export async function parseShopeeFile(file: File, fileType: ShopeeFileType): Promise<PivotRow[]> {
   switch (fileType) {
     case 'shopee_cpc':
@@ -37,5 +52,18 @@ export async function parseShopeeFile(file: File, fileType: ShopeeFileType): Pro
       return parseShopeeBranding(file)
     case 'shopee_live':
       return parseShopeeLive(file)
+  }
+}
+
+/** Dispatch TikTok parser by type. Returns PGM or LGM data shape. */
+export async function parseTiktokFile(
+  file: File,
+  fileType: TiktokFileType,
+): Promise<TiktokPGMData | TiktokLGMData> {
+  switch (fileType) {
+    case 'tiktok_pgm':
+      return parseTiktokPGM(file)
+    case 'tiktok_lgm':
+      return parseTiktokLGM(file)
   }
 }
