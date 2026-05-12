@@ -121,8 +121,12 @@ async function main() {
   assert(grand.isGrandTotal === true, 'last row is grand total')
   assertEq(grand.pct_gmv, 100, 'grand — pct_gmv = 100')
   assertEq(grand.pct_cost, 100, 'grand — pct_cost = 100')
-  // Grand clicks = null because Live has null
-  assertEq(grand.clicks, null, 'grand — clicks = null (Live propagates)')
+  // Grand clicks = sum across platforms (Live treated as 0)
+  const expectedGrandClicks = (cpcTotal?.clicks ?? 0) + (brandRows[0]?.clicks ?? 0)
+  assertEq(grand.clicks, expectedGrandClicks, `grand — clicks = ${expectedGrandClicks} (Live ignored)`)
+  assert((grand.cpc ?? 0) > 0, 'grand — CPC computed (blended)')
+  assert((grand.ctr ?? 0) > 0, 'grand — CTR computed')
+  assert((grand.cr ?? 0) > 0, 'grand — CR computed')
 
   console.log('\n=== pivotToAutoFill ===')
   const fill = pivotToAutoFill(pivot)

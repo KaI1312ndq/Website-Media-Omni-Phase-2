@@ -47,13 +47,18 @@ export function buildShopeePivot(
   if (brandingRows.length > 0) groups.push([...brandingRows, subtotals(brandingRows, 'Ads Branding')])
   if (liveRows.length > 0) groups.push([...liveRows, subtotals(liveRows, 'Ads Live')])
 
-  // Grand total = sum of each hình thức's Total row
+  // Grand total = sum of each hình thức's Total row.
+  // Note: clicks is summed across hình thức treating null as 0 (Ads Live has no
+  // clicks data — but the user wants a meaningful "tổng" line, so we still
+  // compute clicks/CPC/CTR/CR from non-null platforms. The blended CPC etc.
+  // will include Live cost in the numerator but only CPC+Branding clicks in
+  // the denominator — slightly inflated, but matches user expectation of
+  // "blended Shopee CPC across the week".
   const totalRows = groups.map(g => g[g.length - 1])
   const grandGmv = totalRows.reduce((s, r) => s + r.gmv, 0)
   const grandCost = totalRows.reduce((s, r) => s + r.cost, 0)
   const grandHienThi = totalRows.reduce((s, r) => s + r.hien_thi, 0)
-  const grandAnyNullClicks = totalRows.some(r => r.clicks === null)
-  const grandClicks = grandAnyNullClicks ? null : totalRows.reduce((s, r) => s + (r.clicks ?? 0), 0)
+  const grandClicks = totalRows.reduce((s, r) => s + (r.clicks ?? 0), 0)
   const grandOrders = totalRows.reduce((s, r) => s + r.orders, 0)
 
   const grandTotal: PivotRow = {
