@@ -9,6 +9,7 @@ import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables)
 import { DEFAULT_SYS_PROMPT } from '@/lib/report/ai-prompt'
 import type { Brand, PlanData, WeekInfo, ShopeeData, TiktokData, AIResult } from '@/lib/report/types'
+import { buildBrandContext } from '@/lib/report/types'
 import {
   fmtDate,
   toISO,
@@ -597,7 +598,12 @@ function ReportPageInner() {
       : 0
     const tPlanGmv = tiktokPlan ? pv(tiktokPlan, 't_pgm_doanh_so') + pv(tiktokPlan, 't_lgm_doanhthu') : 0
 
-    let userMsg = `=== DATA BÁO CÁO TUẦN ===\nBrand: ${selectedBrand} | ${weekInfo.label} | Platform: ${[shopeeChecked ? 'Shopee' : '', tiktokChecked ? 'TikTok' : ''].filter(Boolean).join(', ')}\n\n`
+    // Look up full brand row for context injection (filled at /hub/brands).
+    const brandRow = brands.find(b => b.brand_name === selectedBrand) ?? null
+    const brandCtxBlock = buildBrandContext(brandRow)
+
+    let userMsg = brandCtxBlock
+    userMsg += `=== DATA BÁO CÁO TUẦN ===\nBrand: ${selectedBrand} | ${weekInfo.label} | Platform: ${[shopeeChecked ? 'Shopee' : '', tiktokChecked ? 'TikTok' : ''].filter(Boolean).join(', ')}\n\n`
 
     if (shopeeChecked) {
       const planCpcDs = pv(shopeePlan, 's_cpc_doanh_so'),

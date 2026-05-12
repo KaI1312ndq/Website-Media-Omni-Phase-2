@@ -21,6 +21,10 @@ const TITLES: Record<string, { greeting: string; subline: string }> = {
     subline: 'Phân quyền tính năng cho từng thành viên Media Omni.',
   },
   '/hub/report': { greeting: 'Weekly Report Tool', subline: 'Nhập data → AI nhận xét → Copy Lark.' },
+  '/hub/brands': {
+    greeting: 'Brand Context',
+    subline: 'Điền context ngành / sản phẩm / target / KPI — AI báo cáo tuần sẽ phân tích sắc hơn.',
+  },
   '/admin/leads': {
     greeting: 'Lead Management',
     subline: 'Quản lý leads từ form audit miễn phí — filter, export, theo dõi pipeline.',

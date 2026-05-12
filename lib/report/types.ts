@@ -2,7 +2,47 @@
  * Shared types for the Weekly Report tool.
  */
 
-export type Brand = { id: string; brand_name: string }
+export type Brand = {
+  id: string
+  brand_name: string
+  // Context fields (all nullable — fill richer for better AI analysis)
+  industry?: string | null
+  product_type?: string | null
+  target_audience?: string | null
+  price_range?: string | null // 'Premium' | 'Mid' | 'Mass'
+  brand_stage?: string | null // 'New' | 'Growing' | 'Mature'
+  monthly_budget?: string | null
+  roas_target?: string | null
+  seasonality?: string | null
+  live_schedule?: string | null
+  key_kpis?: string | null
+  notes?: string | null
+}
+
+/** Build a multi-line BRAND CONTEXT block for AI userMsg. Returns empty string
+ *  when no fields are filled — so prompt stays clean when context is missing. */
+export function buildBrandContext(brand: Brand | null | undefined): string {
+  if (!brand) return ''
+  const rows: Array<[string, string | null | undefined]> = [
+    ['Brand', brand.brand_name],
+    ['Industry', brand.industry],
+    ['Product type', brand.product_type],
+    ['Target audience', brand.target_audience],
+    ['Price range', brand.price_range],
+    ['Brand stage', brand.brand_stage],
+    ['Monthly budget', brand.monthly_budget],
+    ['ROAS target', brand.roas_target],
+    ['Seasonality', brand.seasonality],
+    ['Live schedule', brand.live_schedule],
+    ['Key KPIs', brand.key_kpis],
+    ['Notes', brand.notes],
+  ]
+  const filled = rows.filter(([, v]) => typeof v === 'string' && v.trim().length > 0)
+  // Need at least brand_name + 1 other field to be worth emitting
+  if (filled.length <= 1) return ''
+  const body = filled.map(([k, v]) => `${k}: ${v}`).join('\n')
+  return `=== BRAND CONTEXT ===\n${body}\n\n`
+}
 
 export type PlanData = Record<
   string,
