@@ -46,10 +46,11 @@ import {
   type TiktokLGMData,
   type TiktokPivot,
 } from '@/lib/report/parsers'
-import FileUploadZone, { type UploadedFiles } from '@/components/report/FileUploadZone'
+import { type UploadedFiles } from '@/components/report/FileUploadZone'
 import ShopeePivotPreview from '@/components/report/ShopeePivotPreview'
-import TiktokFileUploadZone, { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
+import { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
 import TiktokPivotPreview from '@/components/report/TiktokPivotPreview'
+import UnifiedFileUploadZone from '@/components/report/UnifiedFileUploadZone'
 
 /* ════════════════════════════════════════════════
    MAIN COMPONENT
@@ -3346,280 +3347,227 @@ function ReportPageInner() {
                   )}
                 </div>
 
-                {/* ── SHOPEE zone ── */}
-                {shopeeChecked && (
-                  <div className="rc" style={{ marginBottom: 14 }}>
-                    <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>Shopee</h2>
-                    <p style={{ color: 'var(--muted)', fontSize: '.82rem', marginBottom: 14 }}>
-                      Upload 1–3 file CSV (CPC / Branding / Livestream)
-                    </p>
+                {/* ── UNIFIED UPLOAD zone — Shopee CSV + TikTok xlsx vào 1 chỗ ── */}
+                <div className="rc" style={{ marginBottom: 14 }}>
+                  <UnifiedFileUploadZone
+                    shopeeFiles={uploadedFiles}
+                    tiktokFiles={tiktokFiles}
+                    onShopeeChange={setUploadedFiles}
+                    onTiktokChange={setTiktokFiles}
+                    onError={msg => showToast(msg, 'error')}
+                    acceptShopee={shopeeChecked}
+                    acceptTiktok={tiktokChecked}
+                  />
 
-                    <FileUploadZone
-                      files={uploadedFiles}
-                      onChange={setUploadedFiles}
-                      onError={msg => showToast(msg, 'error')}
-                    />
-
-                    <div
-                      style={{
-                        marginTop: 14,
-                        display: 'flex',
-                        gap: 10,
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        minHeight: 32,
-                      }}
-                    >
-                      {parsing && (
-                        <span
-                          style={{
-                            color: '#60a5fa',
-                            fontSize: 13,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          {Icon.clock(13)} Đang parse...
-                        </span>
-                      )}
-                      {!parsing && shopeePivot && (
-                        <span
-                          style={{
-                            color: '#34d399',
-                            fontSize: 13,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          {Icon.checkCircle(13)} Đã parse {shopeePivot.rows.length} row
-                        </span>
-                      )}
-                      {!parsing && hasAnyShopeeFile && (
-                        <button
-                          type="button"
-                          onClick={clearUploadedData}
-                          style={{
-                            background: 'transparent',
-                            border: '1px solid rgba(239,68,68,.25)',
-                            color: '#fca5a5',
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                          }}
-                        >
-                          {Icon.trash(12)} Xoá data Shopee
-                        </button>
-                      )}
-                    </div>
-
-                    {parseError && (
-                      <div
+                  {/* Status row */}
+                  <div
+                    style={{
+                      marginTop: 14,
+                      display: 'flex',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      minHeight: 32,
+                    }}
+                  >
+                    {parsing && (
+                      <span
                         style={{
-                          marginTop: 12,
-                          padding: '10px 14px',
-                          background: 'rgba(239,68,68,.08)',
-                          border: '1px solid rgba(239,68,68,.25)',
-                          borderRadius: 8,
-                          color: '#fca5a5',
+                          color: '#60a5fa',
                           fontSize: 13,
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: 8,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
-                        <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
-                        <div>
-                          <strong>Lỗi parse:</strong> {parseError}
-                        </div>
-                      </div>
+                        {Icon.clock(13)} Đang parse Shopee...
+                      </span>
                     )}
-
-                    {!parsing && !parseError && someShopeeMissing && shopeePivot && (
-                      <div
+                    {!parsing && shopeePivot && (
+                      <span
                         style={{
-                          marginTop: 12,
-                          padding: '8px 12px',
-                          background: 'rgba(59,130,246,.06)',
-                          border: '1px solid rgba(59,130,246,.2)',
-                          borderRadius: 8,
-                          color: '#93c5fd',
-                          fontSize: 12,
+                          color: '#34d399',
+                          fontSize: 13,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
-                        {Icon.info(12)} Thiếu file <strong>{missingShopee.join(', ')}</strong> — field tương
-                        ứng sẽ = 0.
-                      </div>
+                        {Icon.checkCircle(13)} Shopee: {shopeePivot.rows.length} row
+                      </span>
                     )}
-                    {!parsing && !parseError && allThreeShopee && shopeePivot && (
-                      <div
+                    {parsingTiktok && (
+                      <span
                         style={{
-                          marginTop: 12,
-                          padding: '8px 12px',
-                          background: 'rgba(16,185,129,.06)',
-                          border: '1px solid rgba(16,185,129,.2)',
-                          borderRadius: 8,
-                          color: '#6ee7b7',
-                          fontSize: 12,
+                          color: '#a78bfa',
+                          fontSize: 13,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
-                        {Icon.checkCircle(12)} Đầy đủ 3 file — sẵn sàng auto-fill 12 field Shopee.
-                      </div>
+                        {Icon.clock(13)} Đang parse TikTok... (PGM có thể tới 33K rows)
+                      </span>
                     )}
-
-                    {shopeePivot && (
-                      <>
-                        <h3 style={{ marginTop: 20, marginBottom: 10, fontSize: '1rem' }}>
-                          Preview Shopee Pivot
-                        </h3>
-                        <ShopeePivotPreview pivot={shopeePivot} />
-                      </>
+                    {!parsingTiktok && tiktokPivot && (
+                      <span
+                        style={{
+                          color: '#34d399',
+                          fontSize: 13,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {Icon.checkCircle(13)} TikTok: {tiktokPivot.rows.length} row
+                      </span>
+                    )}
+                    {!parsing && hasAnyShopeeFile && (
+                      <button
+                        type="button"
+                        onClick={clearUploadedData}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid rgba(239,68,68,.25)',
+                          color: '#fca5a5',
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                        }}
+                      >
+                        {Icon.trash(12)} Xoá Shopee
+                      </button>
+                    )}
+                    {!parsingTiktok && hasAnyTiktokFile && (
+                      <button
+                        type="button"
+                        onClick={clearTiktokData}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid rgba(239,68,68,.25)',
+                          color: '#fca5a5',
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                        }}
+                      >
+                        {Icon.trash(12)} Xoá TikTok
+                      </button>
                     )}
                   </div>
-                )}
 
-                {/* ── TIKTOK zone ── */}
-                {tiktokChecked && (
-                  <div className="rc" style={{ marginBottom: 14 }}>
-                    <h2 style={{ marginBottom: 4, fontSize: '1.2rem' }}>TikTok</h2>
-                    <p style={{ color: 'var(--muted)', fontSize: '.82rem', marginBottom: 14 }}>
-                      Upload 1–2 file xlsx (PGM Product Campaigns / LGM Live Campaigns). Consideration_Ads +
-                      Branding_Ads vẫn nhập tay.
-                    </p>
-
-                    <TiktokFileUploadZone
-                      files={tiktokFiles}
-                      onChange={setTiktokFiles}
-                      onError={msg => showToast(msg, 'error')}
-                    />
-
+                  {/* Inline errors */}
+                  {parseError && (
                     <div
                       style={{
-                        marginTop: 14,
+                        marginTop: 12,
+                        padding: '10px 14px',
+                        background: 'rgba(239,68,68,.08)',
+                        border: '1px solid rgba(239,68,68,.25)',
+                        borderRadius: 8,
+                        color: '#fca5a5',
+                        fontSize: 13,
                         display: 'flex',
-                        gap: 10,
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        minHeight: 32,
+                        alignItems: 'flex-start',
+                        gap: 8,
                       }}
                     >
-                      {parsingTiktok && (
-                        <span
-                          style={{
-                            color: '#a78bfa',
-                            fontSize: 13,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          {Icon.clock(13)} Đang parse... (PGM có thể tới 33K rows)
-                        </span>
-                      )}
-                      {!parsingTiktok && tiktokPivot && (
-                        <span
-                          style={{
-                            color: '#34d399',
-                            fontSize: 13,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          {Icon.checkCircle(13)} Đã parse {tiktokPivot.rows.length} row
-                        </span>
-                      )}
-                      {!parsingTiktok && hasAnyTiktokFile && (
-                        <button
-                          type="button"
-                          onClick={clearTiktokData}
-                          style={{
-                            background: 'transparent',
-                            border: '1px solid rgba(239,68,68,.25)',
-                            color: '#fca5a5',
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                          }}
-                        >
-                          {Icon.trash(12)} Xoá data TikTok
-                        </button>
-                      )}
+                      <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
+                      <div>
+                        <strong>Shopee parse:</strong> {parseError}
+                      </div>
                     </div>
-
-                    {tiktokParseError && (
-                      <div
-                        style={{
-                          marginTop: 12,
-                          padding: '10px 14px',
-                          background: 'rgba(239,68,68,.08)',
-                          border: '1px solid rgba(239,68,68,.25)',
-                          borderRadius: 8,
-                          color: '#fca5a5',
-                          fontSize: 13,
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: 8,
-                        }}
-                      >
-                        <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
-                        <div>
-                          <strong>Lỗi parse TikTok:</strong> {tiktokParseError}
-                        </div>
+                  )}
+                  {tiktokParseError && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: '10px 14px',
+                        background: 'rgba(239,68,68,.08)',
+                        border: '1px solid rgba(239,68,68,.25)',
+                        borderRadius: 8,
+                        color: '#fca5a5',
+                        fontSize: 13,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ flexShrink: 0, marginTop: 1 }}>{Icon.alertTriangle(14)}</span>
+                      <div>
+                        <strong>TikTok parse:</strong> {tiktokParseError}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {!parsingTiktok && !tiktokParseError && someTiktokMissing && tiktokPivot && (
-                      <div
-                        style={{
-                          marginTop: 12,
-                          padding: '8px 12px',
-                          background: 'rgba(168,85,247,.08)',
-                          border: '1px solid rgba(168,85,247,.25)',
-                          borderRadius: 8,
-                          color: '#c4b5fd',
-                          fontSize: 12,
-                        }}
-                      >
-                        {Icon.info(12)} Thiếu file <strong>{missingTiktok.join(', ')}</strong> — field tương
-                        ứng sẽ = 0.
-                      </div>
-                    )}
-                    {!parsingTiktok && !tiktokParseError && allBothTiktok && tiktokPivot && (
-                      <div
-                        style={{
-                          marginTop: 12,
-                          padding: '8px 12px',
-                          background: 'rgba(16,185,129,.06)',
-                          border: '1px solid rgba(16,185,129,.2)',
-                          borderRadius: 8,
-                          color: '#6ee7b7',
-                          fontSize: 12,
-                        }}
-                      >
-                        {Icon.checkCircle(12)} Đầy đủ 2 file PGM + LGM — sẵn sàng auto-fill 7 field TikTok.
-                      </div>
-                    )}
+                  {/* Summary banners */}
+                  {shopeeChecked && shopeePivot && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: '8px 12px',
+                        background: allThreeShopee ? 'rgba(16,185,129,.06)' : 'rgba(59,130,246,.06)',
+                        border: `1px solid ${allThreeShopee ? 'rgba(16,185,129,.2)' : 'rgba(59,130,246,.2)'}`,
+                        borderRadius: 8,
+                        color: allThreeShopee ? '#6ee7b7' : '#93c5fd',
+                        fontSize: 12,
+                      }}
+                    >
+                      {allThreeShopee ? Icon.checkCircle(12) : Icon.info(12)}{' '}
+                      {allThreeShopee
+                        ? 'Shopee: đủ 3 file — sẵn sàng auto-fill 12 field.'
+                        : someShopeeMissing
+                          ? `Shopee: thiếu ${missingShopee.join(', ')} — field tương ứng = 0.`
+                          : 'Shopee: chưa có file.'}
+                    </div>
+                  )}
+                  {tiktokChecked && tiktokPivot && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        padding: '8px 12px',
+                        background: allBothTiktok ? 'rgba(16,185,129,.06)' : 'rgba(168,85,247,.08)',
+                        border: `1px solid ${allBothTiktok ? 'rgba(16,185,129,.2)' : 'rgba(168,85,247,.25)'}`,
+                        borderRadius: 8,
+                        color: allBothTiktok ? '#6ee7b7' : '#c4b5fd',
+                        fontSize: 12,
+                      }}
+                    >
+                      {allBothTiktok ? Icon.checkCircle(12) : Icon.info(12)}{' '}
+                      {allBothTiktok
+                        ? 'TikTok: đủ 2 file PGM + LGM — sẵn sàng auto-fill 7 field.'
+                        : someTiktokMissing
+                          ? `TikTok: thiếu ${missingTiktok.join(', ')} — field tương ứng = 0.`
+                          : 'TikTok: chưa có file.'}
+                    </div>
+                  )}
+                </div>
 
-                    {tiktokPivot && (
-                      <>
-                        <h3 style={{ marginTop: 20, marginBottom: 10, fontSize: '1rem' }}>
-                          Preview TikTok Pivot
-                        </h3>
-                        <TiktokPivotPreview pivot={tiktokPivot} />
-                      </>
-                    )}
+                {/* Preview cards (separate per platform) */}
+                {shopeePivot && (
+                  <div className="rc" style={{ marginBottom: 14 }}>
+                    <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: '1.05rem' }}>
+                      Preview Shopee Pivot
+                    </h3>
+                    <ShopeePivotPreview pivot={shopeePivot} />
+                  </div>
+                )}
+                {tiktokPivot && (
+                  <div className="rc" style={{ marginBottom: 14 }}>
+                    <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: '1.05rem' }}>
+                      Preview TikTok Pivot
+                    </h3>
+                    <TiktokPivotPreview pivot={tiktokPivot} />
                   </div>
                 )}
 
