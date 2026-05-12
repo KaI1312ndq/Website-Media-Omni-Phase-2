@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Sora, Be_Vietnam_Pro, Roboto_Mono } from 'next/font/google'
 import Script from 'next/script'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import Nav from '@/components/Nav'
 
@@ -111,6 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div id="sp" />
         <Nav />
         {children}
+        <Analytics />
         {/* Google Analytics 4 — only when GA ID is configured. Loaded after interactive to avoid blocking LCP. */}
         {GA_ID && (
           <>

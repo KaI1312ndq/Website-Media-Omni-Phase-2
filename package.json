@@ -23,6 +23,7 @@
     "@sanity/vision": "^3.62.0",
     "@sentry/nextjs": "^10.52.0",
     "@supabase/supabase-js": "^2.105.4",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
     "next": "14.2.29",
