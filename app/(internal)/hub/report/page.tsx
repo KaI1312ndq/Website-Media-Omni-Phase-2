@@ -564,6 +564,74 @@ function ReportPageInner() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  /* ── Save report directly from Step 2 (Upload) — without going to Step 3 ── */
+  async function saveFromUploadStep() {
+    if (!weekInfo || !user) return
+    // Compute fill values directly (state updates are async, so we use the
+    // pivot values directly in the payload).
+    const shopeeFill = shopeePivot ? pivotToAutoFill(shopeePivot) : (shopeeData as unknown as ShopeeData)
+    const tiktokFill = tiktokPGMData || tiktokLGMData ? tiktokToAutoFill(tiktokPGMData, tiktokLGMData) : null
+
+    // Also update local state so UI stays in sync if user navigates on.
+    if (shopeePivot) {
+      setShopeeData(prev => ({ ...prev, ...shopeeFill }))
+      setRawInputs(prev => {
+        const next = { ...prev }
+        ;(Object.keys(shopeeFill) as (keyof typeof shopeeFill)[]).forEach(k => {
+          const v = shopeeFill[k]
+          next[k as string] = v ? v.toLocaleString('vi-VN') : ''
+        })
+        return next
+      })
+    }
+    if (tiktokFill) {
+      setTiktokData(prev => ({ ...prev, ...tiktokFill }))
+      setRawInputs(prev => {
+        const next = { ...prev }
+        ;(Object.keys(tiktokFill) as (keyof typeof tiktokFill)[]).forEach(k => {
+          const v = tiktokFill[k]
+          next[k as string] = v ? v.toLocaleString('vi-VN') : ''
+        })
+        return next
+      })
+    }
+
+    setSaving(true)
+    try {
+      const payload: Record<string, unknown> = {
+        action: 'saveWeekly',
+        username: user.username,
+        brand_name: selectedBrand,
+        month: weekInfo.month,
+        year: weekInfo.year,
+        week_num: weekInfo.weekNum,
+        week_start: weekInfo.startISO,
+        week_end: weekInfo.endISO,
+        ...shopeeData,
+        ...tiktokData,
+        ...shopeeFill,
+        ...(tiktokFill ?? {}),
+        // AI sections empty — user hasn't run analysis yet
+        highlight: '',
+        lowlight: '',
+        nhan_xet_thuc_trang: '',
+        nhan_xet_van_de: '',
+        nhan_xet_giai_phap: '',
+      }
+      const r = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (r.ok) showToast('Đã lưu data tuần! Bạn có thể quay lại sau để chạy AI + xuất báo cáo.')
+      else showToast('Lỗi lưu báo cáo', 'error')
+    } catch {
+      showToast('Lỗi mạng khi lưu', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   /* ── Generate AI (client-side, OpenAI key from localStorage) ── */
   async function generateAI() {
     if (!weekInfo) return
@@ -3578,12 +3646,25 @@ function ReportPageInner() {
                 )}
 
                 {/* Action bar */}
-                <div className="btn-row" style={{ marginTop: 16 }}>
+                <div className="btn-row" style={{ marginTop: 16, flexWrap: 'wrap' }}>
                   <button className="btn-s" onClick={() => setStep(1)}>
                     ← Quay lại
                   </button>
                   <button className="btn-s" onClick={skipUploadStep}>
                     Bỏ qua, nhập tay
+                  </button>
+                  <button
+                    className="btn-s"
+                    onClick={saveFromUploadStep}
+                    disabled={!canAutoFill || parsing || parsingTiktok || saving}
+                    title={
+                      !canAutoFill
+                        ? 'Upload + parse trước khi lưu'
+                        : 'Lưu data tuần ngay (chưa cần chạy AI). Có thể quay lại sau để xuất báo cáo.'
+                    }
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    {Icon.save(13)} {saving ? 'Đang lưu...' : 'Lưu data tuần'}
                   </button>
                   <button
                     className="btn-p"

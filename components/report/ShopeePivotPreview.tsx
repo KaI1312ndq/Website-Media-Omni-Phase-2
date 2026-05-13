@@ -48,18 +48,16 @@ export default function ShopeePivotPreview({ pivot }: Props) {
 
   const vertical = useMemo(() => toShopeeVerticalPivot(pivot), [pivot])
 
-  const tsv = useMemo(() => {
-    const header = ['Hình thức', 'Metric', 'Thực hiện'].join('\t')
-    const rows = vertical.rows.map(r => [r.hinh_thuc, r.metric, fmt(r.value, r.format)].join('\t'))
-    return [header, ...rows].join('\n')
-  }, [vertical])
+  // Copy only the "Thực hiện" column (one value per line) — so user can
+  // paste straight into the values column of their template in Lark/Sheets.
+  const valuesText = useMemo(() => vertical.rows.map(r => fmt(r.value, r.format)).join('\n'), [vertical])
 
-  async function copyTsv() {
+  async function copyValues() {
     try {
-      await navigator.clipboard.writeText(tsv)
+      await navigator.clipboard.writeText(valuesText)
     } catch {
       const ta = document.createElement('textarea')
-      ta.value = tsv
+      ta.value = valuesText
       document.body.appendChild(ta)
       ta.select()
       try {
@@ -104,11 +102,11 @@ export default function ShopeePivotPreview({ pivot }: Props) {
         }}
       >
         <div style={{ fontSize: 12, color: '#94a3b8' }}>
-          Tip: kéo chuột chọn ô để copy — hoặc bấm nút bên phải để copy toàn bảng
+          Tip: kéo chuột chọn ô để copy đoạn — hoặc bấm nút để copy cột giá trị
         </div>
         <button
           type="button"
-          onClick={copyTsv}
+          onClick={copyValues}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -123,9 +121,10 @@ export default function ShopeePivotPreview({ pivot }: Props) {
             fontWeight: 600,
             transition: 'all .15s',
           }}
+          title="Copy 26 giá trị cột Thực hiện — paste thẳng vào template Lark/Sheets"
         >
           {copied ? Icon.check(13) : Icon.send(13)}
-          {copied ? 'Đã copy bảng!' : 'Copy bảng (TSV)'}
+          {copied ? `Đã copy ${vertical.rows.length} giá trị!` : `Copy cột giá trị (${vertical.rows.length})`}
         </button>
       </div>
 

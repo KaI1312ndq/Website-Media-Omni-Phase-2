@@ -42,18 +42,16 @@ const HINH_THUC_COLOR: Record<string, { bg: string; text: string }> = {
 export default function TiktokPivotPreview({ pivot }: Props) {
   const [copied, setCopied] = useState(false)
 
-  const tsv = useMemo(() => {
-    const header = ['Hình thức', 'Metric', 'Thực hiện'].join('\t')
-    const rows = pivot.rows.map(r => [r.hinh_thuc, r.metric, fmt(r.value, r.format)].join('\t'))
-    return [header, ...rows].join('\n')
-  }, [pivot])
+  // Copy only the "Thực hiện" column (one value per line) — for vertical
+  // paste into the user's template column.
+  const valuesText = useMemo(() => pivot.rows.map(r => fmt(r.value, r.format)).join('\n'), [pivot])
 
-  async function copyTsv() {
+  async function copyValues() {
     try {
-      await navigator.clipboard.writeText(tsv)
+      await navigator.clipboard.writeText(valuesText)
     } catch {
       const ta = document.createElement('textarea')
-      ta.value = tsv
+      ta.value = valuesText
       document.body.appendChild(ta)
       ta.select()
       try {
@@ -82,11 +80,11 @@ export default function TiktokPivotPreview({ pivot }: Props) {
         }}
       >
         <div style={{ fontSize: 12, color: '#94a3b8' }}>
-          Tip: kéo chuột chọn ô để copy — hoặc bấm nút bên phải để copy toàn bảng
+          Tip: kéo chuột chọn ô để copy đoạn — hoặc bấm nút để copy cột giá trị
         </div>
         <button
           type="button"
-          onClick={copyTsv}
+          onClick={copyValues}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -101,9 +99,10 @@ export default function TiktokPivotPreview({ pivot }: Props) {
             fontWeight: 600,
             transition: 'all .15s',
           }}
+          title="Copy giá trị cột Thực hiện — paste thẳng vào template"
         >
           {copied ? Icon.check(13) : Icon.send(13)}
-          {copied ? 'Đã copy bảng!' : 'Copy bảng (TSV)'}
+          {copied ? `Đã copy ${pivot.rows.length} giá trị!` : `Copy cột giá trị (${pivot.rows.length})`}
         </button>
       </div>
 
