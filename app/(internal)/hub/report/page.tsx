@@ -315,15 +315,40 @@ function ReportPageInner() {
 
   /* ── Step 1 → Step 2 ── */
   async function goStep2() {
-    if (!selectedBrand) {
-      showToast('Chọn brand trước', 'error')
-      return
-    }
     if (!shopeeChecked && !tiktokChecked) {
       showToast('Chọn ít nhất 1 platform', 'error')
       return
     }
     if (!weekInfo) return
+
+    // No-brand quick path: skip data fetch, jump straight to Upload step.
+    // User can upload + parse + copy values without saving — useful for
+    // ad-hoc weeks or when just exporting numbers to a template.
+    if (!selectedBrand) {
+      setShopeePlan(null)
+      setTiktokPlan(null)
+      setWeekHistory([])
+      setChartHistory([])
+      setHasPlan(false)
+      setShopeeData({ ...EMPTY_SHOPEE })
+      setTiktokData({ ...EMPTY_TIKTOK })
+      setRawInputs({})
+      // Clear stale upload data only if context changed (no brand → ctx 'none')
+      const currentCtx = `__nobrand__|${selMonth}|${selYear}|${selWeek}`
+      if (uploadContext && uploadContext !== currentCtx) {
+        setUploadedFiles({ shopee_cpc: null, shopee_branding: null, shopee_live: null })
+        setShopeePivot(null)
+        setUploadContext('')
+        setTiktokFiles({ tiktok_pgm: null, tiktok_lgm: null })
+        setTiktokPGMData(null)
+        setTiktokLGMData(null)
+        setTiktokPivot(null)
+      }
+      setStep(1.5)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
     showToast('Đang tải dữ liệu...')
     try {
       const [sp, tp, hist, chartHist] = await Promise.all([
@@ -3198,19 +3223,62 @@ function ReportPageInner() {
         {step === 1 && (
           <div className="rc">
             <h2>Chọn Context</h2>
-            <p>Chọn brand, platform, tháng và tuần cần báo cáo.</p>
+            <p>
+              Chọn brand, platform, tháng và tuần cần báo cáo.{' '}
+              <strong style={{ color: '#fbbf24' }}>Brand là optional</strong> — bỏ trống nếu chỉ cần upload +
+              copy số nhanh (sẽ không lưu được report).
+            </p>
 
             {/* Brand selector */}
             <div style={{ marginBottom: 14 }}>
-              <label className="rl">Brand</label>
+              <label className="rl" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                Brand
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: 'rgba(148,163,184,.15)',
+                    color: '#94a3b8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '.05em',
+                  }}
+                >
+                  Optional
+                </span>
+                {selectedBrand && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedBrand('')
+                      setBrandSearch('')
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(239,68,68,.3)',
+                      color: '#fca5a5',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      cursor: 'pointer',
+                    }}
+                    title="Xoá brand đã chọn — dùng cho copy nhanh không lưu"
+                  >
+                    Bỏ chọn
+                  </button>
+                )}
+              </label>
               <div className="brand-search-wrap" ref={brandRef}>
                 <input
                   className="ri"
-                  placeholder="Tìm brand..."
+                  placeholder="Tìm brand... (hoặc bỏ trống nếu chỉ copy số)"
                   value={brandSearch}
                   onChange={e => {
                     setBrandSearch(e.target.value)
                     setShowBrandDrop(true)
+                    // Clear selection if user empties the input
+                    if (!e.target.value.trim()) setSelectedBrand('')
                   }}
                   onFocus={() => setShowBrandDrop(true)}
                 />
@@ -3367,12 +3435,12 @@ function ReportPageInner() {
                       style={{
                         padding: '3px 10px',
                         borderRadius: 999,
-                        background: 'rgba(59,130,246,.12)',
-                        color: '#60a5fa',
+                        background: selectedBrand ? 'rgba(59,130,246,.12)' : 'rgba(251,191,36,.12)',
+                        color: selectedBrand ? '#60a5fa' : '#fbbf24',
                         fontWeight: 700,
                       }}
                     >
-                      {selectedBrand || '—'}
+                      {selectedBrand || 'Không brand (copy-only)'}
                     </span>
                     <span
                       style={{
@@ -3656,15 +3724,23 @@ function ReportPageInner() {
                   <button
                     className="btn-s"
                     onClick={saveFromUploadStep}
-                    disabled={!canAutoFill || parsing || parsingTiktok || saving}
+                    disabled={!canAutoFill || !selectedBrand || parsing || parsingTiktok || saving}
                     title={
-                      !canAutoFill
-                        ? 'Upload + parse trước khi lưu'
-                        : 'Lưu data tuần ngay (chưa cần chạy AI). Có thể quay lại sau để xuất báo cáo.'
+                      !selectedBrand
+                        ? 'Cần chọn brand ở Bước 1 mới lưu được. (Vẫn copy số được như bình thường.)'
+                        : !canAutoFill
+                          ? 'Upload + parse trước khi lưu'
+                          : 'Lưu data tuần ngay (chưa cần chạy AI). Có thể quay lại sau để xuất báo cáo.'
                     }
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      opacity: !selectedBrand ? 0.5 : 1,
+                    }}
                   >
                     {Icon.save(13)} {saving ? 'Đang lưu...' : 'Lưu data tuần'}
+                    {!selectedBrand && <span style={{ fontSize: 10, opacity: 0.7 }}>(cần brand)</span>}
                   </button>
                   <button
                     className="btn-p"
