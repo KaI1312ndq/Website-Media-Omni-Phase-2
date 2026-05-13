@@ -1,4 +1,11 @@
-import type { HinhThuc, PivotRow, ShopeeAutoFill, ShopeePivot } from './types'
+import type {
+  HinhThuc,
+  PivotRow,
+  ShopeeAutoFill,
+  ShopeePivot,
+  ShopeeVerticalPivot,
+  ShopeeVerticalRow,
+} from './types'
 
 /**
  * Build the final 9-row (or fewer) pivot table from 3 parser outputs.
@@ -136,4 +143,213 @@ export function pivotToAutoFill(pivot: ShopeePivot): ShopeeAutoFill {
     s_live_chi_phi: liveTotal?.cost ?? 0,
     s_live_luot_xem: liveTotal?.hien_thi ?? 0,
   }
+}
+
+/**
+ * Transform the horizontal ShopeePivot into a vertical pivot grouped by
+ * 4 hình thức (Ads tổng / Ads CPC / Ads nhận diện thương hiệu / Ads livestream).
+ *
+ * Always emits all 4 groups so layout is stable. Missing platforms → value=null.
+ *
+ * - Ads tổng (5 metrics): pulled from the grand total row of the horizontal pivot.
+ * - Ads CPC (10 metrics): pulled from "Ads CPC Total" sub-row + AOV computed.
+ * - Ads nhận diện thương hiệu (7 metrics): pulled from "Ads Branding Total".
+ * - Ads livestream (4 metrics): pulled from "Ads Live Total".
+ */
+export function toShopeeVerticalPivot(pivot: ShopeePivot): ShopeeVerticalPivot {
+  const cpcTotal = pivot.rows.find(r => r.hinh_thuc === 'Ads CPC' && r.isTotal && !r.isGrandTotal)
+  const ndTotal = pivot.rows.find(r => r.hinh_thuc === 'Ads Branding' && r.isTotal && !r.isGrandTotal)
+  const liveTotal = pivot.rows.find(r => r.hinh_thuc === 'Ads Live' && r.isTotal && !r.isGrandTotal)
+  const grand = pivot.rows.find(r => r.isGrandTotal)
+
+  const rows: ShopeeVerticalRow[] = []
+
+  // ── Ads tổng (5) ──
+  rows.push(
+    {
+      hinh_thuc: 'Ads tổng',
+      metric: 'Doanh thu Ads (GMV)',
+      value: grand?.gmv ?? null,
+      format: 'integer',
+      isBold: true,
+    },
+    {
+      hinh_thuc: 'Ads tổng',
+      metric: 'Chi phí ads',
+      value: grand?.cost ?? null,
+      format: 'integer',
+      isBold: true,
+    },
+    {
+      hinh_thuc: 'Ads tổng',
+      metric: 'ROAS ads',
+      value: grand?.roas ?? null,
+      format: 'decimal',
+      isBold: true,
+    },
+    {
+      hinh_thuc: 'Ads tổng',
+      metric: 'Số lượt clicks',
+      value: grand?.clicks ?? null,
+      format: 'integer',
+      isBold: true,
+    },
+    {
+      hinh_thuc: 'Ads tổng',
+      metric: 'Số lượt xem ads',
+      value: grand?.hien_thi ?? null,
+      format: 'integer',
+      isBold: true,
+    },
+  )
+
+  // ── Ads CPC (10) ──
+  const cpcAov = cpcTotal && cpcTotal.orders > 0 ? +(cpcTotal.gmv / cpcTotal.orders).toFixed(0) : null
+  rows.push(
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'Doanh số Ads',
+      value: cpcTotal?.gmv ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'Chi Phí Dịch vụ hiển thị',
+      value: cpcTotal?.cost ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    { hinh_thuc: 'Ads CPC', metric: 'ROAS', value: cpcTotal?.roas ?? null, format: 'decimal', isBold: false },
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'CPC = Chi phí / Lượt click',
+      value: cpcTotal?.cpc ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    { hinh_thuc: 'Ads CPC', metric: 'CTR', value: cpcTotal?.ctr ?? null, format: 'percent', isBold: false },
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'CR = Đơn hàng / Lượt click*100 (%)',
+      value: cpcTotal?.cr ?? null,
+      format: 'percent',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'Số lượt xem',
+      value: cpcTotal?.hien_thi ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'Số lượt click',
+      value: cpcTotal?.clicks ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'Số đơn hàng',
+      value: cpcTotal?.orders ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads CPC',
+      metric: 'AOV = Doanh thu / Số đơn hàng',
+      value: cpcAov,
+      format: 'integer',
+      isBold: false,
+    },
+  )
+
+  // ── Ads nhận diện thương hiệu (7) ──
+  rows.push(
+    {
+      hinh_thuc: 'Ads nhận diện thương hiệu',
+      metric: 'Doanh thu Ads (GMV)',
+      value: ndTotal?.gmv ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads nhận diện thương hiệu',
+      metric: 'Chi phí ads',
+      value: ndTotal?.cost ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads nhận diện thương hiệu',
+      metric: 'ROAS ads',
+      value: ndTotal?.roas ?? null,
+      format: 'decimal',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads nhận diện thương hiệu',
+      metric: 'CPC = Chi phí / Lượt click',
+      value: ndTotal?.cpc ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads nhận diện thương hiệu',
+      metric: 'CTR',
+      value: ndTotal?.ctr ?? null,
+      format: 'percent',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads nhận diện thương hiệu',
+      metric: 'Số lượt xem',
+      value: ndTotal?.hien_thi ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads nhận diện thương hiệu',
+      metric: 'Số lượt click',
+      value: ndTotal?.clicks ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+  )
+
+  // ── Ads livestream (4) ──
+  rows.push(
+    {
+      hinh_thuc: 'Ads livestream',
+      metric: 'Doanh thu Ads (GMV)',
+      value: liveTotal?.gmv ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads livestream',
+      metric: 'Chi phí ads',
+      value: liveTotal?.cost ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads livestream',
+      metric: 'ROAS ads',
+      value: liveTotal?.roas ?? null,
+      format: 'decimal',
+      isBold: false,
+    },
+    {
+      hinh_thuc: 'Ads livestream',
+      metric: 'Lượt xem',
+      value: liveTotal?.hien_thi ?? null,
+      format: 'integer',
+      isBold: false,
+    },
+  )
+
+  return { rows }
 }

@@ -48,6 +48,27 @@ export interface ShopeePivot {
   }
 }
 
+/* ════════════════════════════════════════════════════════════
+   Shopee — vertical preview format (Brief: pivot dọc theo 4 nhóm
+   hình thức, giống TikTok layout)
+════════════════════════════════════════════════════════════ */
+
+export type ShopeeVerticalHinhThuc = 'Ads tổng' | 'Ads CPC' | 'Ads nhận diện thương hiệu' | 'Ads livestream'
+
+export type ShopeeMetricFormat = 'integer' | 'decimal' | 'percent'
+
+export interface ShopeeVerticalRow {
+  hinh_thuc: ShopeeVerticalHinhThuc
+  metric: string
+  value: number | null // null → render "—"
+  format: ShopeeMetricFormat
+  isBold: boolean // bold cho Ads tổng rows
+}
+
+export interface ShopeeVerticalPivot {
+  rows: ShopeeVerticalRow[]
+}
+
 /** Aggregated Shopee actuals → maps directly into Step 2's 12 fields. */
 export interface ShopeeAutoFill {
   s_cpc_doanh_so: number

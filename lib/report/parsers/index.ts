@@ -8,7 +8,7 @@ import { parseTiktokLGM } from './tiktok-lgm'
 export * from './types'
 export { parseShopeeCPC, parseShopeeBranding, parseShopeeLive }
 export { parseTiktokPGM, parseTiktokLGM }
-export { buildShopeePivot, pivotToAutoFill } from './pivot'
+export { buildShopeePivot, pivotToAutoFill, toShopeeVerticalPivot } from './pivot'
 export { buildTiktokPivot, tiktokToAutoFill } from './tiktok-pivot'
 
 /**

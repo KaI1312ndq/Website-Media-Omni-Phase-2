@@ -2,116 +2,62 @@
 
 import { useMemo, useState } from 'react'
 import { Icon } from '@/lib/icons'
-import type { PivotRow, ShopeePivot } from '@/lib/report/parsers'
+import {
+  toShopeeVerticalPivot,
+  type ShopeePivot,
+  type ShopeeMetricFormat,
+  type ShopeeVerticalRow,
+} from '@/lib/report/parsers'
 
 interface Props {
   pivot: ShopeePivot
 }
 
-const COLS: { key: keyof PivotRow | 'hinh_thuc' | 'loai_dvht'; label: string; align?: 'left' | 'right' }[] = [
-  { key: 'hinh_thuc', label: 'Hình thức', align: 'left' },
-  { key: 'loai_dvht', label: 'Loại Dịch vụ Hiển thị', align: 'left' },
-  { key: 'gmv', label: 'GMV' },
-  { key: 'cost', label: 'Cost' },
-  { key: 'roas', label: 'ROAS' },
-  { key: 'hien_thi', label: 'Hiển thị' },
-  { key: 'clicks', label: 'Clicks' },
-  { key: 'orders', label: 'Orders' },
-  { key: 'cpc', label: 'CPC' },
-  { key: 'cpm', label: 'CPM' },
-  { key: 'ctr', label: 'CTR' },
-  { key: 'cr', label: 'CR' },
-  { key: 'pct_gmv', label: '%GMV' },
-  { key: 'pct_cost', label: '%Cost' },
-]
-
 const VN_INT = new Intl.NumberFormat('vi-VN')
 const VN_DEC = new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-function fmtInt(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '—'
-  return VN_INT.format(v)
+function fmt(value: number | null, format: ShopeeMetricFormat): string {
+  if (value === null || !isFinite(value)) return '—'
+  if (format === 'percent') return VN_DEC.format(value) + '%'
+  if (format === 'decimal') return VN_DEC.format(value)
+  return VN_INT.format(Math.round(value))
 }
 
-function fmtDecimal(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '—'
-  return VN_DEC.format(v)
-}
-
-function fmtPct(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '—'
-  return VN_DEC.format(v) + '%'
-}
-
-function cellValue(row: PivotRow, key: (typeof COLS)[number]['key']): string {
-  switch (key) {
-    case 'hinh_thuc':
-      return row.hinh_thuc
-    case 'loai_dvht':
-      return row.loai_dvht
-    case 'gmv':
-    case 'cost':
-    case 'hien_thi':
-    case 'orders':
-      return fmtInt(row[key] as number)
-    case 'clicks':
-    case 'cpc':
-      return fmtInt(row[key] as number | null)
-    case 'roas':
-      return fmtDecimal(row.roas)
-    case 'cpm':
-      return fmtInt(row.cpm)
-    case 'ctr':
-    case 'cr':
-      return fmtPct(row[key] as number | null)
-    case 'pct_gmv':
-    case 'pct_cost':
-      return fmtPct(row[key] as number)
-    default:
-      return ''
-  }
-}
-
-/**
- * Compute, for each row, how many consecutive following rows share the same
- * hinh_thuc. Used to render a vertical merged "Hình thức" cell via rowSpan.
- * Grand total (empty hinh_thuc) is never merged.
- */
-function computeRowSpans(rows: PivotRow[]): number[] {
-  const spans: number[] = new Array(rows.length).fill(0)
+/** Compute rowspan per group of consecutive same hinh_thuc rows. */
+function computeRowSpans(rows: ShopeeVerticalRow[]): number[] {
+  const spans = new Array(rows.length).fill(0)
   let i = 0
   while (i < rows.length) {
-    if (!rows[i].hinh_thuc || rows[i].isGrandTotal) {
-      spans[i] = 1
-      i++
-      continue
-    }
     let j = i
-    while (j < rows.length && rows[j].hinh_thuc === rows[i].hinh_thuc && !rows[j].isGrandTotal) j++
+    while (j < rows.length && rows[j].hinh_thuc === rows[i].hinh_thuc) j++
     spans[i] = j - i
     i = j
   }
   return spans
 }
 
+const HINH_THUC_COLOR: Record<string, { bg: string; text: string }> = {
+  'Ads tổng': { bg: 'rgba(37,99,235,.12)', text: '#93c5fd' },
+  'Ads CPC': { bg: 'rgba(168,85,247,.1)', text: '#c4b5fd' },
+  'Ads nhận diện thương hiệu': { bg: 'rgba(249,115,22,.1)', text: '#fdba74' },
+  'Ads livestream': { bg: 'rgba(16,185,129,.1)', text: '#6ee7b7' },
+}
+
 export default function ShopeePivotPreview({ pivot }: Props) {
   const [copied, setCopied] = useState(false)
 
-  // Build TSV (tab-separated values) — paste-friendly for Sheets/Excel/Lark.
-  // Always emits a hinh_thuc value per row (no rowspan) so every cell has data.
+  const vertical = useMemo(() => toShopeeVerticalPivot(pivot), [pivot])
+
   const tsv = useMemo(() => {
-    const header = COLS.map(c => c.label).join('\t')
-    const rows = pivot.rows.map(r => COLS.map(c => cellValue(r, c.key)).join('\t'))
+    const header = ['Hình thức', 'Metric', 'Thực hiện'].join('\t')
+    const rows = vertical.rows.map(r => [r.hinh_thuc, r.metric, fmt(r.value, r.format)].join('\t'))
     return [header, ...rows].join('\n')
-  }, [pivot])
+  }, [vertical])
 
   async function copyTsv() {
     try {
       await navigator.clipboard.writeText(tsv)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     } catch {
-      // fallback: select+copy via temp textarea
       const ta = document.createElement('textarea')
       ta.value = tsv
       document.body.appendChild(ta)
@@ -122,12 +68,12 @@ export default function ShopeePivotPreview({ pivot }: Props) {
         /* ignore */
       }
       document.body.removeChild(ta)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
-  if (pivot.rows.length === 0) {
+  if (vertical.rows.length === 0) {
     return (
       <div
         style={{
@@ -143,11 +89,10 @@ export default function ShopeePivotPreview({ pivot }: Props) {
     )
   }
 
-  const spans = computeRowSpans(pivot.rows)
+  const spans = computeRowSpans(vertical.rows)
 
   return (
     <div>
-      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
@@ -159,7 +104,7 @@ export default function ShopeePivotPreview({ pivot }: Props) {
         }}
       >
         <div style={{ fontSize: 12, color: '#94a3b8' }}>
-          Tip: kéo chuột chọn ô để copy từng phần — hoặc dùng nút →
+          Tip: kéo chuột chọn ô để copy — hoặc bấm nút bên phải để copy toàn bảng
         </div>
         <button
           type="button"
@@ -189,95 +134,112 @@ export default function ShopeePivotPreview({ pivot }: Props) {
           overflowX: 'auto',
           borderRadius: 10,
           border: '1px solid rgba(255,255,255,.08)',
-          userSelect: 'text', // allow selecting cells like a spreadsheet
+          userSelect: 'text',
         }}
       >
         <table
           style={{
             width: '100%',
-            minWidth: 1100,
             borderCollapse: 'collapse',
-            fontSize: 12.5,
+            fontSize: 13,
             color: '#cbd5e1',
             userSelect: 'text',
           }}
         >
           <thead>
             <tr style={{ background: 'rgba(255,255,255,.04)' }}>
-              {COLS.map(c => (
-                <th
-                  key={c.key}
-                  style={{
-                    textAlign: c.align ?? 'right',
-                    padding: '10px 12px',
-                    fontWeight: 700,
-                    fontSize: 11,
-                    color: '#94a3b8',
-                    letterSpacing: '.04em',
-                    textTransform: 'uppercase',
-                    borderBottom: '1px solid rgba(255,255,255,.08)',
-                    borderRight: '1px solid rgba(255,255,255,.04)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {c.label}
-                </th>
-              ))}
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: '#94a3b8',
+                  letterSpacing: '.04em',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid rgba(255,255,255,.08)',
+                  borderRight: '1px solid rgba(255,255,255,.04)',
+                  width: 220,
+                }}
+              >
+                Hình thức
+              </th>
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: '#94a3b8',
+                  letterSpacing: '.04em',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid rgba(255,255,255,.08)',
+                  borderRight: '1px solid rgba(255,255,255,.04)',
+                }}
+              >
+                Metric
+              </th>
+              <th
+                style={{
+                  textAlign: 'right',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: '#94a3b8',
+                  letterSpacing: '.04em',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid rgba(255,255,255,.08)',
+                  width: 220,
+                }}
+              >
+                Thực hiện
+              </th>
             </tr>
           </thead>
           <tbody>
-            {pivot.rows.map((row, i) => {
-              const isTotalRow = row.isTotal && !row.isGrandTotal
-              const isGrand = row.isGrandTotal
+            {vertical.rows.map((row, i) => {
               const span = spans[i]
               const showHinhThuc = span > 0
-
+              const color = HINH_THUC_COLOR[row.hinh_thuc] ?? HINH_THUC_COLOR['Ads CPC']
               return (
                 <tr
                   key={i}
                   style={{
-                    background: isGrand
-                      ? 'rgba(37,99,235,.1)'
-                      : isTotalRow
-                        ? 'rgba(255,255,255,.03)'
-                        : 'transparent',
-                    fontWeight: isTotalRow || isGrand ? 700 : 400,
-                    borderTop:
-                      isTotalRow || isGrand
-                        ? '1px solid rgba(255,255,255,.12)'
-                        : '1px solid rgba(255,255,255,.04)',
-                    color: isGrand ? '#e2e8f0' : '#cbd5e1',
+                    background: row.isBold ? color.bg : 'transparent',
+                    fontWeight: row.isBold ? 700 : 400,
+                    color: row.isBold ? '#e2e8f0' : '#cbd5e1',
+                    borderTop: '1px solid rgba(255,255,255,.04)',
                   }}
                 >
-                  {COLS.map(c => {
-                    // Skip hinh_thuc cell for non-leading rows in a span
-                    if (c.key === 'hinh_thuc' && !showHinhThuc) return null
-                    const rowSpan = c.key === 'hinh_thuc' && showHinhThuc ? span : undefined
-                    return (
-                      <td
-                        key={c.key}
-                        rowSpan={rowSpan}
-                        style={{
-                          textAlign: c.align ?? 'right',
-                          padding: '8px 12px',
-                          whiteSpace: 'nowrap',
-                          fontFamily: c.align === 'left' ? 'inherit' : 'var(--font-mono), monospace',
-                          fontSize: c.align === 'left' ? 12.5 : 12,
-                          borderRight: '1px solid rgba(255,255,255,.04)',
-                          ...(c.key === 'hinh_thuc' && rowSpan && rowSpan > 1
-                            ? {
-                                verticalAlign: 'middle',
-                                background: 'rgba(255,255,255,.025)',
-                                fontWeight: 700,
-                                color: '#cbd5e1',
-                              }
-                            : {}),
-                        }}
-                      >
-                        {cellValue(row, c.key)}
-                      </td>
-                    )
-                  })}
+                  {showHinhThuc && (
+                    <td
+                      rowSpan={span}
+                      style={{
+                        padding: '10px 14px',
+                        verticalAlign: 'middle',
+                        background: color.bg,
+                        color: color.text,
+                        fontWeight: 700,
+                        fontSize: 12.5,
+                        borderRight: '1px solid rgba(255,255,255,.06)',
+                      }}
+                    >
+                      {row.hinh_thuc}
+                    </td>
+                  )}
+                  <td style={{ padding: '8px 14px', borderRight: '1px solid rgba(255,255,255,.04)' }}>
+                    {row.metric}
+                  </td>
+                  <td
+                    style={{
+                      padding: '8px 14px',
+                      textAlign: 'right',
+                      fontFamily: 'var(--font-mono), "Be Vietnam Pro", ui-monospace, monospace',
+                      fontSize: 12.5,
+                    }}
+                  >
+                    {fmt(row.value, row.format)}
+                  </td>
                 </tr>
               )
             })}
