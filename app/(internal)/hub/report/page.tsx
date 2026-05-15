@@ -17,7 +17,7 @@ import type {
   AIResult,
   PreviousSolutions,
 } from '@/lib/report/types'
-import { emptyAIResult, parseAIResult, AI_MATRIX_KEYS } from '@/lib/report/types'
+import { emptyAIResult, parseAIResult, AI_MATRIX_KEYS, AI_MATRIX_LABEL } from '@/lib/report/types'
 import { buildAIInput } from '@/lib/report/ai-input-builder'
 import {
   fmtDate,
@@ -61,6 +61,7 @@ import ShopeePivotPreview from '@/components/report/ShopeePivotPreview'
 import { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
 import TiktokPivotPreview from '@/components/report/TiktokPivotPreview'
 import UnifiedFileUploadZone from '@/components/report/UnifiedFileUploadZone'
+import AIMatrixEditor from '@/components/report/AIMatrixEditor'
 
 /* ════════════════════════════════════════════════
    MAIN COMPONENT
@@ -1545,30 +1546,57 @@ function ReportPageInner() {
     body += `<hr style="border:none;border-top:1.5px solid #1a2e5c;margin:12px 0 8px">`
     body += `<table style="${cmpct}"><thead><tr><th style="${thHL('#1a5c2e')}">Highlight</th><th style="${thHL('#5c1a1a')}">Lowlight</th></tr></thead><tbody><tr><td style="${tdHL}">${(aiResult.highlight || '—').replace(/\n/g, '<br>')}</td><td style="${tdHL}">${(aiResult.lowlight || '—').replace(/\n/g, '<br>')}</td></tr></tbody></table>`
 
-    /* ── Brand / Sàn DARA ── */
-    const nl = (v: string) => (v || '').replace(/\n/g, '<br>')
+    /* ── V2 Matrix: Sàn × Hạng mục × {Plan, Actual, Đánh giá, Giải pháp} ── */
+    const nl = (v: string) => (v || '—').replace(/\n/g, '<br>')
     const thSummary = (w: string) =>
-      `padding:5px 8px;border:1px solid #999;background:#1a2e5c;color:#fff;${F};font-size:11px;text-align:center;width:${w}`
+      `padding:6px 8px;border:1px solid #999;background:#1a2e5c;color:#fff;${F};font-size:11px;text-align:center;width:${w};font-weight:700`
     const tdSm = (extra = '') =>
       `padding:6px 8px;border:1px solid #ccc;${F};font-size:11px;vertical-align:top;line-height:1.55;word-wrap:break-word;${extra}`
-    const platformRows = [shopeeChecked && 'shopee', tiktokChecked && 'tiktok'].filter(Boolean) as Array<
-      'shopee' | 'tiktok'
-    >
-    const rc = platformRows.length
-    body += `<hr style="border:none;border-top:1px solid #ccc;margin:10px 0 8px">`
-    body += `<table style="${cmpct}"><thead><tr><th style="${thSummary('7%')}">Brand</th><th style="${thSummary('6%')}">Sàn</th><th style="${thSummary('6%')}">Hạng mục</th><th style="${thSummary('27%')}">Thực tế</th><th style="${thSummary('27%')}">Vấn đề</th><th style="${thSummary('27%')}">Giải pháp/Kế hoạch tới</th></tr></thead><tbody>`
-    platformRows.forEach((p, i) => {
-      const sanLabel = p === 'shopee' ? 'Shopee' : 'TikTok'
-      body += `<tr>`
-      if (i === 0)
-        body += `<td rowspan="${rc}" style="${tdSm('text-align:center;font-weight:700;vertical-align:middle')}">${selectedBrand}</td>`
-      body += `<td style="${tdSm('text-align:center;font-weight:600')}">${sanLabel}</td>`
-      body += `<td style="${tdSm('text-align:center')}">Ads</td>`
-      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_thuc_trang` as 'shopee_thuc_trang'] as string)}</td>`
-      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_van_de` as 'shopee_van_de'] as string)}</td>`
-      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_giai_phap` as 'shopee_giai_phap'] as string)}</td>`
-      body += `</tr>`
+
+    // Visible rows in matrix order, filtered by platform check
+    const matrixRows = AI_MATRIX_KEYS.filter(k => {
+      const platform = AI_MATRIX_LABEL[k].platform
+      if (platform === 'Shopee') return shopeeChecked
+      if (platform === 'TikTok') return tiktokChecked
+      return true
     })
+
+    body += `<hr style="border:none;border-top:1px solid #ccc;margin:10px 0 8px">`
+    body += `<table style="${cmpct}"><thead><tr>`
+    body += `<th style="${thSummary('7%')}">Sàn</th>`
+    body += `<th style="${thSummary('12%')}">Hạng mục</th>`
+    body += `<th style="${thSummary('20%')}">Plan / Đề xuất tuần trước</th>`
+    body += `<th style="${thSummary('19%')}">Actual</th>`
+    body += `<th style="${thSummary('20%')}">Đánh giá</th>`
+    body += `<th style="${thSummary('22%')}">Giải pháp / Đề xuất</th>`
+    body += `</tr></thead><tbody>`
+
+    // Group consecutive rows by platform for rowspan
+    let i = 0
+    while (i < matrixRows.length) {
+      const platform = AI_MATRIX_LABEL[matrixRows[i]].platform
+      let j = i
+      while (j < matrixRows.length && AI_MATRIX_LABEL[matrixRows[j]].platform === platform) j++
+      const groupLen = j - i
+      const platformColor =
+        platform === 'Shopee' ? 'background:#fef3c7;color:#92400e' : 'background:#ede9fe;color:#5b21b6'
+      for (let k = i; k < j; k++) {
+        const rowKey = matrixRows[k]
+        const cell = aiResult[rowKey]
+        const labelInfo = AI_MATRIX_LABEL[rowKey]
+        body += `<tr>`
+        if (k === i) {
+          body += `<td rowspan="${groupLen}" style="${tdSm(`text-align:center;font-weight:700;vertical-align:middle;${platformColor}`)}">${platform}</td>`
+        }
+        body += `<td style="${tdSm('font-weight:600')}">${labelInfo.label}</td>`
+        body += `<td style="${tdSm()}">${nl(cell.plan)}</td>`
+        body += `<td style="${tdSm()}">${nl(cell.actual)}</td>`
+        body += `<td style="${tdSm()}">${nl(cell.danh_gia)}</td>`
+        body += `<td style="${tdSm()}">${nl(cell.giai_phap)}</td>`
+        body += `</tr>`
+      }
+      i = j
+    }
     body += `</tbody></table>`
     body += `<hr style="border:1px solid #ccc;margin:10px 0">`
     body += `<p style="color:#555;font-size:14px">Reported by: ${user?.name || ''} | ${fmtDate(new Date())}</p>`
@@ -2326,19 +2354,21 @@ function ReportPageInner() {
     rows.push(['HIGHLIGHT', 'LOWLIGHT'])
     rows.push([aiResult.highlight || '—', aiResult.lowlight || '—'])
 
-    /* DARA SUMMARY */
+    /* AI MATRIX V2: 7 hạng mục × {Plan, Actual, Đánh giá, Giải pháp} */
     rows.push([])
-    rows.push(['Brand', 'Sàn', 'Hạng mục', 'Thực tế', 'Vấn đề', 'Giải pháp/Kế hoạch tới'])
-    ;(
-      [shopeeChecked && 'shopee', tiktokChecked && 'tiktok'].filter(Boolean) as Array<'shopee' | 'tiktok'>
-    ).forEach(p => {
+    rows.push(['Sàn', 'Hạng mục', 'Plan / Đề xuất tuần trước', 'Actual', 'Đánh giá', 'Giải pháp / Đề xuất'])
+    AI_MATRIX_KEYS.forEach(rowKey => {
+      const info = AI_MATRIX_LABEL[rowKey]
+      if (info.platform === 'Shopee' && !shopeeChecked) return
+      if (info.platform === 'TikTok' && !tiktokChecked) return
+      const cell = aiResult[rowKey]
       rows.push([
-        selectedBrand,
-        p === 'shopee' ? 'Shopee' : 'TikTok',
-        'Ads',
-        (aiResult[`${p}_thuc_trang` as 'shopee_thuc_trang'] as string) || '',
-        (aiResult[`${p}_van_de` as 'shopee_van_de'] as string) || '',
-        (aiResult[`${p}_giai_phap` as 'shopee_giai_phap'] as string) || '',
+        info.platform,
+        info.label,
+        cell.plan || '',
+        cell.actual || '',
+        cell.danh_gia || '',
+        cell.giai_phap || '',
       ])
     })
 
@@ -4383,159 +4413,61 @@ function ReportPageInner() {
               </div>
             )}
 
-            {/* ── AI Section ── */}
+            {/* ── AI Section (V2 matrix editor) ── */}
             <div className="rc">
-              <h2>AI Nhận xét (DARA)</h2>
-              <button className="btn-ai" onClick={generateAI} disabled={aiLoading}>
-                {aiLoading ? (
-                  <>
-                    <span className="spin" />
-                    <span>Đang phân tích...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>✦</span>
-                    <span>Generate AI nhận xét</span>
-                  </>
-                )}
-              </button>
-
-              <div className="ai-f" style={{ marginTop: 16 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  marginBottom: 16,
+                }}
+              >
                 <div>
-                  <div className="ai-lbl">Highlight</div>
-                  <div
-                    className="ai-body"
-                    contentEditable
-                    suppressContentEditableWarning
-                    data-ph="Những điểm tốt tuần này..."
-                    onBlur={e =>
-                      setAiResult(prev => ({ ...prev, highlight: e.currentTarget.textContent || '' }))
-                    }
-                  >
-                    {aiResult.highlight}
-                  </div>
+                  <h2 style={{ margin: 0 }}>AI Matrix — Đánh giá & Giải pháp</h2>
+                  <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.85rem' }}>
+                    7 hạng mục × 4 cột. AI điền sau khi Generate; bạn check + edit trước khi save.
+                    {previousSolutions && (
+                      <>
+                        {' '}
+                        AI có tham chiếu{' '}
+                        <strong>
+                          Đề xuất tuần W{previousSolutions.week} T{previousSolutions.month}/
+                          {previousSolutions.year}
+                        </strong>{' '}
+                        để đánh giá closed-loop.
+                      </>
+                    )}
+                  </p>
                 </div>
-                <div>
-                  <div className="ai-lbl">Lowlight</div>
-                  <div
-                    className="ai-body"
-                    contentEditable
-                    suppressContentEditableWarning
-                    data-ph="Những điểm cần cải thiện..."
-                    onBlur={e =>
-                      setAiResult(prev => ({ ...prev, lowlight: e.currentTarget.textContent || '' }))
-                    }
-                  >
-                    {aiResult.lowlight}
-                  </div>
-                </div>
-
-                {shopeeChecked && (
-                  <>
-                    <div>
-                      <div className="ai-lbl">Shopee — Thực trạng</div>
-                      <div
-                        className="ai-body"
-                        contentEditable
-                        suppressContentEditableWarning
-                        data-ph="Thực trạng Shopee..."
-                        onBlur={e =>
-                          setAiResult(prev => ({
-                            ...prev,
-                            shopee_thuc_trang: e.currentTarget.textContent || '',
-                          }))
-                        }
-                      >
-                        {aiResult.shopee_thuc_trang}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="ai-lbl">Shopee — Vấn đề & Root Cause</div>
-                      <div
-                        className="ai-body"
-                        contentEditable
-                        suppressContentEditableWarning
-                        data-ph="Vấn đề Shopee..."
-                        onBlur={e =>
-                          setAiResult(prev => ({ ...prev, shopee_van_de: e.currentTarget.textContent || '' }))
-                        }
-                      >
-                        {aiResult.shopee_van_de}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="ai-lbl">Shopee — Giải pháp & Plan tuần tới</div>
-                      <div
-                        className="ai-body"
-                        contentEditable
-                        suppressContentEditableWarning
-                        data-ph="Giải pháp Shopee..."
-                        onBlur={e =>
-                          setAiResult(prev => ({
-                            ...prev,
-                            shopee_giai_phap: e.currentTarget.textContent || '',
-                          }))
-                        }
-                      >
-                        {aiResult.shopee_giai_phap}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {tiktokChecked && (
-                  <>
-                    <div>
-                      <div className="ai-lbl">TikTok — Thực trạng</div>
-                      <div
-                        className="ai-body"
-                        contentEditable
-                        suppressContentEditableWarning
-                        data-ph="Thực trạng TikTok..."
-                        onBlur={e =>
-                          setAiResult(prev => ({
-                            ...prev,
-                            tiktok_thuc_trang: e.currentTarget.textContent || '',
-                          }))
-                        }
-                      >
-                        {aiResult.tiktok_thuc_trang}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="ai-lbl">TikTok — Vấn đề & Root Cause</div>
-                      <div
-                        className="ai-body"
-                        contentEditable
-                        suppressContentEditableWarning
-                        data-ph="Vấn đề TikTok..."
-                        onBlur={e =>
-                          setAiResult(prev => ({ ...prev, tiktok_van_de: e.currentTarget.textContent || '' }))
-                        }
-                      >
-                        {aiResult.tiktok_van_de}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="ai-lbl">TikTok — Giải pháp & Plan tuần tới</div>
-                      <div
-                        className="ai-body"
-                        contentEditable
-                        suppressContentEditableWarning
-                        data-ph="Giải pháp TikTok..."
-                        onBlur={e =>
-                          setAiResult(prev => ({
-                            ...prev,
-                            tiktok_giai_phap: e.currentTarget.textContent || '',
-                          }))
-                        }
-                      >
-                        {aiResult.tiktok_giai_phap}
-                      </div>
-                    </div>
-                  </>
-                )}
+                <button className="btn-ai" onClick={generateAI} disabled={aiLoading}>
+                  {aiLoading ? (
+                    <>
+                      <span className="spin" />
+                      <span>Đang phân tích...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✦</span>
+                      <span>Generate AI nhận xét</span>
+                    </>
+                  )}
+                </button>
               </div>
+
+              <AIMatrixEditor
+                value={aiResult}
+                onChange={setAiResult}
+                shopeeChecked={shopeeChecked}
+                tiktokChecked={tiktokChecked}
+                autosaveKey={
+                  selectedBrand && weekInfo
+                    ? `mo_ai_draft_${selectedBrand}_${weekInfo.year}_${weekInfo.month}_${weekInfo.weekNum}`
+                    : undefined
+                }
+              />
             </div>
 
             {/* Navigation */}

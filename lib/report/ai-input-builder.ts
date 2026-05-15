@@ -11,7 +11,15 @@
  * Each hạng mục block includes plan, actual, derived metrics, and last
  * week's giải pháp (closed-loop track).
  */
-import type { Brand, PlanData, ShopeeData, TiktokData, WeekInfo, PreviousSolutions } from './types'
+import type {
+  AIMatrixKey,
+  Brand,
+  PlanData,
+  ShopeeData,
+  TiktokData,
+  WeekInfo,
+  PreviousSolutions,
+} from './types'
 import { buildBrandContext } from './types'
 
 const fmt = (v: number) => (v ? Math.round(v).toLocaleString('vi-VN') : '0')
@@ -70,8 +78,10 @@ export function buildAIInput(input: BuildInput): string {
 
   const w = weekInfo.weekNum
   const prevWeekRow = weekHistory.find(r => parseInt(String(r.week_num)) === w - 1)
-  const prevSol = (k: keyof PreviousSolutions): string =>
-    (prev?.[k] && prev[k]!.trim()) || '— Không có (tuần đầu hoặc chưa generate AI)'
+  const prevSol = (k: AIMatrixKey): string => {
+    const v = prev?.[k]
+    return typeof v === 'string' && v.trim() ? v : '— Không có (tuần đầu hoặc chưa generate AI)'
+  }
 
   let out = ''
 

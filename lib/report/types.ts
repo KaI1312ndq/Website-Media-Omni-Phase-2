@@ -240,5 +240,10 @@ export function parseAIResult(raw: unknown): AIResult {
   return out
 }
 
-/** Previous-week giai_phap per hạng mục — fed back into prompt for closed-loop track. */
-export type PreviousSolutions = Partial<Record<AIMatrixKey, string>>
+/** Previous-week giai_phap per hạng mục — fed back into prompt for closed-loop track.
+ *  Includes year/month/week metadata so UI can show "Đề xuất W3 T4/2026...". */
+export type PreviousSolutions = Partial<Record<AIMatrixKey, string>> & {
+  year?: number
+  month?: number
+  week?: number
+}
