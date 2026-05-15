@@ -22,10 +22,10 @@ interface Props {
 type CellField = keyof AIMatrixCell
 
 const CELL_COLS: { key: CellField; label: string; minHeight: number }[] = [
-  { key: 'plan', label: 'Plan + đề xuất tuần trước', minHeight: 90 },
-  { key: 'actual', label: 'Actual', minHeight: 90 },
-  { key: 'danh_gia', label: 'Đánh giá', minHeight: 110 },
-  { key: 'giai_phap', label: 'Giải pháp / Đề xuất', minHeight: 110 },
+  { key: 'plan', label: 'Plan + đề xuất tuần trước', minHeight: 120 },
+  { key: 'actual', label: 'Actual', minHeight: 120 },
+  { key: 'danh_gia', label: 'Đánh giá', minHeight: 140 },
+  { key: 'giai_phap', label: 'Giải pháp / Đề xuất', minHeight: 140 },
 ]
 
 const ROW_TINT: Record<AIMatrixKey, string> = {
@@ -110,15 +110,61 @@ export default function AIMatrixEditor({
         color: '#e2e8f0',
         fontSize: 12.5,
         fontFamily: 'inherit',
-        resize: 'vertical' as const,
+        resize: 'none' as const,
         lineHeight: 1.55,
         whiteSpace: 'pre-wrap' as const,
+        outline: 'none',
+        transition: 'border-color .15s, background .15s',
       }) as const,
     [],
   )
 
+  // Auto-grow textareas: resize to fit content on input.
+  const handleAutoGrow = useCallback((e: React.FormEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [])
+
+  // Run once after mount + on visibleKeys change to size existing content.
+  const tableRef = useRef<HTMLTableElement>(null)
+  useEffect(() => {
+    const tas = tableRef.current?.querySelectorAll('textarea')
+    tas?.forEach(ta => {
+      ta.style.height = 'auto'
+      ta.style.height = ta.scrollHeight + 'px'
+    })
+  }, [visibleKeys])
+
   return (
     <div>
+      <style jsx>{`
+        :global(.ai-matrix-ta) {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+        }
+        :global(.ai-matrix-ta::-webkit-scrollbar) {
+          width: 6px;
+          height: 6px;
+        }
+        :global(.ai-matrix-ta::-webkit-scrollbar-track) {
+          background: transparent;
+        }
+        :global(.ai-matrix-ta::-webkit-scrollbar-thumb) {
+          background: rgba(148, 163, 184, 0.2);
+          border-radius: 3px;
+        }
+        :global(.ai-matrix-ta::-webkit-scrollbar-thumb:hover) {
+          background: rgba(148, 163, 184, 0.4);
+        }
+        :global(.ai-matrix-ta:focus) {
+          border-color: rgba(96, 165, 250, 0.45) !important;
+          background: rgba(255, 255, 255, 0.05) !important;
+        }
+        :global(.ai-matrix-ta:hover:not(:focus)) {
+          border-color: rgba(255, 255, 255, 0.14) !important;
+        }
+      `}</style>
       {/* ── Overview: highlight + lowlight ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
         <div
@@ -142,11 +188,16 @@ export default function AIMatrixEditor({
             Highlight
           </div>
           <textarea
+            className="ai-matrix-ta"
             value={value.highlight}
-            onChange={e => updateOverview('highlight', e.target.value)}
+            onChange={e => {
+              updateOverview('highlight', e.target.value)
+              handleAutoGrow(e)
+            }}
+            onInput={handleAutoGrow}
             placeholder="2-3 điểm sáng tuần này (mỗi bullet • một dòng)..."
             style={{
-              ...textareaStyle(90),
+              ...textareaStyle(70),
               background: 'transparent',
               border: 'none',
               padding: 0,
@@ -175,11 +226,16 @@ export default function AIMatrixEditor({
             Lowlight
           </div>
           <textarea
+            className="ai-matrix-ta"
             value={value.lowlight}
-            onChange={e => updateOverview('lowlight', e.target.value)}
+            onChange={e => {
+              updateOverview('lowlight', e.target.value)
+              handleAutoGrow(e)
+            }}
+            onInput={handleAutoGrow}
             placeholder="2-3 điểm cần xử lý..."
             style={{
-              ...textareaStyle(90),
+              ...textareaStyle(70),
               background: 'transparent',
               border: 'none',
               padding: 0,
@@ -191,11 +247,20 @@ export default function AIMatrixEditor({
 
       {/* ── Matrix table ── */}
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(255,255,255,.08)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#cbd5e1' }}>
+        <table
+          ref={tableRef}
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: 13,
+            color: '#cbd5e1',
+            tableLayout: 'fixed',
+          }}
+        >
           <thead>
             <tr style={{ background: 'rgba(255,255,255,.04)' }}>
-              <th style={thStyle(110)}>Sàn</th>
-              <th style={thStyle(180)}>Hạng mục</th>
+              <th style={thStyle(72)}>Sàn</th>
+              <th style={thStyle(132)}>Hạng mục</th>
               {CELL_COLS.map(c => (
                 <th key={c.key} style={thStyle(undefined, 'left')}>
                   {c.label}
@@ -236,12 +301,14 @@ export default function AIMatrixEditor({
                   )}
                   <td
                     style={{
-                      padding: '12px 12px',
-                      fontWeight: 700,
+                      padding: '14px 10px',
+                      fontWeight: 600,
                       color: '#e2e8f0',
                       borderRight: '1px solid rgba(255,255,255,.06)',
                       verticalAlign: 'top',
                       fontSize: 12.5,
+                      lineHeight: 1.4,
+                      wordBreak: 'break-word',
                     }}
                   >
                     {labelInfo.label}
@@ -256,8 +323,13 @@ export default function AIMatrixEditor({
                       }}
                     >
                       <textarea
+                        className="ai-matrix-ta"
                         value={cell[col.key]}
-                        onChange={e => updateCell(rowKey, col.key, e.target.value)}
+                        onChange={e => {
+                          updateCell(rowKey, col.key, e.target.value)
+                          handleAutoGrow(e)
+                        }}
+                        onInput={handleAutoGrow}
                         placeholder="—"
                         style={textareaStyle(col.minHeight)}
                       />
@@ -297,7 +369,6 @@ function thStyle(width?: number, align: 'left' | 'right' = 'left'): React.CSSPro
     textTransform: 'uppercase',
     borderBottom: '1px solid rgba(255,255,255,.08)',
     borderRight: '1px solid rgba(255,255,255,.04)',
-    whiteSpace: 'nowrap',
     width,
   }
 }
