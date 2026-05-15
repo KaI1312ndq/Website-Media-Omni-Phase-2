@@ -26,6 +26,7 @@ export interface TiktokVideoRow {
   video_title: string
   tiktok_account: string
   authorization_type: string
+  product_id?: string
   gmv: number
   cost: number
   hien_thi: number
@@ -139,6 +140,32 @@ export interface TiktokAuthSection {
   grandTotal: TiktokAuthTotalRow
 }
 
+/* ── Section "Top Videos" (toàn bộ video sorted GMV) ── */
+
+export interface TiktokTopVideos {
+  videos: TiktokVideoRow[]
+  /** Mapping product_id → ten_define (nếu có) cho mỗi video — để hiện kèm SP. */
+  ten_define_map: Record<string, string | null>
+  /** Tổng số video trong file (filter Creative type = Video). */
+  total_videos: number
+  /** Subtotal của top N hiện đang trả về. */
+  subtotal: {
+    gmv: number
+    cost: number
+    hien_thi: number
+    clicks: number
+    orders: number
+    roas: number
+    cpc: number
+    cpm: number
+    ctr: number
+    cr: number
+    aov: number
+  }
+  /** Top N đang áp dụng (Infinity = tất cả). */
+  topN: number
+}
+
 /* ── Helpers ── */
 
 function num(v: unknown): number {
@@ -220,6 +247,7 @@ function toVideoRow(row: Record<string, unknown>, cols: ColMap): TiktokVideoRow 
     video_title: String(get(row, cols.vtitle) ?? '(không tên)').trim() || '(không tên)',
     tiktok_account: String(get(row, cols.account) ?? '').trim(),
     authorization_type: String(get(row, cols.auth) ?? '').trim(),
+    product_id: normalizeProductId(get(row, cols.pid)),
     gmv,
     cost,
     hien_thi,
@@ -446,15 +474,69 @@ export function buildTiktokAuthSectionFromRaw(rawRows: Record<string, unknown>[]
   return { productCard, videoRows, videoSubtotal, grandTotal }
 }
 
+/* ── Section "Top Videos" build ── */
+
+export function buildTiktokTopVideosFromRaw(
+  rawRows: Record<string, unknown>[],
+  master: TiktokMasterRow[],
+  topN: number = 10,
+): TiktokTopVideos {
+  const cols = getCellResolver(rawRows)
+  const videos = rawRows.filter(r => isVideo(r, cols))
+  const all: TiktokVideoRow[] = videos.map(r => toVideoRow(r, cols))
+  all.sort((a, b) => b.gmv - a.gmv)
+  const sliced = topN === Infinity ? all : all.slice(0, topN)
+
+  // Master lookup: product_id → ten_define
+  const ten_define_map: Record<string, string | null> = {}
+  for (const m of master) {
+    const pid = normalizeProductId(m.product_id)
+    if (pid) ten_define_map[pid] = m.ten_define ?? m.ten_tiktok ?? null
+  }
+
+  // Subtotal of sliced
+  const gmv = sliced.reduce((s, v) => s + v.gmv, 0)
+  const cost = sliced.reduce((s, v) => s + v.cost, 0)
+  const hien_thi = sliced.reduce((s, v) => s + v.hien_thi, 0)
+  const clicks = sliced.reduce((s, v) => s + v.clicks, 0)
+  const orders = sliced.reduce((s, v) => s + v.orders, 0)
+
+  return {
+    videos: sliced,
+    ten_define_map,
+    total_videos: all.length,
+    subtotal: {
+      gmv,
+      cost,
+      hien_thi,
+      clicks,
+      orders,
+      roas: cost ? gmv / cost : 0,
+      cpc: clicks ? cost / clicks : 0,
+      cpm: hien_thi ? (cost / hien_thi) * 1000 : 0,
+      ctr: hien_thi ? (clicks / hien_thi) * 100 : 0,
+      cr: clicks ? (orders / clicks) * 100 : 0,
+      aov: orders ? gmv / orders : 0,
+    },
+    topN,
+  }
+}
+
 /* ── Convenience: one-shot from file ── */
 
 export async function buildTiktokSections(
   creativeFile: File,
   master: TiktokMasterRow[],
   topN: number = 10,
-): Promise<{ drilldown: TiktokProductDrilldown; auth: TiktokAuthSection }> {
+  topVideosN: number = 10,
+): Promise<{
+  drilldown: TiktokProductDrilldown
+  auth: TiktokAuthSection
+  topVideos: TiktokTopVideos
+}> {
   const raw = await parseTiktokPGMRaw(creativeFile)
   const drilldown = buildTiktokProductDrilldownFromRaw(raw, master, { topN })
   const auth = buildTiktokAuthSectionFromRaw(raw)
-  return { drilldown, auth }
+  const topVideos = buildTiktokTopVideosFromRaw(raw, master, topVideosN)
+  return { drilldown, auth, topVideos }
 }

@@ -66,10 +66,12 @@ import {
 import { parseShopeeGroupFile, type GroupDetailFile } from '@/lib/report/parsers/shopee-group'
 import TiktokProductDrilldown from '@/components/report/TiktokProductDrilldown'
 import TiktokAuthSectionComp from '@/components/report/TiktokAuthSection'
+import TiktokTopVideosSection from '@/components/report/TiktokTopVideosSection'
 import {
   buildTiktokSections,
   type TiktokProductDrilldown as TPD,
   type TiktokAuthSection as TAuth,
+  type TiktokTopVideos as TTV,
 } from '@/lib/report/parsers/tiktok-product-drilldown'
 import { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
 import TiktokPivotPreview from '@/components/report/TiktokPivotPreview'
@@ -147,6 +149,8 @@ function ReportPageInner() {
   const [tiktokDrilldown, setTiktokDrilldown] = useState<TPD | null>(null)
   const [tiktokAuth, setTiktokAuth] = useState<TAuth | null>(null)
   const [tiktokTopN, setTiktokTopN] = useState<number>(10)
+  const [tiktokTopVideos, setTiktokTopVideos] = useState<TTV | null>(null)
+  const [tiktokTopVideosN, setTiktokTopVideosN] = useState<number>(10)
   const [tiktokSectionsLoading, setTiktokSectionsLoading] = useState(false)
 
   // Step 1.5 — TikTok xlsx upload + parse (Phase 2B)
@@ -672,6 +676,7 @@ function ReportPageInner() {
     if (!pgm || !selectedBrand) {
       setTiktokDrilldown(null)
       setTiktokAuth(null)
+      setTiktokTopVideos(null)
       return
     }
     let cancelled = false
@@ -686,7 +691,7 @@ function ReportPageInner() {
           ten_tiktok: string | null
           category: string | null
         }[]
-        const { drilldown, auth } = await buildTiktokSections(
+        const { drilldown, auth, topVideos } = await buildTiktokSections(
           pgm,
           master.map(m => ({
             brand_name: selectedBrand,
@@ -696,14 +701,17 @@ function ReportPageInner() {
             category: m.category,
           })),
           tiktokTopN,
+          tiktokTopVideosN,
         )
         if (cancelled) return
         setTiktokDrilldown(drilldown)
         setTiktokAuth(auth)
+        setTiktokTopVideos(topVideos)
       } catch {
         if (!cancelled) {
           setTiktokDrilldown(null)
           setTiktokAuth(null)
+          setTiktokTopVideos(null)
         }
       } finally {
         if (!cancelled) setTiktokSectionsLoading(false)
@@ -712,7 +720,7 @@ function ReportPageInner() {
     return () => {
       cancelled = true
     }
-  }, [tiktokFiles.tiktok_pgm, selectedBrand, step, tiktokTopN])
+  }, [tiktokFiles.tiktok_pgm, selectedBrand, step, tiktokTopN, tiktokTopVideosN])
 
   // Handlers cho file nhóm
   const handleUploadGroupFile = useCallback(async (campaignName: string, file: File) => {
@@ -3990,7 +3998,31 @@ function ReportPageInner() {
                           marginBottom: 12,
                         }}
                       >
-                        <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Section 2 — TikTok theo loại video</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Section 2 — Top Video GMV</h3>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>
+                          Toàn bộ video TikTok sort theo GMV — chọn Top 10/20/50/All/tuỳ ý
+                        </span>
+                      </div>
+                      {!tiktokSectionsLoading && tiktokTopVideos && (
+                        <TiktokTopVideosSection
+                          data={tiktokTopVideos}
+                          topN={tiktokTopVideosN}
+                          onTopNChange={setTiktokTopVideosN}
+                        />
+                      )}
+                    </div>
+
+                    <div className="rc" style={{ marginBottom: 14 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          marginBottom: 12,
+                        }}
+                      >
+                        <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Section 3 — TikTok theo loại video</h3>
                         <span style={{ fontSize: 11, color: '#64748b' }}>
                           Phân loại Authorization · Thẻ SP + Video Kênh/KOC/Aff
                         </span>
