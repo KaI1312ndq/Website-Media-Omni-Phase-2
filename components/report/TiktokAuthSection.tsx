@@ -98,7 +98,7 @@ export default function TiktokAuthSectionComponent({ section }: Props) {
   )
 
   const tableText = useMemo(() => {
-    const header = ['Loại', ...COLS.map(c => c.label), 'N'].join('\t')
+    const header = ['Nguồn', ...COLS.map(c => c.label), 'N'].join('\t')
     const lines = allRowsForCopy.map(r =>
       [r.label, ...COLS.map(c => formatCell(r, c.key, c.fmt)), r.n].join('\t'),
     )
