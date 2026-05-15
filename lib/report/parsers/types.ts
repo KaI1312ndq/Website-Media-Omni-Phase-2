@@ -19,6 +19,9 @@ export interface PivotRow {
   loai_dvht: string // tên loại dịch vụ hiển thị / hoặc 'Total' / 'Tổng cộng'
   isTotal: boolean // true cho row "Total" của mỗi hình thức
   isGrandTotal?: boolean // true cho row "Tổng cộng" cuối bảng
+  /** Sub-cat của row (Thủ công / Tự động) — split theo "Phương thức đầu thầu". */
+  isSubcat?: boolean
+  subcat_label?: 'Thủ công' | 'Tự động'
 
   // Raw aggregated metrics (sum)
   gmv: number

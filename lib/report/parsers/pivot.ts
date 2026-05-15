@@ -21,7 +21,9 @@ export function buildShopeePivot(
   brandingRows: PivotRow[],
   liveRows: PivotRow[],
 ): ShopeePivot {
-  const subtotals = (rows: PivotRow[], hinh_thuc: HinhThuc): PivotRow => {
+  const subtotals = (allRows: PivotRow[], hinh_thuc: HinhThuc): PivotRow => {
+    // Loại bỏ sub-cat rows (Thủ công / Tự động) khỏi subtotal — tránh double-count
+    const rows = allRows.filter(r => !r.isSubcat)
     const gmv = rows.reduce((s, r) => s + r.gmv, 0)
     const cost = rows.reduce((s, r) => s + r.cost, 0)
     const hien_thi = rows.reduce((s, r) => s + r.hien_thi, 0)

@@ -89,7 +89,9 @@ function horizontalCellValue(row: PivotRow, key: (typeof HORIZONTAL_COLS)[number
     case 'hinh_thuc':
       return row.isGrandTotal ? 'Tổng cộng' : row.hinh_thuc
     case 'loai_dvht':
-      return row.isGrandTotal ? '' : row.loai_dvht
+      if (row.isGrandTotal) return ''
+      if (row.isSubcat) return `    └ ${row.subcat_label}`
+      return row.loai_dvht
     case 'gmv':
     case 'cost':
     case 'hien_thi':
@@ -455,6 +457,7 @@ function HorizontalTable({ rows }: { rows: PivotRow[] }) {
         {rows.map((row, idx) => {
           const isTotalRow = row.isTotal && !row.isGrandTotal
           const isGrand = !!row.isGrandTotal
+          const isSub = !!row.isSubcat
           const span = spans[idx]
           const showHinhThuc = span > 0
           const color = HINH_THUC_COLOR[row.hinh_thuc] ?? HINH_THUC_COLOR['Ads CPC']
@@ -466,13 +469,17 @@ function HorizontalTable({ rows }: { rows: PivotRow[] }) {
                   ? 'rgba(37,99,235,.1)'
                   : isTotalRow
                     ? 'rgba(255,255,255,.03)'
-                    : 'transparent',
+                    : isSub
+                      ? 'rgba(148,163,184,.025)'
+                      : 'transparent',
                 fontWeight: isTotalRow || isGrand ? 700 : 400,
-                borderTop:
-                  isTotalRow || isGrand
+                fontStyle: isSub ? 'italic' : 'normal',
+                borderTop: isSub
+                  ? '1px dashed rgba(255,255,255,.04)'
+                  : isTotalRow || isGrand
                     ? '1px solid rgba(255,255,255,.12)'
                     : '1px solid rgba(255,255,255,.04)',
-                color: isGrand ? '#e2e8f0' : '#cbd5e1',
+                color: isGrand ? '#e2e8f0' : isSub ? '#94a3b8' : '#cbd5e1',
               }}
             >
               {HORIZONTAL_COLS.map(c => {

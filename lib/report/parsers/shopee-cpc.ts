@@ -55,27 +55,25 @@ export async function parseShopeeCPC(file: File): Promise<PivotRow[]> {
     // Unknown groups silently skipped
   }
 
-  // Build PivotRow per group (only groups with rows)
-  const result: PivotRow[] = []
-  for (const groupName of GROUP_ORDER) {
-    const rows = groups[groupName]
-    if (!rows || rows.length === 0) continue
+  // Helper: aggregate metrics từ một list rows
+  function agg(rows: Record<string, unknown>[]) {
+    return {
+      gmv: rows.reduce((s, r) => s + (Number(r['Doanh số']) || 0), 0),
+      cost: rows.reduce((s, r) => s + (Number(r['Chi phí']) || 0), 0),
+      hien_thi: rows.reduce((s, r) => s + (Number(r['Số lượt xem']) || 0), 0),
+      clicks: rows.reduce((s, r) => s + (Number(r['Số lượt click']) || 0), 0),
+      orders: rows.reduce((s, r) => s + (Number(r['Sản phẩm đã bán']) || 0), 0),
+    }
+  }
 
-    const gmv = rows.reduce((s, r) => s + (Number(r['Doanh số']) || 0), 0)
-    const cost = rows.reduce((s, r) => s + (Number(r['Chi phí']) || 0), 0)
-    const hien_thi = rows.reduce((s, r) => s + (Number(r['Số lượt xem']) || 0), 0)
-    const clicks = rows.reduce((s, r) => s + (Number(r['Số lượt click']) || 0), 0)
-    const orders = rows.reduce((s, r) => s + (Number(r['Sản phẩm đã bán']) || 0), 0)
-
-    result.push({
+  function makeRow(loai: string, m: ReturnType<typeof agg>, sub?: 'Thủ công' | 'Tự động'): PivotRow {
+    return {
       hinh_thuc: 'Ads CPC',
-      loai_dvht: groupName,
+      loai_dvht: loai,
       isTotal: false,
-      gmv,
-      cost,
-      hien_thi,
-      clicks,
-      orders,
+      isSubcat: !!sub,
+      subcat_label: sub,
+      ...m,
       // Derived computed in pivot.ts
       roas: 0,
       cpc: null,
@@ -84,7 +82,32 @@ export async function parseShopeeCPC(file: File): Promise<PivotRow[]> {
       cr: null,
       pct_gmv: 0,
       pct_cost: 0,
-    })
+    }
+  }
+
+  // Split sub-cat theo "Phương thức đầu thầu" cho 2 loại SP + Shop.
+  // Lưu ý header có thể là "Giá thầu thủ công" hoặc variant nhẹ → match contains.
+  const SPLIT_GROUPS = new Set(['Dịch vụ Hiển thị Sản phẩm', 'Dịch vụ Hiển thị Shop'])
+  function isManualBidding(row: Record<string, unknown>): boolean {
+    const v = String(row['Phương thức đầu thầu'] ?? row['Phương thức đấu thầu'] ?? '').trim()
+    // Brief: "Giá thầu thủ công" → Thủ công; tất cả còn lại → Tự động.
+    return /thủ công/i.test(v)
+  }
+
+  // Build PivotRow per group (only groups with rows)
+  const result: PivotRow[] = []
+  for (const groupName of GROUP_ORDER) {
+    const rows = groups[groupName]
+    if (!rows || rows.length === 0) continue
+
+    result.push(makeRow(groupName, agg(rows)))
+
+    if (SPLIT_GROUPS.has(groupName)) {
+      const manual = rows.filter(isManualBidding)
+      const auto = rows.filter(r => !isManualBidding(r))
+      if (manual.length > 0) result.push(makeRow(groupName, agg(manual), 'Thủ công'))
+      if (auto.length > 0) result.push(makeRow(groupName, agg(auto), 'Tự động'))
+    }
   }
   return result
 }
