@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseMasterFile } from '@/lib/products/parsers/master-xlsx'
 import type { ProductMasterRow, ParsedMasterRow } from '@/lib/products/types'
+import AddProductModal from './AddProductModal'
 
 interface Props {
   brandName: string
@@ -29,6 +30,9 @@ export default function ProductMasterTab({ brandName, onToast }: Props) {
   const [importing, setImporting] = useState(false)
   const [preview, setPreview] = useState<ParsedMasterRow[] | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [adding, setAdding] = useState(false)
+  const [addForm, setAddForm] = useState({ ma_san_pham: '', sku_code: '', ten_shopee: '', ten_define: '' })
+  const [addBusy, setAddBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -186,6 +190,47 @@ export default function ProductMasterTab({ brandName, onToast }: Props) {
     })
   }
 
+  async function submitAdd() {
+    const ma = addForm.ma_san_pham.trim()
+    if (!ma) {
+      onToast?.('Cần nhập Mã sản phẩm', 'error')
+      return
+    }
+    if (rows.some(r => r.ma_san_pham === ma)) {
+      onToast?.(`Mã SP "${ma}" đã tồn tại trong Master`, 'error')
+      return
+    }
+    setAddBusy(true)
+    try {
+      const r = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save',
+          brand_name: brandName,
+          rows: [
+            {
+              ma_san_pham: ma,
+              sku_code: addForm.sku_code.trim() || null,
+              ten_shopee: addForm.ten_shopee.trim() || null,
+              ten_define: addForm.ten_define.trim() || null,
+            },
+          ],
+        }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Lỗi thêm')
+      onToast?.('Đã thêm 1 sản phẩm', 'success')
+      setAddForm({ ma_san_pham: '', sku_code: '', ten_shopee: '', ten_define: '' })
+      setAdding(false)
+      await load()
+    } catch (e) {
+      onToast?.(e instanceof Error ? e.message : 'Lỗi thêm', 'error')
+    } finally {
+      setAddBusy(false)
+    }
+  }
+
   async function handleFileChosen(file: File) {
     try {
       const parsed = await parseMasterFile(file)
@@ -271,6 +316,9 @@ export default function ProductMasterTab({ brandName, onToast }: Props) {
           }}
           style={{ display: 'none' }}
         />
+        <button className="btn-s" onClick={() => setAdding(true)}>
+          + Thêm SP
+        </button>
         <button className="btn-s" onClick={() => fileInputRef.current?.click()}>
           ⬆ Upload Master
         </button>
@@ -468,6 +516,29 @@ export default function ProductMasterTab({ brandName, onToast }: Props) {
       </div>
 
       {/* Preview modal */}
+      {adding && (
+        <AddProductModal
+          title="Thêm sản phẩm Shopee"
+          fields={[
+            { key: 'ma_san_pham', label: 'Mã sản phẩm *', placeholder: 'Vd: 53856226412', required: true },
+            { key: 'sku_code', label: 'SKU (optional)', placeholder: 'Vd: TGL_CB_3' },
+            {
+              key: 'ten_shopee',
+              label: 'Tên Shopee (optional)',
+              placeholder: 'Tên gốc trên Shopee',
+              long: true,
+            },
+            { key: 'ten_define', label: 'Tên define', placeholder: 'Tên ngắn dùng cho drilldown' },
+          ]}
+          values={addForm}
+          onChange={v => setAddForm({ ...addForm, ...v })}
+          busy={addBusy}
+          onCancel={() => setAdding(false)}
+          onSubmit={submitAdd}
+          existingDefines={defineSuggestions}
+          defineFieldKey="ten_define"
+        />
+      )}
       {preview && (
         <div
           role="dialog"

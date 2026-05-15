@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseTiktokMasterFile } from '@/lib/products/parsers/master-tiktok'
 import type { TiktokMasterRow, ParsedTiktokMasterRow } from '@/lib/products/types'
+import AddProductModal from './AddProductModal'
 
 interface Props {
   brandName: string
@@ -28,6 +29,9 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
   const [importing, setImporting] = useState(false)
   const [preview, setPreview] = useState<ParsedTiktokMasterRow[] | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [adding, setAdding] = useState(false)
+  const [addForm, setAddForm] = useState({ product_id: '', category: '', ten_tiktok: '', ten_define: '' })
+  const [addBusy, setAddBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -183,6 +187,51 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
     })
   }
 
+  async function submitAdd() {
+    const pid = addForm.product_id.trim()
+    if (!pid) {
+      onToast?.('Cần nhập Product ID', 'error')
+      return
+    }
+    if (!/^\d{6,}$/.test(pid)) {
+      onToast?.('Product ID TikTok phải là chuỗi số (≥6 chữ số)', 'error')
+      return
+    }
+    if (rows.some(r => r.product_id === pid)) {
+      onToast?.(`Product ID "${pid}" đã tồn tại`, 'error')
+      return
+    }
+    setAddBusy(true)
+    try {
+      const r = await fetch('/api/products/tiktok', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save',
+          brand_name: brandName,
+          rows: [
+            {
+              product_id: pid,
+              category: addForm.category.trim() || null,
+              ten_tiktok: addForm.ten_tiktok.trim() || null,
+              ten_define: addForm.ten_define.trim() || null,
+            },
+          ],
+        }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Lỗi thêm')
+      onToast?.('Đã thêm 1 sản phẩm TikTok', 'success')
+      setAddForm({ product_id: '', category: '', ten_tiktok: '', ten_define: '' })
+      setAdding(false)
+      await load()
+    } catch (e) {
+      onToast?.(e instanceof Error ? e.message : 'Lỗi thêm', 'error')
+    } finally {
+      setAddBusy(false)
+    }
+  }
+
   async function handleFileChosen(file: File) {
     try {
       const parsed = await parseTiktokMasterFile(file)
@@ -258,6 +307,9 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
           }}
           style={{ display: 'none' }}
         />
+        <button className="btn-s" onClick={() => setAdding(true)}>
+          + Thêm SP
+        </button>
         <button className="btn-s" onClick={() => fileInputRef.current?.click()}>
           ⬆ Upload Master TikTok
         </button>
@@ -449,6 +501,34 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
         </table>
       </div>
 
+      {adding && (
+        <AddProductModal
+          title="Thêm sản phẩm TikTok"
+          fields={[
+            {
+              key: 'product_id',
+              label: 'Product ID *',
+              placeholder: 'Vd: 1731147147185260661 (19 chữ số)',
+              required: true,
+            },
+            { key: 'category', label: 'Category (optional)', placeholder: 'Vd: Skincare > Moisturizer' },
+            {
+              key: 'ten_tiktok',
+              label: 'Tên TikTok (optional)',
+              placeholder: 'Tên gốc trên TikTok Shop',
+              long: true,
+            },
+            { key: 'ten_define', label: 'Tên define', placeholder: 'Tên ngắn dùng cho drilldown' },
+          ]}
+          values={addForm}
+          onChange={v => setAddForm({ ...addForm, ...v })}
+          busy={addBusy}
+          onCancel={() => setAdding(false)}
+          onSubmit={submitAdd}
+          existingDefines={defineSuggestions}
+          defineFieldKey="ten_define"
+        />
+      )}
       {preview && (
         <div
           role="dialog"
