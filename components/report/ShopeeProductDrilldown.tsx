@@ -55,7 +55,13 @@ const COLS: Col[] = [
   { key: 'clicks', label: 'Click', fmt: fmtInt, width: 80 },
   { key: 'orders', label: 'Đơn', fmt: fmtInt, tint: 'count', width: 70 },
   { key: 'aov', label: 'AOV', fmt: fmtInt, width: 90 },
+  { key: 'pct_gmv', label: '%GMV', fmt: fmtPct, tint: 'gmv', width: 70 },
+  { key: 'pct_cost', label: '%Cost', fmt: fmtPct, tint: 'cost', width: 70 },
 ]
+
+function pctVal(part: number, total: number): number {
+  return total ? (part / total) * 100 : 0
+}
 
 /** Subtle per-column tinting (returned as inline-style background for cells). */
 function tintBg(tint: ColTint): string | undefined {
@@ -112,30 +118,39 @@ export default function ShopeeProductDrilldown({
   }
 
   // ── TSV exports ──
+  const enrich = (r: { gmv: number; cost: number }) => ({
+    ...r,
+    pct_gmv: pctVal(r.gmv, drilldown.total.gmv),
+    pct_cost: pctVal(r.cost, drilldown.total.cost),
+  })
+  const totalForExport = { ...drilldown.total, pct_gmv: 100, pct_cost: 100 }
+
   const tableText = useMemo(() => {
     const header = ['#', 'Sản phẩm', ...COLS.map(c => c.label), 'Camps'].join('\t')
     const lines = drilldown.rows.map((r, i) =>
-      [i + 1, r.ten_define, ...COLS.map(c => formatCell(r, c.key, c.fmt)), r.n_camps].join('\t'),
+      [i + 1, r.ten_define, ...COLS.map(c => formatCell(enrich(r), c.key, c.fmt)), r.n_camps].join('\t'),
     )
     const total = [
       '',
       'TỔNG',
-      ...COLS.map(c => formatCell(drilldown.total, c.key, c.fmt)),
+      ...COLS.map(c => formatCell(totalForExport, c.key, c.fmt)),
       drilldown.total.n_camps,
     ].join('\t')
     return [header, ...lines, total].join('\n')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drilldown])
 
   const valuesText = useMemo(() => {
     const lines = drilldown.rows.map(r =>
-      [r.ten_define, ...COLS.map(c => formatCell(r, c.key, c.fmt)), r.n_camps].join('\t'),
+      [r.ten_define, ...COLS.map(c => formatCell(enrich(r), c.key, c.fmt)), r.n_camps].join('\t'),
     )
     const total = [
       'TỔNG',
-      ...COLS.map(c => formatCell(drilldown.total, c.key, c.fmt)),
+      ...COLS.map(c => formatCell(totalForExport, c.key, c.fmt)),
       drilldown.total.n_camps,
     ].join('\t')
     return [...lines, total].join('\n')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drilldown])
 
   async function copy(kind: 'values' | 'table') {
@@ -228,7 +243,7 @@ export default function ShopeeProductDrilldown({
         <table
           style={{
             width: '100%',
-            minWidth: 1180,
+            minWidth: 1320,
             borderCollapse: 'collapse',
             fontSize: 12.5,
             color: '#cbd5e1',
@@ -254,15 +269,27 @@ export default function ShopeeProductDrilldown({
             </tr>
           </thead>
           <tbody>
-            {drilldown.rows.map((row, idx) => (
-              <ProductRow
-                key={row.ten_define + idx}
-                row={row}
-                index={idx + 1}
-                expanded={expanded.has(row.ten_define)}
-                onToggle={() => toggle(row.ten_define)}
-              />
-            ))}
+            {drilldown.rows.map((row, idx) => {
+              const enriched = {
+                ...row,
+                pct_gmv: pctVal(row.gmv, drilldown.total.gmv),
+                pct_cost: pctVal(row.cost, drilldown.total.cost),
+                campaigns: row.campaigns.map(c => ({
+                  ...c,
+                  pct_gmv: pctVal(c.gmv, drilldown.total.gmv),
+                  pct_cost: pctVal(c.cost, drilldown.total.cost),
+                })),
+              } as unknown as ProductDrilldownRow
+              return (
+                <ProductRow
+                  key={row.ten_define + idx}
+                  row={enriched}
+                  index={idx + 1}
+                  expanded={expanded.has(row.ten_define)}
+                  onToggle={() => toggle(row.ten_define)}
+                />
+              )
+            })}
             {drilldown.rows.length === 0 && (
               <tr>
                 <td colSpan={3 + COLS.length} style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>
@@ -306,7 +333,7 @@ export default function ShopeeProductDrilldown({
                       fontWeight: 700,
                     }}
                   >
-                    {formatCell(drilldown.total, c.key, c.fmt)}
+                    {formatCell({ ...drilldown.total, pct_gmv: 100, pct_cost: 100 }, c.key, c.fmt)}
                   </td>
                 ))}
                 <td

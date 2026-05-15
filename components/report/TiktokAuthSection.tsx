@@ -42,7 +42,22 @@ const COLS: { key: string; label: string; fmt: (v: number) => string; tint?: Col
   { key: 'clicks', label: 'Click', fmt: fmtInt, width: 90 },
   { key: 'orders', label: 'Đơn', fmt: fmtInt, tint: 'count', width: 70 },
   { key: 'aov', label: 'AOV', fmt: fmtInt, width: 90 },
+  { key: 'pct_gmv', label: '%GMV', fmt: fmtPct, tint: 'gmv', width: 70 },
+  { key: 'pct_cost', label: '%Cost', fmt: fmtPct, tint: 'cost', width: 70 },
 ]
+
+/** Tính %GMV / %Cost so với denom (section total). */
+function withPct<T extends { gmv: number; cost: number }>(
+  row: T,
+  totalGmv: number,
+  totalCost: number,
+): T & { pct_gmv: number; pct_cost: number } {
+  return {
+    ...row,
+    pct_gmv: totalGmv ? (row.gmv / totalGmv) * 100 : 0,
+    pct_cost: totalCost ? (row.cost / totalCost) * 100 : 0,
+  }
+}
 
 function tintBg(t: ColTint): string | undefined {
   if (!t) return undefined
@@ -85,18 +100,27 @@ export default function TiktokAuthSectionComponent({ section }: Props) {
     clicks: number
     orders: number
     aov: number
+    pct_gmv: number
+    pct_cost: number
     n: number
   }
-  const allRowsForCopy: CopyRow[] = useMemo(
-    () => [
-      { label: section.productCard.loai, ...flatten(section.productCard) },
-      ...section.videoRows.map(r => ({ label: r.loai, ...flatten(r) })),
-      { label: section.videoKocAff.label, ...flatten(section.videoKocAff) },
-      { label: section.videoSubtotal.label, ...flatten(section.videoSubtotal) },
-      { label: section.grandTotal.label, ...flatten(section.grandTotal) },
-    ],
-    [section],
-  )
+  const allRowsForCopy: CopyRow[] = useMemo(() => {
+    const denomG = section.grandTotal.gmv
+    const denomC = section.grandTotal.cost
+    const kenh = section.videoRows.find(r => r.loai === 'Video Kênh')
+    const koc = section.videoRows.find(r => r.loai === 'Video KOC')
+    const aff = section.videoRows.find(r => r.loai === 'Video Aff')
+    const mk = (label: string, base: { gmv: number; cost: number; n: number } & ReturnType<typeof flatten>) =>
+      ({ label, ...base, ...withPct({ gmv: base.gmv, cost: base.cost }, denomG, denomC) }) as CopyRow
+    const rows: CopyRow[] = [mk(section.productCard.loai, flatten(section.productCard))]
+    if (kenh) rows.push(mk(kenh.loai, flatten(kenh)))
+    rows.push(mk(section.videoKocAff.label, flatten(section.videoKocAff)))
+    if (koc) rows.push(mk('  ' + koc.loai, flatten(koc)))
+    if (aff) rows.push(mk('  ' + aff.loai, flatten(aff)))
+    rows.push(mk(section.videoSubtotal.label, flatten(section.videoSubtotal)))
+    rows.push(mk(section.grandTotal.label, flatten(section.grandTotal)))
+    return rows
+  }, [section])
 
   const tableText = useMemo(() => {
     const header = ['Nguồn', ...COLS.map(c => c.label), 'N'].join('\t')
@@ -167,13 +191,24 @@ export default function TiktokAuthSectionComponent({ section }: Props) {
             </tr>
           </thead>
           <tbody>
-            <AuthRowComp row={section.productCard} />
-            {section.videoRows.map(r => (
-              <AuthRowComp key={r.loai} row={r} />
-            ))}
-            <SubCatRow row={section.videoKocAff} />
-            <SubtotalRow row={section.videoSubtotal} />
-            <GrandTotalRow row={section.grandTotal} />
+            {(() => {
+              const denomG = section.grandTotal.gmv
+              const denomC = section.grandTotal.cost
+              const kenh = section.videoRows.find(r => r.loai === 'Video Kênh')
+              const koc = section.videoRows.find(r => r.loai === 'Video KOC')
+              const aff = section.videoRows.find(r => r.loai === 'Video Aff')
+              return (
+                <>
+                  <AuthRowComp row={withPct(section.productCard, denomG, denomC)} />
+                  {kenh && <AuthRowComp row={withPct(kenh, denomG, denomC)} />}
+                  <AuthMainTotalRow row={withPct(section.videoKocAff, denomG, denomC)} />
+                  {koc && <SubCatRow row={withPct({ label: koc.loai, ...flatten(koc) }, denomG, denomC)} />}
+                  {aff && <SubCatRow row={withPct({ label: aff.loai, ...flatten(aff) }, denomG, denomC)} />}
+                  <SubtotalRow row={withPct(section.videoSubtotal, denomG, denomC)} />
+                  <GrandTotalRow row={withPct(section.grandTotal, denomG, denomC)} />
+                </>
+              )
+            })()}
           </tbody>
         </table>
       </div>
@@ -192,6 +227,36 @@ function AuthRowComp({ row }: { row: TiktokAuthRow }) {
         }}
       >
         {row.loai}
+      </td>
+      {COLS.map(c => (
+        <td
+          key={c.key}
+          style={{
+            ...tdStyle,
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+            background: tintBg(c.tint),
+          }}
+        >
+          {formatCell(row as unknown as Record<string, unknown>, c.key, c.fmt)}
+        </td>
+      ))}
+      <td style={{ ...tdStyle, textAlign: 'right', color: '#94a3b8' }}>{row.n}</td>
+    </tr>
+  )
+}
+
+function AuthMainTotalRow({ row }: { row: TiktokAuthTotalRow }) {
+  return (
+    <tr style={{ borderTop: '1px solid rgba(255,255,255,.05)' }}>
+      <td
+        style={{
+          ...tdStyle,
+          fontWeight: 600,
+          color: '#a78bfa',
+        }}
+      >
+        {row.label}
       </td>
       {COLS.map(c => (
         <td

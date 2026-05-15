@@ -35,7 +35,13 @@ const COLS: { key: string; label: string; fmt: (v: number) => string; tint?: Col
   { key: 'clicks', label: 'Click', fmt: fmtInt, width: 80 },
   { key: 'orders', label: 'Đơn', fmt: fmtInt, tint: 'count', width: 70 },
   { key: 'aov', label: 'AOV', fmt: fmtInt, width: 90 },
+  { key: 'pct_gmv', label: '%GMV', fmt: fmtPct, tint: 'gmv', width: 70 },
+  { key: 'pct_cost', label: '%Cost', fmt: fmtPct, tint: 'cost', width: 70 },
 ]
+
+function pctVal(part: number, total: number): number {
+  return total ? (part / total) * 100 : 0
+}
 
 function tintBg(t: ColTint): string | undefined {
   if (t === 'gmv') return 'rgba(34,197,94,.04)'
@@ -68,6 +74,13 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
     if (Number.isFinite(n) && n > 0) onTopNChange(n)
   }
 
+  const enrichV = (v: { gmv: number; cost: number }) => ({
+    ...v,
+    pct_gmv: pctVal(v.gmv, data.subtotal.gmv),
+    pct_cost: pctVal(v.cost, data.subtotal.cost),
+  })
+  const subtotalForExport = { ...data.subtotal, pct_gmv: 100, pct_cost: 100 }
+
   const tableText = useMemo(() => {
     const header = ['#', 'Video', 'Account', 'Sản phẩm', ...COLS.map(c => c.label)].join('\t')
     const lines = data.videos.map((v, i) =>
@@ -76,7 +89,7 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
         v.video_title,
         v.tiktok_account,
         defineFor(v, data.ten_define_map),
-        ...COLS.map(c => formatCell(v, c.key, c.fmt)),
+        ...COLS.map(c => formatCell(enrichV(v), c.key, c.fmt)),
       ].join('\t'),
     )
     const subtotal = [
@@ -84,9 +97,10 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
       `Subtotal Top ${isAll ? data.total_videos : data.videos.length}`,
       '',
       '',
-      ...COLS.map(c => formatCell(data.subtotal, c.key, c.fmt)),
+      ...COLS.map(c => formatCell(subtotalForExport, c.key, c.fmt)),
     ].join('\t')
     return [header, ...lines, subtotal].join('\n')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, isAll])
 
   const valuesText = useMemo(() => {
@@ -94,11 +108,14 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
       [
         v.tiktok_account ? `@${v.tiktok_account}` : '',
         defineFor(v, data.ten_define_map),
-        ...COLS.map(c => formatCell(v, c.key, c.fmt)),
+        ...COLS.map(c => formatCell(enrichV(v), c.key, c.fmt)),
       ].join('\t'),
     )
-    const subtotal = [`Subtotal`, '', ...COLS.map(c => formatCell(data.subtotal, c.key, c.fmt))].join('\t')
+    const subtotal = [`Subtotal`, '', ...COLS.map(c => formatCell(subtotalForExport, c.key, c.fmt))].join(
+      '\t',
+    )
     return [...lines, subtotal].join('\n')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
   async function copy(kind: 'values' | 'table') {
@@ -194,7 +211,7 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
         <table
           style={{
             width: '100%',
-            minWidth: 1360,
+            minWidth: 1500,
             borderCollapse: 'collapse',
             fontSize: 12.5,
             color: '#cbd5e1',
@@ -320,7 +337,15 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
                         background: tintBg(c.tint),
                       }}
                     >
-                      {formatCell(v, c.key, c.fmt)}
+                      {formatCell(
+                        {
+                          ...v,
+                          pct_gmv: pctVal(v.gmv, data.subtotal.gmv),
+                          pct_cost: pctVal(v.cost, data.subtotal.cost),
+                        },
+                        c.key,
+                        c.fmt,
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -372,7 +397,7 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
                       fontWeight: 700,
                     }}
                   >
-                    {formatCell(data.subtotal, c.key, c.fmt)}
+                    {formatCell({ ...data.subtotal, pct_gmv: 100, pct_cost: 100 }, c.key, c.fmt)}
                   </td>
                 ))}
               </tr>
