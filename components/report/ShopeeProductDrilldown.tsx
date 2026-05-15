@@ -480,7 +480,7 @@ function CopyBtn({
   )
 }
 
-/* ── Group upload panel ── */
+/* ── Group upload panel — single drop-pool + status chips ── */
 function GroupUploadPanel({
   groups,
   onUpload,
@@ -490,9 +490,67 @@ function GroupUploadPanel({
   onUpload?: (name: string, file: File) => void
   onRemove?: (name: string) => void
 }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [batchInfo, setBatchInfo] = useState<{ matched: number; unmatched: string[] } | null>(null)
+
   const resolvedCount = groups.filter(g => g.resolved).length
   const pending = groups.length - resolvedCount
   const allResolved = pending === 0
+
+  /** Parse file → match group_name với detectedGroups (loose match: trim+casefold+substring) */
+  async function ingestFiles(filesRaw: FileList | File[] | null) {
+    if (!filesRaw || !onUpload) return
+    const files = Array.from(filesRaw)
+    if (files.length === 0) return
+
+    const { parseShopeeGroupFile } = await import('@/lib/report/parsers/shopee-group')
+
+    // Index campaign_name lowercase → original
+    const nameMap = new Map<string, string>()
+    for (const g of groups) nameMap.set(g.campaign_name.toLowerCase().trim(), g.campaign_name)
+
+    let matched = 0
+    const unmatched: string[] = []
+
+    for (const file of files) {
+      try {
+        const detail = await parseShopeeGroupFile(file)
+        const key = detail.group_name.toLowerCase().trim()
+        let target = nameMap.get(key)
+
+        // Fallback: try substring match (file name có thể bị cắt)
+        if (!target) {
+          const entries = Array.from(nameMap.entries())
+          for (const [k, orig] of entries) {
+            if (k.includes(key) || key.includes(k)) {
+              target = orig
+              break
+            }
+          }
+        }
+
+        if (target) {
+          onUpload(target, file)
+          matched++
+        } else {
+          unmatched.push(`"${detail.group_name}" (${file.name})`)
+        }
+      } catch (e) {
+        unmatched.push(`${file.name}: ${e instanceof Error ? e.message : 'lỗi parse'}`)
+      }
+    }
+
+    setBatchInfo({ matched, unmatched })
+    setTimeout(() => setBatchInfo(null), 6000)
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    setDragOver(false)
+    void ingestFiles(e.dataTransfer.files)
+  }
+
   return (
     <div
       style={{
@@ -503,10 +561,11 @@ function GroupUploadPanel({
         marginBottom: 12,
       }}
     >
+      {/* Header */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'baseline',
           gap: 10,
           marginBottom: 10,
           flexWrap: 'wrap',
@@ -518,109 +577,123 @@ function GroupUploadPanel({
             : `Phát hiện ${groups.length} campaign nhóm — cần ${pending} file chi tiết`}
         </div>
         <div style={{ fontSize: 11.5, color: '#94a3b8' }}>
-          File "Chiến Dịch Nhóm" để chia số liệu xuống đúng từng SP — nếu thiếu, nhóm vẫn hiển thị dạng tổng
-          🏷️.
+          Kéo thả tất cả file "Chiến Dịch Nhóm" vào ô bên dưới — auto-match theo tên nhóm.
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
-        {groups.map(g => (
-          <GroupSlot key={g.campaign_name} group={g} onUpload={onUpload} onRemove={onRemove} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function GroupSlot({
-  group,
-  onUpload,
-  onRemove,
-}: {
-  group: import('@/lib/report/parsers/shopee-product-drilldown').DetectedGroup
-  onUpload?: (name: string, file: File) => void
-  onRemove?: (name: string) => void
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  return (
-    <div
-      style={{
-        border: `1px solid ${group.resolved ? 'rgba(34,197,94,.3)' : 'rgba(255,255,255,.1)'}`,
-        background: group.resolved ? 'rgba(34,197,94,.06)' : 'rgba(255,255,255,.02)',
-        borderRadius: 8,
-        padding: '8px 10px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 800,
-            padding: '2px 6px',
-            borderRadius: 4,
-            background: group.resolved ? 'rgba(34,197,94,.2)' : 'rgba(96,165,250,.2)',
-            color: group.resolved ? '#34d399' : '#93c5fd',
-          }}
-        >
-          {group.resolved ? 'ĐÃ KÈM' : 'CẦN FILE'}
-        </span>
-        <span
-          style={{
-            fontSize: 12.5,
-            color: '#e2e8f0',
-            fontWeight: 600,
-            flex: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-          title={group.campaign_name}
-        >
-          {group.campaign_name}
-        </span>
-      </div>
-      <div style={{ fontSize: 10.5, color: '#64748b', fontFamily: 'var(--font-mono), monospace' }}>
-        GMV {Math.round(group.gmv).toLocaleString('vi-VN')} · Cost{' '}
-        {Math.round(group.cost).toLocaleString('vi-VN')}
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
+      {/* Drop zone */}
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDragOver={e => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+        role="button"
+        tabIndex={0}
+        style={{
+          border: `2px dashed ${dragOver ? '#60a5fa' : 'rgba(148,163,184,.3)'}`,
+          background: dragOver ? 'rgba(96,165,250,.08)' : 'rgba(255,255,255,.02)',
+          borderRadius: 10,
+          padding: '18px 16px',
+          cursor: 'pointer',
+          textAlign: 'center',
+          transition: 'border-color .12s, background .12s',
+          marginBottom: 10,
+        }}
+      >
         <input
           ref={inputRef}
           type="file"
           accept=".csv,.xlsx,.xls"
+          multiple
           style={{ display: 'none' }}
           onChange={e => {
-            const f = e.target.files?.[0]
-            if (f && onUpload) onUpload(group.campaign_name, f)
+            void ingestFiles(e.target.files)
             if (inputRef.current) inputRef.current.value = ''
           }}
         />
-        <button
-          className="btn-s"
-          onClick={() => inputRef.current?.click()}
-          style={{ fontSize: 11, padding: '4px 10px', flex: 1 }}
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#cbd5e1', marginBottom: 4 }}>
+          {dragOver ? 'Thả file vào đây' : 'Kéo thả hoặc click để chọn nhiều file nhóm cùng lúc'}
+        </div>
+        <div style={{ fontSize: 11, color: '#64748b' }}>
+          Hỗ trợ .csv / .xlsx · auto-match qua tên nhóm trong file
+        </div>
+      </div>
+
+      {/* Batch result toast inline */}
+      {batchInfo && (
+        <div
+          style={{
+            fontSize: 11.5,
+            padding: '8px 10px',
+            borderRadius: 6,
+            background: batchInfo.unmatched.length > 0 ? 'rgba(251,191,36,.08)' : 'rgba(34,197,94,.08)',
+            border: `1px solid ${batchInfo.unmatched.length > 0 ? 'rgba(251,191,36,.25)' : 'rgba(34,197,94,.25)'}`,
+            color: batchInfo.unmatched.length > 0 ? '#fbbf24' : '#34d399',
+            marginBottom: 10,
+          }}
         >
-          {group.resolved ? 'Đổi file' : 'Chọn file chi tiết'}
-        </button>
-        {group.resolved && onRemove && (
-          <button
-            className="btn-s"
-            onClick={() => onRemove(group.campaign_name)}
+          <strong>Đã match {batchInfo.matched} file.</strong>
+          {batchInfo.unmatched.length > 0 && (
+            <>
+              {' '}
+              Không khớp {batchInfo.unmatched.length}: {batchInfo.unmatched.slice(0, 3).join('; ')}
+              {batchInfo.unmatched.length > 3 ? '...' : ''}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Status chips */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {groups.map(g => (
+          <span
+            key={g.campaign_name}
+            title={`${g.campaign_name}\nGMV ${Math.round(g.gmv).toLocaleString('vi-VN')} · Cost ${Math.round(g.cost).toLocaleString('vi-VN')}`}
             style={{
-              fontSize: 11,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
               padding: '4px 10px',
-              background: 'rgba(239,68,68,.1)',
-              borderColor: 'rgba(239,68,68,.3)',
-              color: '#fca5a5',
+              borderRadius: 999,
+              fontSize: 11.5,
+              fontWeight: 600,
+              border: `1px solid ${g.resolved ? 'rgba(34,197,94,.4)' : 'rgba(148,163,184,.25)'}`,
+              background: g.resolved ? 'rgba(34,197,94,.08)' : 'rgba(255,255,255,.03)',
+              color: g.resolved ? '#34d399' : '#cbd5e1',
+              maxWidth: 280,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
-            title="Xoá file đã chọn cho nhóm này"
           >
-            ✕
-          </button>
-        )}
+            <span style={{ fontSize: 10 }}>{g.resolved ? '✓' : '○'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.campaign_name}</span>
+            {g.resolved && onRemove && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  onRemove(g.campaign_name)
+                }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#fca5a5',
+                  cursor: 'pointer',
+                  padding: 0,
+                  marginLeft: 2,
+                  fontSize: 12,
+                  lineHeight: 1,
+                }}
+                title="Xoá file đã match cho nhóm này"
+              >
+                ✕
+              </button>
+            )}
+          </span>
+        ))}
       </div>
     </div>
   )
