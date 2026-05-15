@@ -259,6 +259,7 @@ export default function ShopeePivotPreview({ pivot }: Props) {
 
       {/* Table */}
       <div
+        className="scroll-thin"
         style={{
           overflowX: 'auto',
           borderRadius: 10,

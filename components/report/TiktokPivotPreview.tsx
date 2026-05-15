@@ -107,6 +107,7 @@ export default function TiktokPivotPreview({ pivot }: Props) {
       </div>
 
       <div
+        className="scroll-thin"
         style={{
           overflowX: 'auto',
           borderRadius: 10,

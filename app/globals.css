@@ -7512,3 +7512,30 @@ select.r-input {
 .cs-home-card:hover .cs-home-cta {
   gap: 10px;
 }
+
+/* ── Thin scrollbar utility (Brief V11 polish) ──────────────────── */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.scroll-thin::-webkit-scrollbar-corner {
+  background: transparent;
+}

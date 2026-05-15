@@ -31,19 +31,60 @@ const fmtDec = (v: number, digits = 2) =>
 const fmtPct = (v: number) =>
   v === 0 ? '—' : v.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%'
 
-const COLS: { key: string; label: string; fmt: (v: number) => string; align?: 'right' }[] = [
-  { key: 'gmv', label: 'GMV', fmt: fmtInt, align: 'right' },
-  { key: 'cost', label: 'Cost', fmt: fmtInt, align: 'right' },
-  { key: 'roas', label: 'ROAS', fmt: v => fmtDec(v, 2), align: 'right' },
-  { key: 'cpc', label: 'CPC', fmt: fmtInt, align: 'right' },
-  { key: 'ctr', label: 'CTR', fmt: fmtPct, align: 'right' },
-  { key: 'cr', label: 'CR', fmt: fmtPct, align: 'right' },
-  { key: 'cpm', label: 'CPM', fmt: fmtInt, align: 'right' },
-  { key: 'hien_thi', label: 'Hiển thị', fmt: fmtInt, align: 'right' },
-  { key: 'clicks', label: 'Click', fmt: fmtInt, align: 'right' },
-  { key: 'orders', label: 'Đơn', fmt: fmtInt, align: 'right' },
-  { key: 'aov', label: 'AOV', fmt: fmtInt, align: 'right' },
+type ColTint = 'gmv' | 'cost' | 'roas' | 'rate' | 'count' | undefined
+interface Col {
+  key: string
+  label: string
+  fmt: (v: number) => string
+  tint?: ColTint
+  width?: number
+}
+const COLS: Col[] = [
+  { key: 'gmv', label: 'GMV', fmt: fmtInt, tint: 'gmv', width: 110 },
+  { key: 'cost', label: 'Cost', fmt: fmtInt, tint: 'cost', width: 100 },
+  { key: 'roas', label: 'ROAS', fmt: v => fmtDec(v, 2), tint: 'roas', width: 70 },
+  { key: 'cpc', label: 'CPC', fmt: fmtInt, width: 80 },
+  { key: 'ctr', label: 'CTR', fmt: fmtPct, tint: 'rate', width: 80 },
+  { key: 'cr', label: 'CR', fmt: fmtPct, tint: 'rate', width: 80 },
+  { key: 'cpm', label: 'CPM', fmt: fmtInt, width: 90 },
+  { key: 'hien_thi', label: 'Hiển thị', fmt: fmtInt, width: 90 },
+  { key: 'clicks', label: 'Click', fmt: fmtInt, width: 80 },
+  { key: 'orders', label: 'Đơn', fmt: fmtInt, tint: 'count', width: 70 },
+  { key: 'aov', label: 'AOV', fmt: fmtInt, width: 90 },
 ]
+
+/** Subtle per-column tinting (returned as inline-style background for cells). */
+function tintBg(tint: ColTint): string | undefined {
+  if (!tint) return undefined
+  switch (tint) {
+    case 'gmv':
+      return 'rgba(34,197,94,.04)' // green
+    case 'cost':
+      return 'rgba(248,113,113,.04)' // red
+    case 'roas':
+      return 'rgba(96,165,250,.05)' // blue
+    case 'rate':
+      return 'rgba(168,85,247,.035)' // purple
+    case 'count':
+      return 'rgba(251,191,36,.035)' // amber
+  }
+}
+function tintHeaderColor(tint: ColTint): string {
+  switch (tint) {
+    case 'gmv':
+      return '#34d399'
+    case 'cost':
+      return '#fca5a5'
+    case 'roas':
+      return '#93c5fd'
+    case 'rate':
+      return '#c4b5fd'
+    case 'count':
+      return '#fcd34d'
+    default:
+      return '#94a3b8'
+  }
+}
 
 export default function ShopeeProductDrilldown({
   drilldown,
@@ -162,23 +203,40 @@ export default function ShopeeProductDrilldown({
 
       {/* Table */}
       <div
+        className="scroll-thin"
         style={{
           border: '1px solid rgba(255,255,255,.08)',
           borderRadius: 10,
           overflow: 'auto',
+          maxHeight: 640,
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, color: '#cbd5e1' }}>
-          <thead>
-            <tr style={{ background: 'rgba(255,255,255,.04)' }}>
-              <th style={thStyle(40)}>#</th>
-              <th style={thStyle()}>Sản phẩm</th>
+        <table
+          style={{
+            width: '100%',
+            minWidth: 1180,
+            borderCollapse: 'collapse',
+            fontSize: 12.5,
+            color: '#cbd5e1',
+          }}
+        >
+          <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+            <tr style={{ background: '#11203a' }}>
+              <th style={thStyle(36)}>#</th>
+              <th style={thStyle(280)}>Sản phẩm</th>
               {COLS.map(c => (
-                <th key={c.key} style={thStyle(undefined, 'right')}>
+                <th
+                  key={c.key}
+                  style={{
+                    ...thStyle(c.width, 'right'),
+                    color: tintHeaderColor(c.tint),
+                    background: tintBg(c.tint) ?? '#11203a',
+                  }}
+                >
                   {c.label}
                 </th>
               ))}
-              <th style={thStyle(60, 'right')}>Camps</th>
+              <th style={thStyle(56, 'right')}>Camps</th>
             </tr>
           </thead>
           <tbody>
@@ -202,22 +260,49 @@ export default function ShopeeProductDrilldown({
             {drilldown.rows.length > 0 && (
               <tr
                 style={{
-                  borderTop: '2px solid rgba(255,255,255,.15)',
-                  background: 'rgba(96,165,250,.08)',
+                  borderTop: '2px solid rgba(96,165,250,.35)',
+                  background: 'rgba(96,165,250,.10)',
                   fontWeight: 700,
+                  position: 'sticky',
+                  bottom: 0,
                 }}
               >
                 <td style={tdStyle}></td>
-                <td style={{ ...tdStyle, fontWeight: 800, color: '#f1f5f9' }}>TỔNG</td>
+                <td
+                  style={{
+                    ...tdStyle,
+                    fontWeight: 800,
+                    color: '#f1f5f9',
+                    letterSpacing: '.04em',
+                    textTransform: 'uppercase',
+                    fontSize: 12,
+                  }}
+                >
+                  Tổng
+                </td>
                 {COLS.map(c => (
                   <td
                     key={c.key}
-                    style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                    style={{
+                      ...tdStyle,
+                      textAlign: 'right',
+                      fontVariantNumeric: 'tabular-nums',
+                      background: tintBg(c.tint),
+                      color: '#f1f5f9',
+                      fontWeight: 700,
+                    }}
                   >
                     {formatCell(drilldown.total, c.key, c.fmt)}
                   </td>
                 ))}
-                <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                <td
+                  style={{
+                    ...tdStyle,
+                    textAlign: 'right',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: '#cbd5e1',
+                  }}
+                >
                   {drilldown.total.n_camps}
                 </td>
               </tr>
@@ -250,17 +335,41 @@ function ProductRow({
           borderTop: '1px solid rgba(255,255,255,.05)',
           cursor: 'pointer',
           background: expanded ? 'rgba(255,255,255,.03)' : undefined,
+          transition: 'background .12s',
+        }}
+        onMouseEnter={e => {
+          ;(e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,.045)'
+        }}
+        onMouseLeave={e => {
+          ;(e.currentTarget as HTMLTableRowElement).style.background = expanded ? 'rgba(255,255,255,.03)' : ''
         }}
       >
-        <td style={{ ...tdStyle, color: '#64748b', fontSize: 11.5 }}>{index}</td>
-        <td style={{ ...tdStyle, color: nameColor, fontWeight: row.is_undefined ? 500 : 600 }}>
-          <span style={{ display: 'inline-block', width: 14, color: '#64748b', fontSize: 11 }}>
+        <td style={{ ...tdStyle, color: '#64748b', fontSize: 11.5, textAlign: 'center' }}>{index}</td>
+        <td
+          style={{
+            ...tdStyle,
+            color: nameColor,
+            fontWeight: row.is_undefined ? 500 : 600,
+            lineHeight: 1.4,
+            wordBreak: 'break-word',
+            paddingRight: 16,
+          }}
+        >
+          <span style={{ display: 'inline-block', width: 14, color: '#64748b', fontSize: 10 }}>
             {expanded ? '▼' : '▶'}
           </span>{' '}
           {row.ten_define}
         </td>
         {COLS.map(c => (
-          <td key={c.key} style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+          <td
+            key={c.key}
+            style={{
+              ...tdStyle,
+              textAlign: 'right',
+              fontVariantNumeric: 'tabular-nums',
+              background: tintBg(c.tint),
+            }}
+          >
             {formatCell(row, c.key, c.fmt)}
           </td>
         ))}
@@ -277,7 +386,18 @@ function ProductRow({
             }}
           >
             <td style={tdStyle}></td>
-            <td style={{ ...tdStyle, paddingLeft: 32, color: '#94a3b8' }}>└ {camp.name}</td>
+            <td
+              style={{
+                ...tdStyle,
+                paddingLeft: 32,
+                color: '#94a3b8',
+                lineHeight: 1.4,
+                wordBreak: 'break-word',
+              }}
+            >
+              <span style={{ color: '#475569' }}>└ </span>
+              {camp.name}
+            </td>
             {COLS.map(c => (
               <td
                 key={c.key}
@@ -286,6 +406,7 @@ function ProductRow({
                   textAlign: 'right',
                   color: '#94a3b8',
                   fontVariantNumeric: 'tabular-nums',
+                  background: tintBg(c.tint),
                 }}
               >
                 {formatCell(camp, c.key, c.fmt)}

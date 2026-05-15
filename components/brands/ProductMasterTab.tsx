@@ -235,6 +235,7 @@ export default function ProductMasterTab({ brandName, onToast }: Props) {
       </datalist>
 
       <div
+        className="scroll-thin"
         style={{
           border: '1px solid rgba(255,255,255,.08)',
           borderRadius: 10,
