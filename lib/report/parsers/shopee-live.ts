@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import type { PivotRow } from './types'
+import { readShopeeSheet } from './shopee-common'
 
 // NOTE: column names DIFFER from CPC/Branding (per Brief V9.1 mục 4 file 3)
 //   "Lượt xem" (no "Số" prefix)
@@ -8,11 +9,8 @@ import type { PivotRow } from './types'
 const REQUIRED_COLS = ['Doanh số', 'Chi phí', 'Lượt xem', 'Số đơn hàng']
 
 /**
- * Parse Shopee Livestream CSV file.
- * Structure: rows 1-10 = metadata, row 11 = blank, row 12 = headers, rows 13+ = data.
- * Skip 11 rows → header on row 12.
- * All rows → single group "Tối ưu doanh thu".
- * clicks = null (column doesn't exist).
+ * Parse Shopee Livestream CSV. Header row found adaptively (chi tiết vs tổng
+ * quan variants). All rows → single group "Tối ưu doanh thu". clicks=null.
  */
 export async function parseShopeeLive(file: File): Promise<PivotRow[]> {
   const buf = await file.arrayBuffer()
@@ -20,16 +18,8 @@ export async function parseShopeeLive(file: File): Promise<PivotRow[]> {
   const ws = wb.Sheets[wb.SheetNames[0]]
   if (!ws) throw new Error('File CSV trống hoặc không hợp lệ')
 
-  // Skip 11 rows → header on row 12
-  const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { range: 11, defval: null })
-
+  const data = readShopeeSheet(ws, REQUIRED_COLS, 'File Live')
   if (data.length === 0) return []
-
-  for (const col of REQUIRED_COLS) {
-    if (!(col in data[0])) {
-      throw new Error(`File Live: không tìm thấy cột "${col}". Sàn có thể đã đổi format.`)
-    }
-  }
 
   const gmv = data.reduce((s, r) => s + (Number(r['Doanh số']) || 0), 0)
   const cost = data.reduce((s, r) => s + (Number(r['Chi phí']) || 0), 0)

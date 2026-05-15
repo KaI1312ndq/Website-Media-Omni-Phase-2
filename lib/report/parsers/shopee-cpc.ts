@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import type { PivotRow } from './types'
+import { readShopeeSheet } from './shopee-common'
 
 const REQUIRED_COLS = [
   'Loại Dịch vụ Hiển thị',
@@ -13,10 +14,9 @@ const REQUIRED_COLS = [
 const GROUP_ORDER = ['Shop GMV Max', 'Dịch vụ Hiển thị Sản phẩm', 'Dịch vụ Hiển thị Shop'] as const
 
 /**
- * Parse Shopee CPC CSV file.
- * Structure: rows 1-6 = metadata, row 7 = blank, row 8 = headers, rows 9+ = data.
- * Skip 7 rows → header on row 8 (0-indexed row 7).
- * Empty "Loại Dịch vụ Hiển thị" → group "Shop GMV Max".
+ * Parse Shopee CPC CSV. Header row is found adaptively (chi tiết vs tổng quan
+ * variants exist with different metadata heights). Empty
+ * "Loại Dịch vụ Hiển thị" → group "Shop GMV Max".
  */
 export async function parseShopeeCPC(file: File): Promise<PivotRow[]> {
   const buf = await file.arrayBuffer()
@@ -24,18 +24,8 @@ export async function parseShopeeCPC(file: File): Promise<PivotRow[]> {
   const ws = wb.Sheets[wb.SheetNames[0]]
   if (!ws) throw new Error('File CSV trống hoặc không hợp lệ')
 
-  // Skip 7 rows (range=7 means row 7 = 0-indexed line 7 = "row 8" in 1-indexed → header)
-  const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { range: 7, defval: null })
-
+  const data = readShopeeSheet(ws, REQUIRED_COLS, 'File CPC')
   if (data.length === 0) return []
-
-  // Verify required columns
-  const firstRow = data[0]
-  for (const col of REQUIRED_COLS) {
-    if (!(col in firstRow)) {
-      throw new Error(`File CPC: không tìm thấy cột "${col}". Sàn có thể đã đổi format.`)
-    }
-  }
 
   // Group by "Loại Dịch vụ Hiển thị" — empty → "Shop GMV Max"
   const groups: Record<string, Record<string, unknown>[]> = {

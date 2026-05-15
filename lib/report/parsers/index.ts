@@ -14,6 +14,15 @@ export { buildTiktokPivot, tiktokToAutoFill } from './tiktok-pivot'
 /**
  * Detect Shopee file type by filename. Returns null if not matched (user
  * should pick manually). Case-insensitive, normalized.
+ *
+ * Handles both Shopee export variants:
+ *   - "Chi tiết" (single campaign):  "Báo cáo chi tiết Dịch vụ Hiển thị ..."
+ *   - "Tổng quan" (multi-campaign):  "Dữ liệu tổng quan Dịch vụ Hiển thị ..."
+ *
+ * Order matters: Branding contains "thương hiệu" (unique), check it first.
+ * Live: filename always contains "livestream" — either as "Quảng cáo
+ * Livestream" (chi tiết) or "Dịch vụ Hiển thị Livestream" (tổng quan).
+ * CPC: anything else with "dịch vụ hiển thị shopee" or shopee CPC keywords.
  */
 export function detectFileType(filename: string): ShopeeFileType | null {
   const norm = filename
@@ -21,8 +30,8 @@ export function detectFileType(filename: string): ShopeeFileType | null {
     .toLowerCase()
     .replace(/[+_\-\s]+/g, ' ')
 
-  if (/quảng cáo livestream/.test(norm)) return 'shopee_live'
   if (/tăng nhận diện thương hiệu/.test(norm)) return 'shopee_branding'
+  if (/livestream/.test(norm)) return 'shopee_live'
   if (/dịch vụ hiển thị shopee/.test(norm)) return 'shopee_cpc'
   return null
 }

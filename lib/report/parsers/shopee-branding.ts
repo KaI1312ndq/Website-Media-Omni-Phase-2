@@ -1,12 +1,21 @@
 import * as XLSX from 'xlsx'
 import type { PivotRow } from './types'
+import { readShopeeSheet } from './shopee-common'
 
 const REQUIRED_COLS = ['Doanh số', 'Chi phí', 'Số lượt xem', 'Số lượt click', 'Sản phẩm đã bán']
 
 /**
- * Parse Shopee Branding (Tăng nhận diện) CSV file.
- * Structure: rows 1-8 = metadata, rows 9-10 = blank, row 11 = headers, rows 12+ = data.
- * All rows → single group "Trang kết quả tìm kiếm".
+ * Parse Shopee Branding (Tăng nhận diện thương hiệu) CSV.
+ *
+ * Shopee exports 2 variants of this report — header row position differs:
+ *   - "Báo cáo chi tiết ..." (single campaign): header around row 11
+ *   - "Báo cáo Dịch vụ Hiển thị Tăng nhận diện..." aka "Tổng quan"
+ *     (multi-campaign): header around row 7
+ * readShopeeSheet finds the header row adaptively by scanning for required
+ * column names, so both variants work without hardcoded `range:`.
+ *
+ * All data rows → single group "Trang kết quả tìm kiếm" (sums across all
+ * campaigns when the file is the tổng quan variant).
  */
 export async function parseShopeeBranding(file: File): Promise<PivotRow[]> {
   const buf = await file.arrayBuffer()
@@ -14,16 +23,8 @@ export async function parseShopeeBranding(file: File): Promise<PivotRow[]> {
   const ws = wb.Sheets[wb.SheetNames[0]]
   if (!ws) throw new Error('File CSV trống hoặc không hợp lệ')
 
-  // Skip 10 rows → header on row 11
-  const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { range: 10, defval: null })
-
+  const data = readShopeeSheet(ws, REQUIRED_COLS, 'File Branding')
   if (data.length === 0) return []
-
-  for (const col of REQUIRED_COLS) {
-    if (!(col in data[0])) {
-      throw new Error(`File Branding: không tìm thấy cột "${col}". Sàn có thể đã đổi format.`)
-    }
-  }
 
   const gmv = data.reduce((s, r) => s + (Number(r['Doanh số']) || 0), 0)
   const cost = data.reduce((s, r) => s + (Number(r['Chi phí']) || 0), 0)

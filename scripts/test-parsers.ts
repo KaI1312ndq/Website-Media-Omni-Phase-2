@@ -84,7 +84,7 @@ async function main() {
   assertEq(shop?.gmv, 425699454, 'Shop — gmv')
   assertEq(shop?.cost, 6892346, 'Shop — cost')
 
-  console.log('\n=== parseShopeeBranding ===')
+  console.log('\n=== parseShopeeBranding (chi tiết variant) ===')
   const brandFile = await readAsFile(join(FIXTURES, 'shopee_branding_sample.csv'), 'brand.csv')
   const brandRows = await parseShopeeBranding(brandFile)
   assertEq(brandRows.length, 1, 'returns 1 row')
@@ -93,6 +93,33 @@ async function main() {
   assertEq(brandRows[0]?.hien_thi, 3161, 'Branding — hien_thi')
   assertEq(brandRows[0]?.clicks, 760, 'Branding — clicks')
   assertEq(brandRows[0]?.orders, 321, 'Branding — orders (Sản phẩm đã bán)')
+
+  console.log('\n=== parseShopeeBranding (tổng quan variant) ===')
+  // File "Dữ+liệu+tổng+quan+tăng+nhận+diện+thương+hiệu-08_05_2026-14_05_2026.csv"
+  // Header on row 7 (not row 11). Adaptive detection should handle it.
+  // Data: row "T4_Thương hiệu" gmv=140274594 cost=23388897 hien_thi=10120
+  //       clicks=2737 orders=883 (Sản phẩm đã bán); other rows are 0.
+  const brandFile2 = await readAsFile(join(FIXTURES, 'shopee_branding_tongquan_sample.csv'), 'brand.csv')
+  const brandRows2 = await parseShopeeBranding(brandFile2)
+  assertEq(brandRows2.length, 1, 'tổng quan returns 1 row (aggregated)')
+  assertEq(brandRows2[0]?.gmv, 140274594, 'tổng quan — gmv summed across campaigns')
+  assertEq(brandRows2[0]?.cost, 23388897, 'tổng quan — cost summed')
+  assertEq(brandRows2[0]?.hien_thi, 10120, 'tổng quan — hien_thi')
+  assertEq(brandRows2[0]?.clicks, 2737, 'tổng quan — clicks')
+  assertEq(brandRows2[0]?.orders, 883, 'tổng quan — orders')
+
+  // Detect should match the tổng quan filename too
+  assertEq(
+    detectFileType('Dữ+liệu+tổng+quan+tăng+nhận+diện+thương+hiệu-08_05_2026-14_05_2026.csv'),
+    'shopee_branding',
+    'tổng quan filename → shopee_branding',
+  )
+  // Livestream tổng quan
+  assertEq(
+    detectFileType('Dữ+liệu+tổng+quan+Dịch+vụ+Hiển+thị+Livestream+-08_05_2026-14_05_2026.csv'),
+    'shopee_live',
+    'tổng quan Live filename → shopee_live',
+  )
 
   console.log('\n=== parseShopeeLive ===')
   const liveFile = await readAsFile(join(FIXTURES, 'shopee_live_sample.csv'), 'live.csv')
