@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, SessionUser } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
@@ -109,6 +109,13 @@ export default function BrandsHubPage() {
   const [toast, setToast] = useState<{ msg: string; type?: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [detailTab, setDetailTab] = useState<DetailTab>('context')
+  const [productCounts, setProductCounts] = useState<{
+    shopee: Record<string, number>
+    tiktok: Record<string, number>
+  }>({ shopee: {}, tiktok: {} })
+  const [creating, setCreating] = useState(false)
+  const [createForm, setCreateForm] = useState({ brand_name: '', assigned_members: 'all' })
+  const [createBusy, setCreateBusy] = useState(false)
 
   function showToast(msg: string, type = 'success') {
     setToast({ msg, type })
@@ -124,15 +131,61 @@ export default function BrandsHubPage() {
     setUser(u)
   }, [router])
 
-  useEffect(() => {
-    if (!user) return
+  const loadBrands = useCallback(() => {
     setLoading(true)
     fetch('/api/brands?all=1')
       .then(r => r.json())
       .then(j => setBrands(j.data || []))
       .catch(() => setBrands([]))
       .finally(() => setLoading(false))
-  }, [user])
+  }, [])
+
+  const loadCounts = useCallback(() => {
+    fetch('/api/products/counts')
+      .then(r => r.json())
+      .then(j => setProductCounts({ shopee: j.shopee || {}, tiktok: j.tiktok || {} }))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    loadBrands()
+    loadCounts()
+  }, [user, loadBrands, loadCounts])
+
+  async function submitCreate() {
+    const name = createForm.brand_name.trim()
+    if (!name) {
+      showToast('Cần nhập tên store', 'error')
+      return
+    }
+    if (brands.some(b => b.brand_name.toLowerCase() === name.toLowerCase())) {
+      showToast(`Store "${name}" đã tồn tại`, 'error')
+      return
+    }
+    setCreateBusy(true)
+    try {
+      const r = await fetch('/api/brands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          brand_name: name,
+          assigned_members: createForm.assigned_members.trim() || 'all',
+        }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Lỗi tạo store')
+      showToast(`Đã tạo store "${name}"`)
+      setCreating(false)
+      setCreateForm({ brand_name: '', assigned_members: 'all' })
+      loadBrands()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Lỗi tạo store', 'error')
+    } finally {
+      setCreateBusy(false)
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -226,6 +279,15 @@ export default function BrandsHubPage() {
           style={{ padding: 14, maxHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}
         >
           <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <button
+                className="btn-p"
+                onClick={() => setCreating(true)}
+                style={{ flex: 1, padding: '8px 12px', fontSize: 12.5, fontWeight: 700 }}
+              >
+                + Thêm store
+              </button>
+            </div>
             <input
               type="search"
               placeholder="Tìm brand / ngành / SP..."
@@ -321,6 +383,36 @@ export default function BrandsHubPage() {
                   <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {b.industry && <span>{b.industry}</span>}
                     {b.product_type && <span>· {b.product_type}</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        background: 'rgba(249,115,22,.12)',
+                        color: '#fb923c',
+                        fontFamily: 'var(--font-mono), "Be Vietnam Pro", monospace',
+                      }}
+                      title={`${productCounts.shopee[b.brand_name] ?? 0} sản phẩm Shopee đã định nghĩa`}
+                    >
+                      Shopee {productCounts.shopee[b.brand_name] ?? 0}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        background: 'rgba(168,85,247,.12)',
+                        color: '#a78bfa',
+                        fontFamily: 'var(--font-mono), "Be Vietnam Pro", monospace',
+                      }}
+                      title={`${productCounts.tiktok[b.brand_name] ?? 0} sản phẩm TikTok đã định nghĩa`}
+                    >
+                      TikTok {productCounts.tiktok[b.brand_name] ?? 0}
+                    </span>
                   </div>
                 </button>
               )
@@ -447,8 +539,99 @@ export default function BrandsHubPage() {
           )}
         </div>
       </div>
+
+      {creating && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !createBusy && setCreating(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,.6)',
+            zIndex: 999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <form
+            onClick={e => e.stopPropagation()}
+            onSubmit={e => {
+              e.preventDefault()
+              if (!createBusy) submitCreate()
+            }}
+            style={{
+              background: '#0f172a',
+              border: '1px solid rgba(255,255,255,.1)',
+              borderRadius: 12,
+              padding: 20,
+              maxWidth: 480,
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#f1f5f9' }}>Thêm store mới</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#cbd5e1' }}>Tên store *</label>
+              <input
+                type="text"
+                value={createForm.brand_name}
+                onChange={e => setCreateForm(f => ({ ...f, brand_name: e.target.value }))}
+                placeholder="Vd: 4PM, Yumvita, EUBOS..."
+                autoFocus
+                required
+                disabled={createBusy}
+                style={createInputStyle}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#cbd5e1' }}>Assigned members</label>
+              <input
+                type="text"
+                value={createForm.assigned_members}
+                onChange={e => setCreateForm(f => ({ ...f, assigned_members: e.target.value }))}
+                placeholder='"all" hoặc username1,username2'
+                disabled={createBusy}
+                style={createInputStyle}
+              />
+              <div style={{ fontSize: 10.5, color: '#64748b' }}>
+                Để "all" cho tất cả thành viên, hoặc list username cách nhau dấu phẩy.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button
+                type="button"
+                className="btn-s"
+                onClick={() => setCreating(false)}
+                disabled={createBusy}
+              >
+                Huỷ
+              </button>
+              <button type="submit" className="btn-p" disabled={createBusy}>
+                {createBusy ? 'Đang tạo...' : 'Tạo store'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </>
   )
+}
+
+const createInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 12px',
+  background: 'rgba(255,255,255,.04)',
+  border: '1px solid rgba(255,255,255,.12)',
+  borderRadius: 8,
+  color: '#e2e8f0',
+  fontSize: 13,
+  fontFamily: 'inherit',
+  outline: 'none',
 }
 
 function FieldEditor({
