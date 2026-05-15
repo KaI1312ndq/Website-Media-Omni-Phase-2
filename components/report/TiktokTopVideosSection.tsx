@@ -91,9 +91,13 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
 
   const valuesText = useMemo(() => {
     const lines = data.videos.map(v =>
-      [v.video_title, ...COLS.map(c => formatCell(v, c.key, c.fmt))].join('\t'),
+      [
+        v.tiktok_account ? `@${v.tiktok_account}` : '',
+        defineFor(v, data.ten_define_map),
+        ...COLS.map(c => formatCell(v, c.key, c.fmt)),
+      ].join('\t'),
     )
-    const subtotal = [`Subtotal`, ...COLS.map(c => formatCell(data.subtotal, c.key, c.fmt))].join('\t')
+    const subtotal = [`Subtotal`, '', ...COLS.map(c => formatCell(data.subtotal, c.key, c.fmt))].join('\t')
     return [...lines, subtotal].join('\n')
   }, [data])
 
@@ -190,7 +194,7 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
         <table
           style={{
             width: '100%',
-            minWidth: 1200,
+            minWidth: 1360,
             borderCollapse: 'collapse',
             fontSize: 12.5,
             color: '#cbd5e1',
@@ -199,7 +203,8 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
           <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
             <tr style={{ background: '#11203a' }}>
               <th style={thStyle(36)}>#</th>
-              <th style={thStyle(280)}>Video</th>
+              <th style={thStyle(260)}>Video</th>
+              <th style={thStyle(180)}>Sản phẩm</th>
               {COLS.map(c => (
                 <th
                   key={c.key}
@@ -269,12 +274,41 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
                       <span style={{ color: '#94a3b8' }} title={v.video_title}>
                         {shortVideoTitle(v.video_title)}
                       </span>
-                      {define && (
-                        <span style={{ color: '#93c5fd' }} title={define}>
-                          → {define}
-                        </span>
-                      )}
                     </div>
+                  </td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      lineHeight: 1.35,
+                      wordBreak: 'break-word',
+                      paddingRight: 16,
+                    }}
+                  >
+                    {define ? (
+                      <span
+                        style={{
+                          color: '#93c5fd',
+                          fontWeight: 600,
+                          fontSize: 12,
+                        }}
+                        title={define}
+                      >
+                        {define}
+                      </span>
+                    ) : v.product_id ? (
+                      <span
+                        style={{
+                          color: '#fbbf24',
+                          fontSize: 11,
+                          fontStyle: 'italic',
+                        }}
+                        title={`Product ID ${v.product_id} chưa có trong Master`}
+                      >
+                        ⚠️ chưa định nghĩa
+                      </span>
+                    ) : (
+                      <span style={{ color: '#475569', fontSize: 11 }}>—</span>
+                    )}
                   </td>
                   {COLS.map(c => (
                     <td
@@ -295,7 +329,7 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
 
             {data.videos.length === 0 && (
               <tr>
-                <td colSpan={2 + COLS.length} style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={3 + COLS.length} style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>
                   Không có video nào trong file.
                 </td>
               </tr>
@@ -325,6 +359,7 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
                 >
                   Subtotal Top {isAll ? data.total_videos : data.videos.length}
                 </td>
+                <td style={tdStyle}></td>
                 {COLS.map(c => (
                   <td
                     key={c.key}
