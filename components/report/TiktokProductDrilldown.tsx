@@ -383,9 +383,9 @@ function ProductRow({
               >
                 <span style={{ color: '#475569' }}>└ </span>
                 {i + 1}.{' '}
-                {v.tiktok_account && <span style={{ color: '#cbd5e1' }}>@{v.tiktok_account} · </span>}
-                {v.video_title.slice(0, 80)}
-                {v.video_title.length > 80 ? '...' : ''}
+                <span style={{ color: '#cbd5e1' }} title={v.video_title || v.tiktok_account}>
+                  {shortVideoTitle(v.video_title)}
+                </span>
               </td>
               {COLS.map(c => (
                 <td
@@ -456,6 +456,42 @@ function CopyBtn({
       {labels[kind]}
     </button>
   )
+}
+
+/**
+ * Rút gọn tên video: loại bỏ @mentions + #hashtags + emoji-ish, giữ N từ đầu.
+ * Vd: "@Thanh Huyền · Nâng niu đôi bàn tay vì nó vất vả nhất rồiii 😊 @x #y"
+ *   → "Nâng niu đôi bàn tay…"
+ */
+function shortVideoTitle(raw: string, maxWords = 5): string {
+  if (!raw) return '(không tên)'
+  let s = raw
+  // TikTok title pattern: "@account · title". Drop part trước separator đầu tiên.
+  const SEP = /[\u00B7\u2022|]/
+  const sepIdx = s.search(SEP)
+  if (sepIdx >= 0) s = s.slice(sepIdx + 1)
+  // Strip remaining @mention / #hashtag tokens (whole token until next space).
+  s = s.replace(/[@#]\S+/g, ' ')
+  // Drop emoji + chars outside Latin/Vietnamese.
+  let out = ''
+  for (let i = 0; i < s.length; i++) {
+    const cc = s.charCodeAt(i)
+    if (cc >= 0xd800 && cc <= 0xdbff) {
+      i++
+      continue
+    }
+    if (cc > 0x1ef9) continue
+    out += s[i]
+  }
+  out = out
+    .replace(SEP, ' ')
+    .replace(/[\u2013\u2014\-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!out) return '(không tên)'
+  const words = out.split(' ').filter(Boolean)
+  if (words.length <= maxWords) return out
+  return words.slice(0, maxWords).join(' ') + '…'
 }
 
 function formatCell(row: object, key: string, fmt: (v: number) => string): string {
