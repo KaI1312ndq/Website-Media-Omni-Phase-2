@@ -123,7 +123,7 @@ export default function TiktokAuthSectionComponent({ section }: Props) {
   }, [section])
 
   const tableText = useMemo(() => {
-    const header = ['Nguồn', ...COLS.map(c => c.label), 'N'].join('\t')
+    const header = ['Nguồn', ...COLS.map(c => c.label), 'Số lượng video'].join('\t')
     const lines = allRowsForCopy.map(r =>
       [r.label, ...COLS.map(c => formatCell(r, c.key, c.fmt)), r.n].join('\t'),
     )
@@ -187,7 +187,7 @@ export default function TiktokAuthSectionComponent({ section }: Props) {
                   {c.label}
                 </th>
               ))}
-              <th style={thStyle(60, 'right')}>N</th>
+              <th style={thStyle(120, 'right')}>Số lượng video</th>
             </tr>
           </thead>
           <tbody>
@@ -363,7 +363,7 @@ function GrandTotalRow({ row }: { row: TiktokAuthTotalRow }) {
     <tr
       style={{
         borderTop: '2px solid rgba(96,165,250,.35)',
-        background: 'rgba(96,165,250,.10)',
+        background: '#162844',
         fontWeight: 700,
       }}
     >

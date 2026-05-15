@@ -365,7 +365,7 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
               <tr
                 style={{
                   borderTop: '2px solid rgba(96,165,250,.35)',
-                  background: 'rgba(96,165,250,.10)',
+                  background: '#162844',
                   fontWeight: 700,
                   position: 'sticky',
                   bottom: 0,

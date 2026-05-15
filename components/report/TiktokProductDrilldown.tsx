@@ -217,7 +217,7 @@ export default function TiktokProductDrilldown({ drilldown, brandName, topN, onT
                   {c.label}
                 </th>
               ))}
-              <th style={thStyle(70, 'right')}>Creatives</th>
+              <th style={thStyle(110, 'right')}>Số creative</th>
             </tr>
           </thead>
           <tbody>
@@ -262,7 +262,7 @@ export default function TiktokProductDrilldown({ drilldown, brandName, topN, onT
               <tr
                 style={{
                   borderTop: '2px solid rgba(96,165,250,.35)',
-                  background: 'rgba(96,165,250,.10)',
+                  background: '#162844',
                   fontWeight: 700,
                   position: 'sticky',
                   bottom: 0,

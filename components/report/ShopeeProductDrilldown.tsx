@@ -265,7 +265,7 @@ export default function ShopeeProductDrilldown({
                   {c.label}
                 </th>
               ))}
-              <th style={thStyle(56, 'right')}>Camps</th>
+              <th style={thStyle(100, 'right')}>Số campaign</th>
             </tr>
           </thead>
           <tbody>
@@ -302,7 +302,7 @@ export default function ShopeeProductDrilldown({
               <tr
                 style={{
                   borderTop: '2px solid rgba(96,165,250,.35)',
-                  background: 'rgba(96,165,250,.10)',
+                  background: '#162844',
                   fontWeight: 700,
                   position: 'sticky',
                   bottom: 0,
