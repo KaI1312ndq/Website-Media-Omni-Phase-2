@@ -239,8 +239,11 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
                       paddingRight: 16,
                     }}
                   >
-                    <div style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 12.5 }} title={v.video_title}>
-                      {shortVideoTitle(v.video_title)}
+                    <div
+                      style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 12.5 }}
+                      title={v.tiktok_account || '(không có account)'}
+                    >
+                      {v.tiktok_account ? `@${v.tiktok_account}` : '(không có account)'}
                     </div>
                     <div
                       style={{
@@ -250,9 +253,22 @@ export default function TiktokTopVideosSection({ data, topN, onTopNChange }: Pro
                         display: 'flex',
                         gap: 8,
                         flexWrap: 'wrap',
+                        alignItems: 'baseline',
                       }}
                     >
-                      {v.tiktok_account && <span>@{v.tiktok_account}</span>}
+                      {v.video_id && (
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono), monospace',
+                            color: '#64748b',
+                          }}
+                        >
+                          {v.video_id}
+                        </span>
+                      )}
+                      <span style={{ color: '#94a3b8' }} title={v.video_title}>
+                        {shortVideoTitle(v.video_title)}
+                      </span>
                       {define && (
                         <span style={{ color: '#93c5fd' }} title={define}>
                           → {define}

@@ -377,15 +377,31 @@ function ProductRow({
                   ...tdStyle,
                   paddingLeft: 32,
                   color: '#94a3b8',
-                  lineHeight: 1.4,
+                  lineHeight: 1.35,
                   wordBreak: 'break-word',
                 }}
               >
-                <span style={{ color: '#475569' }}>└ </span>
-                {i + 1}.{' '}
-                <span style={{ color: '#cbd5e1' }} title={v.video_title || v.tiktok_account}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ color: '#475569' }}>└</span>
+                  <span style={{ color: '#64748b' }}>{i + 1}.</span>
+                  <span
+                    style={{ color: '#cbd5e1', fontWeight: 600 }}
+                    title={v.tiktok_account || '(không có account)'}
+                  >
+                    {v.tiktok_account ? `@${v.tiktok_account}` : '(không có account)'}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    color: '#64748b',
+                    fontSize: 10.5,
+                    marginTop: 2,
+                    paddingLeft: 20,
+                  }}
+                  title={v.video_title}
+                >
                   {shortVideoTitle(v.video_title)}
-                </span>
+                </div>
               </td>
               {COLS.map(c => (
                 <td
