@@ -6,9 +6,10 @@ import { getSession, SessionUser } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
 import { Icon } from '@/lib/icons'
 import ProductMasterTab from '@/components/brands/ProductMasterTab'
+import ProductMasterTiktokTab from '@/components/brands/ProductMasterTiktokTab'
 import '@/app/(internal)/dashboard/dashboard.css'
 
-type DetailTab = 'context' | 'products'
+type DetailTab = 'context' | 'products' | 'products_tiktok'
 
 interface Brand {
   id: string
@@ -396,7 +397,8 @@ export default function BrandsHubPage() {
                 {(
                   [
                     { id: 'context', label: 'Bối cảnh' },
-                    { id: 'products', label: 'Sản phẩm' },
+                    { id: 'products', label: 'Sản phẩm Shopee' },
+                    { id: 'products_tiktok', label: 'Sản phẩm TikTok' },
                   ] as { id: DetailTab; label: string }[]
                 ).map(t => (
                   <button
@@ -436,8 +438,10 @@ export default function BrandsHubPage() {
                     />
                   ))}
                 </div>
-              ) : (
+              ) : detailTab === 'products' ? (
                 <ProductMasterTab brandName={selected.brand_name} onToast={showToast} />
+              ) : (
+                <ProductMasterTiktokTab brandName={selected.brand_name} onToast={showToast} />
               )}
             </>
           )}

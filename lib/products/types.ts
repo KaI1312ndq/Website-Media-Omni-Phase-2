@@ -26,3 +26,24 @@ export interface ParsedMasterRow {
   /** Tên define hiện có trong DB — KHÔNG ghi đè khi import. */
   existing_ten_define?: string | null
 }
+
+/* ── TikTok Product Master — Brief V12 ───────────────────────── */
+
+export interface TiktokMasterRow {
+  id?: string
+  brand_name: string
+  product_id: string
+  ten_tiktok: string | null
+  ten_define: string | null
+  category: string | null
+  updated_by?: string | null
+  updated_at?: string | null
+}
+
+export interface ParsedTiktokMasterRow {
+  product_id: string
+  ten_tiktok: string | null
+  category: string | null
+  exists?: boolean
+  existing_ten_define?: string | null
+}

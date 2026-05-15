@@ -64,6 +64,13 @@ import {
   type ProductDrilldown,
 } from '@/lib/report/parsers/shopee-product-drilldown'
 import { parseShopeeGroupFile, type GroupDetailFile } from '@/lib/report/parsers/shopee-group'
+import TiktokProductDrilldown from '@/components/report/TiktokProductDrilldown'
+import TiktokAuthSectionComp from '@/components/report/TiktokAuthSection'
+import {
+  buildTiktokSections,
+  type TiktokProductDrilldown as TPD,
+  type TiktokAuthSection as TAuth,
+} from '@/lib/report/parsers/tiktok-product-drilldown'
 import { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
 import TiktokPivotPreview from '@/components/report/TiktokPivotPreview'
 import UnifiedFileUploadZone from '@/components/report/UnifiedFileUploadZone'
@@ -135,6 +142,12 @@ function ReportPageInner() {
   const [drilldownLoading, setDrilldownLoading] = useState(false)
   // Map<campaign_name, GroupDetailFile> — file chi tiết nhóm user upload
   const [groupDetails, setGroupDetails] = useState<Map<string, GroupDetailFile>>(new Map())
+
+  // TikTok Drilldown (Phase 2D / Brief V12)
+  const [tiktokDrilldown, setTiktokDrilldown] = useState<TPD | null>(null)
+  const [tiktokAuth, setTiktokAuth] = useState<TAuth | null>(null)
+  const [tiktokTopN, setTiktokTopN] = useState<number>(10)
+  const [tiktokSectionsLoading, setTiktokSectionsLoading] = useState(false)
 
   // Step 1.5 — TikTok xlsx upload + parse (Phase 2B)
   const [tiktokFiles, setTiktokFiles] = useState<TiktokUploadedFiles>({
@@ -651,6 +664,55 @@ function ReportPageInner() {
   useEffect(() => {
     if (!uploadedFiles.shopee_cpc) setGroupDetails(new Map())
   }, [uploadedFiles.shopee_cpc])
+
+  // Build TikTok product drilldown + auth section (Phase 2D)
+  useEffect(() => {
+    if (step !== 1.5) return
+    const pgm = tiktokFiles.tiktok_pgm
+    if (!pgm || !selectedBrand) {
+      setTiktokDrilldown(null)
+      setTiktokAuth(null)
+      return
+    }
+    let cancelled = false
+    setTiktokSectionsLoading(true)
+    ;(async () => {
+      try {
+        const r = await fetch(`/api/products/tiktok?brand=${encodeURIComponent(selectedBrand)}`)
+        const j = await r.json()
+        const master = (j.data || []) as {
+          product_id: string
+          ten_define: string | null
+          ten_tiktok: string | null
+          category: string | null
+        }[]
+        const { drilldown, auth } = await buildTiktokSections(
+          pgm,
+          master.map(m => ({
+            brand_name: selectedBrand,
+            product_id: m.product_id,
+            ten_define: m.ten_define,
+            ten_tiktok: m.ten_tiktok,
+            category: m.category,
+          })),
+          tiktokTopN,
+        )
+        if (cancelled) return
+        setTiktokDrilldown(drilldown)
+        setTiktokAuth(auth)
+      } catch {
+        if (!cancelled) {
+          setTiktokDrilldown(null)
+          setTiktokAuth(null)
+        }
+      } finally {
+        if (!cancelled) setTiktokSectionsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [tiktokFiles.tiktok_pgm, selectedBrand, step, tiktokTopN])
 
   // Handlers cho file nhóm
   const handleUploadGroupFile = useCallback(async (campaignName: string, file: File) => {
@@ -3857,6 +3919,58 @@ function ReportPageInner() {
                     </h3>
                     <TiktokPivotPreview pivot={tiktokPivot} />
                   </div>
+                )}
+
+                {tiktokPivot && tiktokFiles.tiktok_pgm && selectedBrand && (
+                  <>
+                    <div className="rc" style={{ marginBottom: 14 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          marginBottom: 12,
+                        }}
+                      >
+                        <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Section 1 — TikTok theo sản phẩm</h3>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>
+                          Filter Product ID có trong Master · group theo Tên define
+                        </span>
+                      </div>
+                      {tiktokSectionsLoading && (
+                        <div style={{ padding: 16, fontSize: 12.5, color: '#94a3b8' }}>
+                          Đang tính drilldown TikTok...
+                        </div>
+                      )}
+                      {!tiktokSectionsLoading && tiktokDrilldown && (
+                        <TiktokProductDrilldown
+                          drilldown={tiktokDrilldown}
+                          brandName={selectedBrand}
+                          topN={tiktokTopN}
+                          onTopNChange={setTiktokTopN}
+                        />
+                      )}
+                    </div>
+
+                    <div className="rc" style={{ marginBottom: 14 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          marginBottom: 12,
+                        }}
+                      >
+                        <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Section 2 — TikTok theo loại video</h3>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>
+                          Phân loại Authorization · Thẻ SP + Video Kênh/KOC/Aff
+                        </span>
+                      </div>
+                      {!tiktokSectionsLoading && tiktokAuth && <TiktokAuthSectionComp section={tiktokAuth} />}
+                    </div>
+                  </>
                 )}
 
                 {/* Action bar */}

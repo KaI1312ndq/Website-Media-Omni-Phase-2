@@ -3,6 +3,19 @@ import type { TiktokPGMData } from './types'
 import { PGM_COLS, sumCol, verifyColumns } from './tiktok-common'
 
 /**
+ * Trả raw rows (chưa aggregate) — dùng cho drilldown Phase 2D.
+ * Product ID giữ dạng string để không mất precision (19 chữ số).
+ */
+export async function parseTiktokPGMRaw(file: File): Promise<Record<string, unknown>[]> {
+  const buf = await file.arrayBuffer()
+  const wb = XLSX.read(buf, { type: 'array' })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  if (!ws) throw new Error('File TikTok PGM trống hoặc không hợp lệ')
+  // raw: false để Product ID không bị scientific notation
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: null, raw: false })
+}
+
+/**
  * Parse TikTok PGM xlsx (creative data for product campaigns / creative_data...).
  * Sheet index 0 (often named "Data"). Header on row 1 (no metadata to skip).
  *

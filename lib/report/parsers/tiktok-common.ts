@@ -60,3 +60,20 @@ export const LGM_COLS = {
   // IMPORTANT: NOT "Net Cost" / "Chi phí ròng".
   cost: ['Cost', 'Chi phí'] as const,
 }
+
+/** Cột bổ sung cho drilldown Phase 2D — Brief V12.
+ *  Product ID + Creative type + Authorization type + Video meta. */
+export const PGM_DRILL_COLS = {
+  product_id: ['Product ID', 'ID sản phẩm'] as const,
+  creative_type: ['Creative type', 'Loại nội dung sáng tạo'] as const,
+  authorization_type: ['Authorization type', 'Loại uỷ quyền', 'Loại ủy quyền'] as const,
+  video_id: ['Video ID', 'ID video', 'Material ID'] as const,
+  video_title: [
+    'Video title',
+    'Tên video',
+    'Creative name',
+    'Tên nội dung sáng tạo',
+    'Material name',
+  ] as const,
+  tiktok_account: ['TikTok account', 'Tài khoản TikTok', 'Creator username', 'Tên người dùng'] as const,
+}
