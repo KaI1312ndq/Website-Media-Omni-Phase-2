@@ -91,6 +91,7 @@ export default function TiktokAuthSectionComponent({ section }: Props) {
     () => [
       { label: section.productCard.loai, ...flatten(section.productCard) },
       ...section.videoRows.map(r => ({ label: r.loai, ...flatten(r) })),
+      { label: section.videoKocAff.label, ...flatten(section.videoKocAff) },
       { label: section.videoSubtotal.label, ...flatten(section.videoSubtotal) },
       { label: section.grandTotal.label, ...flatten(section.grandTotal) },
     ],
@@ -170,6 +171,7 @@ export default function TiktokAuthSectionComponent({ section }: Props) {
             {section.videoRows.map(r => (
               <AuthRowComp key={r.loai} row={r} />
             ))}
+            <SubCatRow row={section.videoKocAff} />
             <SubtotalRow row={section.videoSubtotal} />
             <GrandTotalRow row={section.grandTotal} />
           </tbody>
@@ -205,6 +207,59 @@ function AuthRowComp({ row }: { row: TiktokAuthRow }) {
         </td>
       ))}
       <td style={{ ...tdStyle, textAlign: 'right', color: '#94a3b8' }}>{row.n}</td>
+    </tr>
+  )
+}
+
+function SubCatRow({ row }: { row: TiktokAuthTotalRow }) {
+  return (
+    <tr
+      style={{
+        borderTop: '1px dashed rgba(255,255,255,.07)',
+        background: 'rgba(168,85,247,.04)',
+        fontSize: 11.5,
+      }}
+    >
+      <td
+        style={{
+          ...tdStyle,
+          paddingLeft: 36,
+          color: '#a78bfa',
+          fontWeight: 500,
+          fontSize: 11.5,
+          fontStyle: 'italic',
+        }}
+      >
+        <span style={{ color: '#475569', marginRight: 6 }}>└</span>
+        {row.label}
+      </td>
+      {COLS.map(c => (
+        <td
+          key={c.key}
+          style={{
+            ...tdStyle,
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+            background: tintBg(c.tint),
+            color: '#cbd5e1',
+            fontSize: 11.5,
+            padding: '6px 12px',
+          }}
+        >
+          {formatCell(row as unknown as Record<string, unknown>, c.key, c.fmt)}
+        </td>
+      ))}
+      <td
+        style={{
+          ...tdStyle,
+          textAlign: 'right',
+          color: '#94a3b8',
+          fontSize: 11.5,
+          padding: '6px 12px',
+        }}
+      >
+        {row.n}
+      </td>
     </tr>
   )
 }

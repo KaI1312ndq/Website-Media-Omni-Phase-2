@@ -136,6 +136,8 @@ export interface TiktokAuthTotalRow {
 export interface TiktokAuthSection {
   productCard: TiktokAuthRow
   videoRows: TiktokAuthRow[] // sorted: Kênh → KOC → Aff
+  /** Sub-aggregate: gộp Video KOC + Video Aff (cat nhỏ hơn). */
+  videoKocAff: TiktokAuthTotalRow
   videoSubtotal: TiktokAuthTotalRow
   grandTotal: TiktokAuthTotalRow
 }
@@ -456,6 +458,14 @@ export function buildTiktokAuthSectionFromRaw(rawRows: Record<string, unknown>[]
     n: productCards.length,
   }
 
+  // Sub-aggregate: KOC + Aff (cat nhỏ hơn, dùng để so sánh Kênh vs Influencer)
+  const kocAffItems = [...(buckets.get('Video KOC') ?? []), ...(buckets.get('Video Aff') ?? [])]
+  const videoKocAff: TiktokAuthTotalRow = {
+    label: 'Video (KOC + Aff)',
+    ...aggregate(kocAffItems, cols),
+    n: kocAffItems.length,
+  }
+
   const videoSubtotal: TiktokAuthTotalRow = {
     label: 'Tổng Video',
     ...aggregate(videos, cols),
@@ -471,7 +481,7 @@ export function buildTiktokAuthSectionFromRaw(rawRows: Record<string, unknown>[]
     n: both.length,
   }
 
-  return { productCard, videoRows, videoSubtotal, grandTotal }
+  return { productCard, videoRows, videoKocAff, videoSubtotal, grandTotal }
 }
 
 /* ── Section "Top Videos" build ── */
