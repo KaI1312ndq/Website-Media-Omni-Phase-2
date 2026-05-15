@@ -14,6 +14,7 @@
 import { parseShopeeCPCRaw } from './shopee-cpc'
 import { normalizeMaSP } from '@/lib/products/parsers/master-xlsx'
 import type { ProductMasterRow } from '@/lib/products/types'
+import type { GroupDetailFile } from './shopee-group'
 
 export interface CampaignRow {
   name: string // Tên Dịch vụ Hiển thị
@@ -65,9 +66,25 @@ export interface ProductDrilldownTotal {
   n_camps: number
 }
 
+/** Mỗi campaign nhóm (Mã='-' và Loại=SP) cần kèm 1 file chi tiết. */
+export interface DetectedGroup {
+  /** Tên Dịch vụ Hiển thị từ main CPC — dùng để match file nhóm. */
+  campaign_name: string
+  /** Tổng metrics từ main CPC (verify với file nhóm). */
+  gmv: number
+  cost: number
+  hien_thi: number
+  clicks: number
+  orders: number
+  /** True nếu file nhóm đã được upload + parse. */
+  resolved: boolean
+}
+
 export interface ProductDrilldown {
   rows: ProductDrilldownRow[]
   total: ProductDrilldownTotal
+  /** Danh sách nhóm phát hiện — UI hiện slot upload cho từng nhóm. */
+  detectedGroups: DetectedGroup[]
   topN: number
   total_camps_in_file: number
   filtered_out: number
@@ -114,6 +131,9 @@ function toCampaign(row: Record<string, unknown>): CampaignRow {
 export interface BuildDrilldownOpts {
   topN?: number
   defineMap: Map<string, string> // ma_san_pham → ten_define
+  /** Files chi tiết nhóm — key = group_name. Khi có → distribute SP con
+   *  vào define groups thay cho row "🏷️ campaign nhóm" tổng. */
+  groupDetails?: Map<string, GroupDetailFile>
 }
 
 /** Build drilldown từ raw CPC rows + Master. */
@@ -123,6 +143,7 @@ export function buildDrilldownFromRaw(
 ): ProductDrilldown {
   const topN = opts.topN ?? 10
   const defineMap = opts.defineMap
+  const groupDetails = opts.groupDetails ?? new Map<string, GroupDetailFile>()
 
   // Filter chỉ "Dịch vụ Hiển thị Sản phẩm"
   const total_in_file = rawRows.length
@@ -132,30 +153,74 @@ export function buildDrilldownFromRaw(
   })
   const filtered_out = total_in_file - filtered.length
 
-  // Resolve key cho mỗi row
-  const enriched: Enriched[] = filtered.map(row => {
+  // ── Detect groups + resolve ──
+  const detectedGroups: DetectedGroup[] = []
+  const enriched: Enriched[] = []
+
+  for (const row of filtered) {
     const maRaw = row['Mã sản phẩm']
     const maNorm = normalizeMaSP(maRaw)
     const maStr = maNorm || String(maRaw ?? '').trim()
+    const tenDV = String(row['Tên Dịch vụ Hiển thị'] ?? '').trim() || '(campaign không tên)'
 
     if (!maStr || maStr === '-') {
-      const tenDV = String(row['Tên Dịch vụ Hiển thị'] ?? '').trim() || '(campaign không tên)'
-      return { row, key: `🏷️ ${tenDV}`, is_tong: true, is_undefined: false }
+      // Đây là CAMPAIGN NHÓM — cần kèm file chi tiết
+      const detail = groupDetails.get(tenDV)
+      detectedGroups.push({
+        campaign_name: tenDV,
+        gmv: num(row['Doanh số']),
+        cost: num(row['Chi phí']),
+        hien_thi: num(row['Số lượt xem']),
+        clicks: num(row['Số lượt click']),
+        orders: num(row['Sản phẩm đã bán']),
+        resolved: !!detail,
+      })
+
+      if (detail) {
+        // Distribute từng SP con vào enriched
+        for (const sub of detail.products) {
+          const subDefine = defineMap.get(sub.ma_san_pham)
+          const subRow: Record<string, unknown> = {
+            'Tên Dịch vụ Hiển thị': sub.ten_product,
+            'Mã sản phẩm': sub.ma_san_pham,
+            'Doanh số': sub.gmv,
+            'Chi phí': sub.cost,
+            'Số lượt xem': sub.hien_thi,
+            'Số lượt click': sub.clicks,
+            'Sản phẩm đã bán': sub.orders,
+            __from_group: tenDV, // marker để UI biết SP này từ nhóm nào
+          }
+          if (subDefine) {
+            enriched.push({ row: subRow, key: subDefine, is_tong: false, is_undefined: false })
+          } else {
+            enriched.push({
+              row: subRow,
+              key: `⚠️ Chưa định nghĩa: ${sub.ten_product.slice(0, 50)}`,
+              is_tong: false,
+              is_undefined: true,
+            })
+          }
+        }
+      } else {
+        // Chưa có file nhóm → giữ row tổng "🏷️" như cũ
+        enriched.push({ row, key: `🏷️ ${tenDV}`, is_tong: true, is_undefined: false })
+      }
+      continue
     }
 
+    // SP có mã → resolve qua Master
     const define = defineMap.get(maNorm)
     if (define) {
-      return { row, key: define, is_tong: false, is_undefined: false }
+      enriched.push({ row, key: define, is_tong: false, is_undefined: false })
+    } else {
+      enriched.push({
+        row,
+        key: `⚠️ Chưa định nghĩa: ${tenDV.slice(0, 50)}`,
+        is_tong: false,
+        is_undefined: true,
+      })
     }
-
-    const tenDV = String(row['Tên Dịch vụ Hiển thị'] ?? '').trim()
-    return {
-      row,
-      key: `⚠️ Chưa định nghĩa: ${tenDV.slice(0, 50)}`,
-      is_tong: false,
-      is_undefined: true,
-    }
-  })
+  }
 
   // Group
   const groups = new Map<string, Enriched[]>()
@@ -226,7 +291,14 @@ export function buildDrilldownFromRaw(
     }
   })()
 
-  return { rows, total, topN, total_camps_in_file: total_in_file, filtered_out }
+  return {
+    rows,
+    total,
+    detectedGroups,
+    topN,
+    total_camps_in_file: total_in_file,
+    filtered_out,
+  }
 }
 
 /** Convenience: parse file + build drilldown one-shot. */
@@ -234,6 +306,7 @@ export async function buildShopeeProductDrilldown(
   cpcFile: File,
   master: ProductMasterRow[],
   topN: number = 10,
+  groupDetails?: Map<string, GroupDetailFile>,
 ): Promise<ProductDrilldown> {
   const raw = await parseShopeeCPCRaw(cpcFile)
   const defineMap = new Map<string, string>()
@@ -242,5 +315,5 @@ export async function buildShopeeProductDrilldown(
       defineMap.set(normalizeMaSP(m.ma_san_pham), m.ten_define.trim())
     }
   }
-  return buildDrilldownFromRaw(raw, { defineMap, topN })
+  return buildDrilldownFromRaw(raw, { defineMap, topN, groupDetails })
 }

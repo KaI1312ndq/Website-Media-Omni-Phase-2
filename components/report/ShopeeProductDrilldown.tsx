@@ -7,7 +7,7 @@
  * Filter "Dịch vụ Hiển thị Sản phẩm" + group theo Tên define.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type {
   ProductDrilldown,
   ProductDrilldownRow,
@@ -21,6 +21,10 @@ interface Props {
   brandName?: string
   topN: number
   onTopNChange: (n: number) => void
+  /** Upload file chi tiết nhóm — caller parse & store, sau đó rebuild drilldown. */
+  onUploadGroupFile?: (campaignName: string, file: File) => void
+  /** Xoá file nhóm đã upload (nếu user chọn nhầm). */
+  onRemoveGroupFile?: (campaignName: string) => void
 }
 
 type TopNOption = 5 | 10 | 20 | 'All'
@@ -92,6 +96,8 @@ export default function ShopeeProductDrilldown({
   brandName,
   topN,
   onTopNChange,
+  onUploadGroupFile,
+  onRemoveGroupFile,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [copiedKind, setCopiedKind] = useState<'values' | 'table' | null>(null)
@@ -199,6 +205,14 @@ export default function ShopeeProductDrilldown({
           </a>{' '}
           → tab Sản phẩm để upload Master.
         </div>
+      )}
+
+      {drilldown.detectedGroups.length > 0 && (
+        <GroupUploadPanel
+          groups={drilldown.detectedGroups}
+          onUpload={onUploadGroupFile}
+          onRemove={onRemoveGroupFile}
+        />
       )}
 
       {/* Table */}
@@ -463,6 +477,152 @@ function CopyBtn({
     >
       {labels[kind]}
     </button>
+  )
+}
+
+/* ── Group upload panel ── */
+function GroupUploadPanel({
+  groups,
+  onUpload,
+  onRemove,
+}: {
+  groups: import('@/lib/report/parsers/shopee-product-drilldown').DetectedGroup[]
+  onUpload?: (name: string, file: File) => void
+  onRemove?: (name: string) => void
+}) {
+  const resolvedCount = groups.filter(g => g.resolved).length
+  const pending = groups.length - resolvedCount
+  const allResolved = pending === 0
+  return (
+    <div
+      style={{
+        border: `1px solid ${allResolved ? 'rgba(34,197,94,.3)' : 'rgba(96,165,250,.3)'}`,
+        background: allResolved ? 'rgba(34,197,94,.05)' : 'rgba(96,165,250,.05)',
+        borderRadius: 10,
+        padding: '12px 14px',
+        marginBottom: 12,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginBottom: 10,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 700, color: allResolved ? '#34d399' : '#93c5fd' }}>
+          {allResolved
+            ? `Đã đính kèm ${groups.length}/${groups.length} file chi tiết nhóm`
+            : `Phát hiện ${groups.length} campaign nhóm — cần ${pending} file chi tiết`}
+        </div>
+        <div style={{ fontSize: 11.5, color: '#94a3b8' }}>
+          File "Chiến Dịch Nhóm" để chia số liệu xuống đúng từng SP — nếu thiếu, nhóm vẫn hiển thị dạng tổng
+          🏷️.
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+        {groups.map(g => (
+          <GroupSlot key={g.campaign_name} group={g} onUpload={onUpload} onRemove={onRemove} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function GroupSlot({
+  group,
+  onUpload,
+  onRemove,
+}: {
+  group: import('@/lib/report/parsers/shopee-product-drilldown').DetectedGroup
+  onUpload?: (name: string, file: File) => void
+  onRemove?: (name: string) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <div
+      style={{
+        border: `1px solid ${group.resolved ? 'rgba(34,197,94,.3)' : 'rgba(255,255,255,.1)'}`,
+        background: group.resolved ? 'rgba(34,197,94,.06)' : 'rgba(255,255,255,.02)',
+        borderRadius: 8,
+        padding: '8px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 800,
+            padding: '2px 6px',
+            borderRadius: 4,
+            background: group.resolved ? 'rgba(34,197,94,.2)' : 'rgba(96,165,250,.2)',
+            color: group.resolved ? '#34d399' : '#93c5fd',
+          }}
+        >
+          {group.resolved ? 'ĐÃ KÈM' : 'CẦN FILE'}
+        </span>
+        <span
+          style={{
+            fontSize: 12.5,
+            color: '#e2e8f0',
+            fontWeight: 600,
+            flex: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          title={group.campaign_name}
+        >
+          {group.campaign_name}
+        </span>
+      </div>
+      <div style={{ fontSize: 10.5, color: '#64748b', fontFamily: 'var(--font-mono), monospace' }}>
+        GMV {Math.round(group.gmv).toLocaleString('vi-VN')} · Cost{' '}
+        {Math.round(group.cost).toLocaleString('vi-VN')}
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          style={{ display: 'none' }}
+          onChange={e => {
+            const f = e.target.files?.[0]
+            if (f && onUpload) onUpload(group.campaign_name, f)
+            if (inputRef.current) inputRef.current.value = ''
+          }}
+        />
+        <button
+          className="btn-s"
+          onClick={() => inputRef.current?.click()}
+          style={{ fontSize: 11, padding: '4px 10px', flex: 1 }}
+        >
+          {group.resolved ? 'Đổi file' : 'Chọn file chi tiết'}
+        </button>
+        {group.resolved && onRemove && (
+          <button
+            className="btn-s"
+            onClick={() => onRemove(group.campaign_name)}
+            style={{
+              fontSize: 11,
+              padding: '4px 10px',
+              background: 'rgba(239,68,68,.1)',
+              borderColor: 'rgba(239,68,68,.3)',
+              color: '#fca5a5',
+            }}
+            title="Xoá file đã chọn cho nhóm này"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 

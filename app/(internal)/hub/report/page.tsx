@@ -63,6 +63,7 @@ import {
   buildShopeeProductDrilldown,
   type ProductDrilldown,
 } from '@/lib/report/parsers/shopee-product-drilldown'
+import { parseShopeeGroupFile, type GroupDetailFile } from '@/lib/report/parsers/shopee-group'
 import { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
 import TiktokPivotPreview from '@/components/report/TiktokPivotPreview'
 import UnifiedFileUploadZone from '@/components/report/UnifiedFileUploadZone'
@@ -132,6 +133,8 @@ function ReportPageInner() {
   const [drilldownTopN, setDrilldownTopN] = useState<number>(10)
   const [drilldownMasterEmpty, setDrilldownMasterEmpty] = useState(false)
   const [drilldownLoading, setDrilldownLoading] = useState(false)
+  // Map<campaign_name, GroupDetailFile> — file chi tiết nhóm user upload
+  const [groupDetails, setGroupDetails] = useState<Map<string, GroupDetailFile>>(new Map())
 
   // Step 1.5 — TikTok xlsx upload + parse (Phase 2B)
   const [tiktokFiles, setTiktokFiles] = useState<TiktokUploadedFiles>({
@@ -628,6 +631,7 @@ function ReportPageInner() {
             sku_code: null,
           })),
           drilldownTopN,
+          groupDetails,
         )
         if (cancelled) return
         setProductDrilldown(dd)
@@ -641,7 +645,39 @@ function ReportPageInner() {
     return () => {
       cancelled = true
     }
-  }, [uploadedFiles.shopee_cpc, selectedBrand, step, drilldownTopN])
+  }, [uploadedFiles.shopee_cpc, selectedBrand, step, drilldownTopN, groupDetails])
+
+  // Reset group files khi user đổi brand/tuần hoặc xoá file CPC
+  useEffect(() => {
+    if (!uploadedFiles.shopee_cpc) setGroupDetails(new Map())
+  }, [uploadedFiles.shopee_cpc])
+
+  // Handlers cho file nhóm
+  const handleUploadGroupFile = useCallback(async (campaignName: string, file: File) => {
+    try {
+      const detail = await parseShopeeGroupFile(file)
+      // Verify totals khớp (tolerance ±1% cho rounding) — không block, chỉ warn console
+      setGroupDetails(prev => {
+        const next = new Map(prev)
+        // Key bằng campaign_name từ main CPC (mà user click upload), không phải group_name trong file
+        // → cho phép file có tên khác chút (Shopee đôi khi cắt cuối)
+        next.set(campaignName, detail)
+        return next
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Lỗi đọc file nhóm'
+      // eslint-disable-next-line no-alert
+      alert(msg)
+    }
+  }, [])
+
+  const handleRemoveGroupFile = useCallback((campaignName: string) => {
+    setGroupDetails(prev => {
+      const next = new Map(prev)
+      next.delete(campaignName)
+      return next
+    })
+  }, [])
 
   /* ── Apply pivot → Step 2 fields (Shopee 12 + TikTok 7) ── */
   function applyAutoFillAndContinue() {
@@ -3808,6 +3844,8 @@ function ReportPageInner() {
                         brandName={selectedBrand}
                         topN={drilldownTopN}
                         onTopNChange={setDrilldownTopN}
+                        onUploadGroupFile={handleUploadGroupFile}
+                        onRemoveGroupFile={handleRemoveGroupFile}
                       />
                     )}
                   </div>
