@@ -192,7 +192,7 @@ async function main() {
   )
   assertEq(detectTiktokFileType('random.xlsx'), null, 'Unknown filename → null')
 
-  console.log('\n=== parseTiktokPGM ===')
+  console.log('\n=== parseTiktokPGM (EN columns) ===')
   const pgmFile = await readAsFile(join(FIXTURES, 'tiktok_pgm_sample.xlsx'), 'pgm.xlsx')
   const pgm = await parseTiktokPGM(pgmFile)
   assert(Math.abs(pgm.gmv - 932_069_592.16) < 1, `PGM gmv ≈ 932,069,592.16 (got ${pgm.gmv})`)
@@ -200,6 +200,18 @@ async function main() {
   assertEq(pgm.hien_thi, 1_790_062, 'PGM hien_thi = 1,790,062')
   assertEq(pgm.clicks, 82_791, 'PGM clicks = 82,791')
   assertEq(pgm.orders, 5_232, 'PGM orders = 5,232')
+
+  console.log('\n=== parseTiktokPGM (VN columns — locale fallback) ===')
+  // TikTok exports column names in user's account language. This file has
+  // "Doanh thu gộp" instead of "Gross revenue", etc. Adaptive synonym
+  // resolution should handle it without code change.
+  const pgmVnFile = await readAsFile(join(FIXTURES, 'tiktok_pgm_vn_sample.xlsx'), 'pgm-vn.xlsx')
+  const pgmVn = await parseTiktokPGM(pgmVnFile)
+  assert(pgmVn.gmv > 0, `PGM VN gmv parsed (got ${pgmVn.gmv})`)
+  assert(pgmVn.cost > 0, `PGM VN cost parsed (got ${pgmVn.cost})`)
+  assert(pgmVn.hien_thi > 0, `PGM VN hien_thi parsed (got ${pgmVn.hien_thi})`)
+  assert(pgmVn.clicks > 0, `PGM VN clicks parsed (got ${pgmVn.clicks})`)
+  assert(pgmVn.orders > 0, `PGM VN orders parsed (got ${pgmVn.orders})`)
 
   console.log('\n=== parseTiktokLGM ===')
   const lgmFile = await readAsFile(join(FIXTURES, 'tiktok_lgm_sample.xlsx'), 'lgm.xlsx')

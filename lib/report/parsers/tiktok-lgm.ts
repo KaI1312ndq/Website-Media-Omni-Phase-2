@@ -1,15 +1,15 @@
 import * as XLSX from 'xlsx'
 import type { TiktokLGMData } from './types'
-
-// Brief V9.2 §4 (file 2): "Gross revenue" + "Cost" (NOT "Current shop" / "Net Cost")
-const REQUIRED_COLS = ['Gross revenue', 'Cost']
+import { LGM_COLS, sumCol, verifyColumns } from './tiktok-common'
 
 /**
- * Parse TikTok LGM xlsx (livestream_data_for_live_campaigns_*.xlsx).
+ * Parse TikTok LGM xlsx (livestream data for live campaigns).
  * Each row = 1 LIVE session. SUM across all rows.
  *
- * IMPORTANT (per Brief CRITICAL): use the bare "Gross revenue" + "Cost" columns,
- * NOT "Gross revenue (Current shop)" or "Net Cost" — those are scoped subsets.
+ * Accepts EN + VN column names. CRITICAL (per Brief V9.2 §4): use the bare
+ * "Gross revenue" / "Doanh thu gộp" + "Cost" / "Chi phí" columns — NOT the
+ * "(Current shop)" / "(Cửa hàng hiện tại)" or "Net Cost" / "Chi phí ròng"
+ * variants (those are scoped subsets).
  */
 export async function parseTiktokLGM(file: File): Promise<TiktokLGMData> {
   const buf = await file.arrayBuffer()
@@ -20,14 +20,17 @@ export async function parseTiktokLGM(file: File): Promise<TiktokLGMData> {
   const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: null })
   if (data.length === 0) return { gmv: 0, cost: 0 }
 
-  for (const col of REQUIRED_COLS) {
-    if (!(col in data[0])) {
-      throw new Error(`File TikTok LGM: không tìm thấy cột "${col}". Sàn có thể đã đổi format.`)
-    }
-  }
+  verifyColumns(
+    data,
+    [
+      { label: 'Gross revenue', synonyms: LGM_COLS.gmv },
+      { label: 'Cost', synonyms: LGM_COLS.cost },
+    ],
+    'File TikTok LGM',
+  )
 
   return {
-    gmv: data.reduce((s, r) => s + (Number(r['Gross revenue']) || 0), 0),
-    cost: data.reduce((s, r) => s + (Number(r['Cost']) || 0), 0),
+    gmv: sumCol(data, LGM_COLS.gmv),
+    cost: sumCol(data, LGM_COLS.cost),
   }
 }
