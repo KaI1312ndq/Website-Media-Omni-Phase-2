@@ -39,18 +39,39 @@ export async function parseTiktokMasterFile(file: File): Promise<ParsedTiktokMas
   }
   const ws = wb.Sheets['Template']
 
-  // Skip 4 metadata rows → header ở index 4 (0-based)
-  // raw: false để giữ Product ID dạng string (tránh scientific notation)
-  const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
-    range: 4,
+  // File Seller Center thực tế:
+  //   Row 0 (English keys): product_id | category | brand | product_name | product_description
+  //   Row 1: "V3" / "Basic_Information"
+  //   Row 2: Vietnamese display labels (ID sản phẩm / Hạng mục / ...)
+  //   Row 3: "Bắt buộc" / "Không bắt buộc"
+  //   Row 4: "Không thể chỉnh sửa" + helper text dài
+  //   Row 5+: data thật
+  // → header ở row 0, skip 4 dòng metadata sau header.
+  // raw: false để giữ Product ID dạng string (tránh scientific notation).
+  const allRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+    range: 0,
     defval: null,
     raw: false,
   })
 
-  if (data.length === 0) return []
-  if (!('product_id' in data[0]) || !('product_name' in data[0])) {
+  if (allRows.length === 0) return []
+  if (!('product_id' in allRows[0]) || !('product_name' in allRows[0])) {
     throw new Error(
       'Sheet "Template" thiếu cột "product_id" hoặc "product_name". File có đúng template Seller Center?',
+    )
+  }
+
+  // Skip 4 metadata rows after header — chỉ giữ rows mà product_id là chuỗi số dài.
+  const data = allRows.slice(4).filter(r => {
+    const pid = normalizeProductId(r['product_id'])
+    // Product ID TikTok luôn là số dài; metadata như "V3", "ID sản phẩm", "Bắt buộc" sẽ fail.
+    return /^\d{6,}$/.test(pid)
+  })
+
+  // Friendly error nếu file là blank template (chỉ có header + metadata).
+  if (data.length === 0 && allRows.length <= 5) {
+    throw new Error(
+      'File này là TEMPLATE TRỐNG (không có dòng sản phẩm). Vào TikTok Seller Center → Products → chọn SP → Bulk Edit → Export "with data" để có file đầy đủ.',
     )
   }
 

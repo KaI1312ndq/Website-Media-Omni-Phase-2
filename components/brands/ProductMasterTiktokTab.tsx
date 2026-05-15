@@ -23,9 +23,11 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>({}) // pid → ten_define edited
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [search, setSearch] = useState('')
   const [importing, setImporting] = useState(false)
   const [preview, setPreview] = useState<ParsedTiktokMasterRow[] | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -37,6 +39,7 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
       if (!r.ok) throw new Error(j.error || 'Lỗi tải sản phẩm')
       setRows(j.data || [])
       setDraft({})
+      setSelectedIds(new Set())
     } catch (e) {
       onToast?.(e instanceof Error ? e.message : 'Lỗi tải sản phẩm', 'error')
     } finally {
@@ -122,6 +125,64 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
     }
   }
 
+  async function deleteSelected() {
+    if (selectedIds.size === 0) return
+    const n = selectedIds.size
+    if (!confirm(`Xoá ${n} sản phẩm khỏi Master TikTok? Hành động không thể hoàn tác.`)) return
+    setDeleting(true)
+    try {
+      const ids = rows.filter(r => r.id && selectedIds.has(r.id)).map(r => r.id!)
+      const r = await fetch('/api/products/tiktok', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', brand_name: brandName, ids }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Lỗi xoá')
+      onToast?.(`Đã xoá ${j.deleted} sản phẩm TikTok`, 'success')
+      await load()
+    } catch (e) {
+      onToast?.(e instanceof Error ? e.message : 'Lỗi xoá', 'error')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function deleteOne(id: string | undefined) {
+    if (!id) return
+    if (!confirm('Xoá sản phẩm này?')) return
+    try {
+      const r = await fetch(`/api/products/tiktok?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Lỗi xoá')
+      onToast?.('Đã xoá 1 sản phẩm', 'success')
+      await load()
+    } catch (e) {
+      onToast?.(e instanceof Error ? e.message : 'Lỗi xoá', 'error')
+    }
+  }
+
+  function toggleSelect(id: string | undefined) {
+    if (!id) return
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    const ids = filtered.map(r => r.id).filter((x): x is string => !!x)
+    const allSelected = ids.every(id => selectedIds.has(id))
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allSelected) ids.forEach(id => next.delete(id))
+      else ids.forEach(id => next.add(id))
+      return next
+    })
+  }
+
   async function handleFileChosen(file: File) {
     try {
       const parsed = await parseTiktokMasterFile(file)
@@ -200,6 +261,22 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
         <button className="btn-s" onClick={() => fileInputRef.current?.click()}>
           ⬆ Upload Master TikTok
         </button>
+        {selectedIds.size > 0 && (
+          <button
+            className="btn-s"
+            onClick={deleteSelected}
+            disabled={deleting}
+            style={{
+              background: 'rgba(239,68,68,.12)',
+              borderColor: 'rgba(239,68,68,.4)',
+              color: '#fca5a5',
+              fontWeight: 700,
+            }}
+            title={`Xoá ${selectedIds.size} sản phẩm đã chọn`}
+          >
+            {deleting ? 'Đang xoá...' : `Xoá đã chọn (${selectedIds.size})`}
+          </button>
+        )}
         <button className="btn-p" onClick={saveAll} disabled={saving || unsavedCount === 0}>
           {saving ? 'Đang lưu...' : `Lưu (${unsavedCount})`}
         </button>
@@ -228,22 +305,38 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, color: '#cbd5e1' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#0f172a' }}>
             <tr>
+              <th style={{ ...thStyle(30), padding: '10px 8px' }}>
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && filtered.every(r => r.id && selectedIds.has(r.id))}
+                  ref={el => {
+                    if (!el) return
+                    const ids = filtered.map(r => r.id).filter((x): x is string => !!x)
+                    const any = ids.some(id => selectedIds.has(id))
+                    const all = ids.length > 0 && ids.every(id => selectedIds.has(id))
+                    el.indeterminate = any && !all
+                  }}
+                  onChange={toggleSelectAll}
+                  title="Chọn tất cả (đang hiển thị)"
+                />
+              </th>
               <th style={thStyle(180)}>Product ID</th>
               <th style={thStyle(120)}>Category</th>
               <th style={thStyle()}>Tên TikTok</th>
               <th style={thStyle(220)}>Tên define</th>
+              <th style={{ ...thStyle(48), textAlign: 'center' as const }}></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>
                   Đang tải...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={6} style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>
                   {rows.length === 0
                     ? 'Chưa có sản phẩm — upload Master TikTok để bắt đầu.'
                     : 'Không khớp tìm kiếm.'}
@@ -260,9 +353,20 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
                     key={r.product_id}
                     style={{
                       borderTop: '1px solid rgba(255,255,255,.05)',
-                      background: isDirty ? 'rgba(251,191,36,.05)' : undefined,
+                      background: isDirty
+                        ? 'rgba(251,191,36,.05)'
+                        : r.id && selectedIds.has(r.id)
+                          ? 'rgba(239,68,68,.05)'
+                          : undefined,
                     }}
                   >
+                    <td style={{ ...tdStyle, padding: '8px 8px' }}>
+                      <input
+                        type="checkbox"
+                        checked={r.id ? selectedIds.has(r.id) : false}
+                        onChange={() => toggleSelect(r.id)}
+                      />
+                    </td>
                     <td style={tdStyle}>
                       <code style={{ fontSize: 11, color: '#94a3b8' }}>{r.product_id}</code>
                     </td>
@@ -307,6 +411,35 @@ export default function ProductMasterTiktokTab({ brandName, onToast }: Props) {
                           Group ({grpCount} SP)
                         </span>
                       )}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      <button
+                        onClick={() => deleteOne(r.id)}
+                        title="Xoá SP này"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          fontSize: 14,
+                          lineHeight: 1,
+                          transition: 'color .12s, background .12s',
+                        }}
+                        onMouseEnter={e => {
+                          const el = e.currentTarget as HTMLButtonElement
+                          el.style.color = '#fca5a5'
+                          el.style.background = 'rgba(239,68,68,.1)'
+                        }}
+                        onMouseLeave={e => {
+                          const el = e.currentTarget as HTMLButtonElement
+                          el.style.color = '#64748b'
+                          el.style.background = 'transparent'
+                        }}
+                      >
+                        ✕
+                      </button>
                     </td>
                   </tr>
                 )

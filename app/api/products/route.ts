@@ -158,6 +158,21 @@ export async function POST(req: NextRequest) {
     })
   }
 
+  if (action === 'delete') {
+    const ids = Array.isArray(body.ids) ? body.ids.filter((x: unknown) => typeof x === 'string') : []
+    if (ids.length === 0) return NextResponse.json({ ok: true, deleted: 0 })
+    const { error } = await supabaseAdmin
+      .from('product_master')
+      .delete()
+      .eq('brand_name', brand)
+      .in('id', ids)
+    if (error) {
+      logger.error({ err: error, ctx: 'POST /api/products delete' }, 'bulk delete failed')
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, deleted: ids.length })
+  }
+
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 }
 
