@@ -58,6 +58,11 @@ import {
 } from '@/lib/report/parsers'
 import { type UploadedFiles } from '@/components/report/FileUploadZone'
 import ShopeePivotPreview from '@/components/report/ShopeePivotPreview'
+import ShopeeProductDrilldown from '@/components/report/ShopeeProductDrilldown'
+import {
+  buildShopeeProductDrilldown,
+  type ProductDrilldown,
+} from '@/lib/report/parsers/shopee-product-drilldown'
 import { type TiktokUploadedFiles } from '@/components/report/TiktokFileUploadZone'
 import TiktokPivotPreview from '@/components/report/TiktokPivotPreview'
 import UnifiedFileUploadZone from '@/components/report/UnifiedFileUploadZone'
@@ -121,6 +126,12 @@ function ReportPageInner() {
   const [parseError, setParseError] = useState<string>('')
   // Context khi upload — dùng để auto-clear khi user đổi brand/tuần ở Step 1.
   const [uploadContext, setUploadContext] = useState<string>('')
+
+  // Step 1.5 — Shopee Product Drilldown (Phase 2C / Brief V11)
+  const [productDrilldown, setProductDrilldown] = useState<ProductDrilldown | null>(null)
+  const [drilldownTopN, setDrilldownTopN] = useState<number>(10)
+  const [drilldownMasterEmpty, setDrilldownMasterEmpty] = useState(false)
+  const [drilldownLoading, setDrilldownLoading] = useState(false)
 
   // Step 1.5 — TikTok xlsx upload + parse (Phase 2B)
   const [tiktokFiles, setTiktokFiles] = useState<TiktokUploadedFiles>({
@@ -590,6 +601,47 @@ function ReportPageInner() {
     const t = setTimeout(() => parseUploadedFiles(uploadedFiles), 250)
     return () => clearTimeout(t)
   }, [uploadedFiles, step, parseUploadedFiles])
+
+  // Build Shopee Product Drilldown (Phase 2C) khi CPC file + brand sẵn sàng
+  useEffect(() => {
+    if (step !== 1.5) return
+    const cpc = uploadedFiles.shopee_cpc
+    if (!cpc || !selectedBrand) {
+      setProductDrilldown(null)
+      return
+    }
+    let cancelled = false
+    setDrilldownLoading(true)
+    ;(async () => {
+      try {
+        const r = await fetch(`/api/products?brand=${encodeURIComponent(selectedBrand)}`)
+        const j = await r.json()
+        const master = (j.data || []) as { ma_san_pham: string; ten_define: string | null }[]
+        const empty = master.length === 0
+        const dd = await buildShopeeProductDrilldown(
+          cpc,
+          master.map(m => ({
+            brand_name: selectedBrand,
+            ma_san_pham: m.ma_san_pham,
+            ten_define: m.ten_define,
+            ten_shopee: null,
+            sku_code: null,
+          })),
+          drilldownTopN,
+        )
+        if (cancelled) return
+        setProductDrilldown(dd)
+        setDrilldownMasterEmpty(empty)
+      } catch {
+        if (!cancelled) setProductDrilldown(null)
+      } finally {
+        if (!cancelled) setDrilldownLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [uploadedFiles.shopee_cpc, selectedBrand, step, drilldownTopN])
 
   /* ── Apply pivot → Step 2 fields (Shopee 12 + TikTok 7) ── */
   function applyAutoFillAndContinue() {
@@ -3726,6 +3778,38 @@ function ReportPageInner() {
                       Preview Shopee Pivot
                     </h3>
                     <ShopeePivotPreview pivot={shopeePivot} />
+                  </div>
+                )}
+                {shopeePivot && uploadedFiles.shopee_cpc && selectedBrand && (
+                  <div className="rc" style={{ marginBottom: 14 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Shopee theo sản phẩm</h3>
+                      <span style={{ fontSize: 11, color: '#64748b' }}>
+                        Subset "Dịch vụ Hiển thị Sản phẩm" — group theo Master
+                      </span>
+                    </div>
+                    {drilldownLoading && (
+                      <div style={{ padding: 16, fontSize: 12.5, color: '#94a3b8' }}>
+                        Đang tính drilldown...
+                      </div>
+                    )}
+                    {!drilldownLoading && productDrilldown && (
+                      <ShopeeProductDrilldown
+                        drilldown={productDrilldown}
+                        masterEmpty={drilldownMasterEmpty}
+                        brandName={selectedBrand}
+                        topN={drilldownTopN}
+                        onTopNChange={setDrilldownTopN}
+                      />
+                    )}
                   </div>
                 )}
                 {tiktokPivot && (

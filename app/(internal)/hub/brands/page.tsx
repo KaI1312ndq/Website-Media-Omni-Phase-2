@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import { getSession, SessionUser } from '@/lib/auth'
 import { HubPageSkeleton } from '@/components/Skeleton'
 import { Icon } from '@/lib/icons'
+import ProductMasterTab from '@/components/brands/ProductMasterTab'
 import '@/app/(internal)/dashboard/dashboard.css'
+
+type DetailTab = 'context' | 'products'
 
 interface Brand {
   id: string
@@ -104,6 +107,7 @@ export default function BrandsHubPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type?: string } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [detailTab, setDetailTab] = useState<DetailTab>('context')
 
   function showToast(msg: string, type = 'success') {
     setToast({ msg, type })
@@ -154,6 +158,7 @@ export default function BrandsHubPage() {
 
   function selectBrand(b: Brand) {
     setSelectedId(b.id)
+    setDetailTab('context')
     setDraft({
       industry: b.industry ?? '',
       product_type: b.product_type ?? '',
@@ -347,7 +352,7 @@ export default function BrandsHubPage() {
                   alignItems: 'flex-end',
                   justifyContent: 'space-between',
                   gap: 12,
-                  marginBottom: 14,
+                  marginBottom: 8,
                   flexWrap: 'wrap',
                 }}
               >
@@ -362,7 +367,7 @@ export default function BrandsHubPage() {
                       marginBottom: 4,
                     }}
                   >
-                    Brand context
+                    Brand
                   </div>
                   <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#f1f5f9' }}>{selected.brand_name}</h2>
                   {selected.updated_at && (
@@ -372,27 +377,68 @@ export default function BrandsHubPage() {
                     </div>
                   )}
                 </div>
-                <button className="btn-p" onClick={save} disabled={saving}>
-                  {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
+                {detailTab === 'context' && (
+                  <button className="btn-p" onClick={save} disabled={saving}>
+                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                )}
               </div>
 
+              {/* Tab switcher */}
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                  gap: 12,
+                  display: 'flex',
+                  gap: 4,
+                  borderBottom: '1px solid rgba(255,255,255,.08)',
+                  marginBottom: 16,
                 }}
               >
-                {FIELDS.map(f => (
-                  <FieldEditor
-                    key={f.key}
-                    field={f}
-                    value={(draft[f.key] as string) ?? ''}
-                    onChange={v => setDraft(d => ({ ...d, [f.key]: v }))}
-                  />
+                {(
+                  [
+                    { id: 'context', label: 'Bối cảnh' },
+                    { id: 'products', label: 'Sản phẩm' },
+                  ] as { id: DetailTab; label: string }[]
+                ).map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setDetailTab(t.id)}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: `2px solid ${detailTab === t.id ? '#60a5fa' : 'transparent'}`,
+                      color: detailTab === t.id ? '#f1f5f9' : '#94a3b8',
+                      fontSize: 13,
+                      fontWeight: detailTab === t.id ? 700 : 500,
+                      cursor: 'pointer',
+                      marginBottom: -1,
+                    }}
+                  >
+                    {t.label}
+                  </button>
                 ))}
               </div>
+
+              {detailTab === 'context' ? (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: 12,
+                  }}
+                >
+                  {FIELDS.map(f => (
+                    <FieldEditor
+                      key={f.key}
+                      field={f}
+                      value={(draft[f.key] as string) ?? ''}
+                      onChange={v => setDraft(d => ({ ...d, [f.key]: v }))}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <ProductMasterTab brandName={selected.brand_name} onToast={showToast} />
+              )}
             </>
           )}
         </div>

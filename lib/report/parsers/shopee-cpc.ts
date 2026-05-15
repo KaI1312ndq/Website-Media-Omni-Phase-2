@@ -11,6 +11,18 @@ const REQUIRED_COLS = [
   'Sản phẩm đã bán',
 ]
 
+/**
+ * Return raw rows (un-aggregated) sau khi tìm header — dùng cho drilldown
+ * sản phẩm Phase 2C. Không filter, KHÔNG group.
+ */
+export async function parseShopeeCPCRaw(file: File): Promise<Record<string, unknown>[]> {
+  const buf = await file.arrayBuffer()
+  const wb = XLSX.read(buf, { type: 'array', codepage: 65001, raw: true })
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  if (!ws) throw new Error('File CSV trống hoặc không hợp lệ')
+  return readShopeeSheet(ws, REQUIRED_COLS, 'File CPC')
+}
+
 const GROUP_ORDER = ['Shop GMV Max', 'Dịch vụ Hiển thị Sản phẩm', 'Dịch vụ Hiển thị Shop'] as const
 
 /**
