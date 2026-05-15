@@ -980,6 +980,29 @@ function ReportPageInner() {
       return d ? n / d : null
     }
 
+    // ── Sum variants: cộng nhiều cột tử / nhiều cột mẫu trước khi chia ──
+    // Dùng cho ROAS tổng (CPC + ND + Live) để khớp với Step 2.
+    const ratioSumW = (nKeys: string[], dKeys: string[], w: number): number | null => {
+      const n = nKeys.reduce((a, k) => a + (hRow(k, w) || 0), 0)
+      const d = dKeys.reduce((a, k) => a + (hRow(k, w) || 0), 0)
+      return d ? n / d : null
+    }
+    const ratioSumPW = (nKeys: string[], dKeys: string[], w: number): number | null => {
+      const n = nKeys.reduce((a, k) => a + pW(k, w), 0)
+      const d = dKeys.reduce((a, k) => a + pW(k, w), 0)
+      return d ? n / d : null
+    }
+    const ratioSumPM = (nKeys: string[], dKeys: string[]): number | null => {
+      const n = nKeys.reduce((a, k) => a + pM(k), 0)
+      const d = dKeys.reduce((a, k) => a + pM(k), 0)
+      return d ? n / d : null
+    }
+    const ratioSumMTD = (nKeys: string[], dKeys: string[]): number | null => {
+      const n = getMTD(w => nKeys.reduce((a, k) => a + (hRow(k, w) || 0), 0))
+      const d = getMTD(w => dKeys.reduce((a, k) => a + (hRow(k, w) || 0), 0))
+      return d ? n / d : null
+    }
+
     const fmtMail = (v: number | null | undefined): string => {
       if (v === null || v === undefined || isNaN(v)) return '—'
       return Math.round(parseFloat(String(v))).toLocaleString('vi-VN')
@@ -1220,14 +1243,18 @@ function ReportPageInner() {
           (hRow('s_cpc_chi_phi', w) || 0) + (hRow('s_nd_chi_phi', w) || 0) + (hRow('s_live_chi_phi', w) || 0),
         w => pW('s_cpc_chi_phi', w) + pW('s_nd_chi_phi', w) + pW('s_live_chi_phi', w) || null,
       )
-      body += dRow(
-        'ROAS Ads tổng',
-        ratioPM('s_cpc_doanh_so', 's_cpc_chi_phi'),
-        ratioMTD('s_cpc_doanh_so', 's_cpc_chi_phi'),
-        w => ratioW('s_cpc_doanh_so', 's_cpc_chi_phi', w),
-        w => ratioPW('s_cpc_doanh_so', 's_cpc_chi_phi', w),
-        fmtX,
-      )
+      {
+        const gKeys = ['s_cpc_doanh_so', 's_nd_gmv', 's_live_gmv']
+        const cKeys = ['s_cpc_chi_phi', 's_nd_chi_phi', 's_live_chi_phi']
+        body += dRow(
+          'ROAS Ads tổng',
+          ratioSumPM(gKeys, cKeys),
+          ratioSumMTD(gKeys, cKeys),
+          w => ratioSumW(gKeys, cKeys, w),
+          w => ratioSumPW(gKeys, cKeys, w),
+          fmtX,
+        )
+      }
       body += `</tbody></table>`
 
       // Ads CPC

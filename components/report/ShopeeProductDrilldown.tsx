@@ -373,6 +373,25 @@ function ProductRow({
             {expanded ? '▼' : '▶'}
           </span>{' '}
           {row.ten_define}
+          {row.is_campaign_tong && (
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 4,
+                background: 'rgba(96,165,250,.15)',
+                color: '#93c5fd',
+                letterSpacing: '.04em',
+                textTransform: 'uppercase',
+                verticalAlign: 'middle',
+              }}
+              title="Chưa upload file chi tiết nhóm — số liệu còn ở dạng tổng. Sau khi upload, dòng này sẽ tự thay bằng các SP con."
+            >
+              chưa kèm file
+            </span>
+          )}
         </td>
         {COLS.map(c => (
           <td

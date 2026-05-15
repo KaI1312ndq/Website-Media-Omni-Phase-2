@@ -131,7 +131,7 @@ async function clipboardWrite(text: string) {
 }
 
 export default function ShopeePivotPreview({ pivot }: Props) {
-  const [view, setView] = useState<ViewMode>('vertical')
+  const [view, setView] = useState<ViewMode>('horizontal')
   const [copiedKind, setCopiedKind] = useState<'values' | 'table' | null>(null)
 
   const vertical = useMemo(() => toShopeeVerticalPivot(pivot), [pivot])
