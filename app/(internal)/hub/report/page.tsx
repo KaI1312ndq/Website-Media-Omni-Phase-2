@@ -8,8 +8,17 @@ import * as XLSX from 'xlsx'
 import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables)
 import { DEFAULT_SYS_PROMPT } from '@/lib/report/ai-prompt'
-import type { Brand, PlanData, WeekInfo, ShopeeData, TiktokData, AIResult } from '@/lib/report/types'
-import { buildBrandContext } from '@/lib/report/types'
+import type {
+  Brand,
+  PlanData,
+  WeekInfo,
+  ShopeeData,
+  TiktokData,
+  AIResult,
+  PreviousSolutions,
+} from '@/lib/report/types'
+import { emptyAIResult, parseAIResult, AI_MATRIX_KEYS } from '@/lib/report/types'
+import { buildAIInput } from '@/lib/report/ai-input-builder'
 import {
   fmtDate,
   toISO,
@@ -129,16 +138,8 @@ function ReportPageInner() {
   const [hasPlan, setHasPlan] = useState(false)
   const [shopeeData, setShopeeData] = useState<ShopeeData>({ ...EMPTY_SHOPEE })
   const [tiktokData, setTiktokData] = useState<TiktokData>({ ...EMPTY_TIKTOK })
-  const [aiResult, setAiResult] = useState<AIResult>({
-    highlight: '',
-    lowlight: '',
-    shopee_thuc_trang: '',
-    shopee_van_de: '',
-    shopee_giai_phap: '',
-    tiktok_thuc_trang: '',
-    tiktok_van_de: '',
-    tiktok_giai_phap: '',
-  })
+  const [aiResult, setAiResult] = useState<AIResult>(emptyAIResult())
+  const [previousSolutions, setPreviousSolutions] = useState<PreviousSolutions | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   /* rawInputs: per-key formatted display string for actual inputs (e.g. "100.000.000") */
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({})
@@ -333,6 +334,8 @@ function ReportPageInner() {
       setShopeeData({ ...EMPTY_SHOPEE })
       setTiktokData({ ...EMPTY_TIKTOK })
       setRawInputs({})
+      setPreviousSolutions(null)
+      setAiResult(emptyAIResult())
       // Clear stale upload data only if context changed (no brand → ctx 'none')
       const currentCtx = `__nobrand__|${selMonth}|${selYear}|${selWeek}`
       if (uploadContext && uploadContext !== currentCtx) {
@@ -351,7 +354,7 @@ function ReportPageInner() {
 
     showToast('Đang tải dữ liệu...')
     try {
-      const [sp, tp, hist, chartHist] = await Promise.all([
+      const [sp, tp, hist, chartHist, prevSol] = await Promise.all([
         shopeeChecked
           ? fetch(
               `/api/report?action=plan&brand=${encodeURIComponent(selectedBrand)}&platform=shopee&month=${weekInfo.month}&year=${weekInfo.year}`,
@@ -366,12 +369,18 @@ function ReportPageInner() {
           `/api/report?action=history&brand=${encodeURIComponent(selectedBrand)}&month=${weekInfo.month}&year=${weekInfo.year}`,
         ).then(r => r.json()),
         fetch(`/api/report?action=history&brand=${encodeURIComponent(selectedBrand)}`).then(r => r.json()),
+        fetch(
+          `/api/report?action=previousSolutions&brand=${encodeURIComponent(selectedBrand)}&year=${weekInfo.year}&month=${weekInfo.month}&week=${weekInfo.weekNum}`,
+        )
+          .then(r => r.json())
+          .catch(() => ({ data: null })),
       ])
       setShopeePlan(sp.data || null)
       setTiktokPlan(tp.data || null)
       const histRows: Record<string, number | string | null>[] = hist.data || []
       setWeekHistory(histRows)
       setChartHistory(chartHist.data || [])
+      setPreviousSolutions(prevSol?.data || null)
       const hp = (shopeeChecked ? !!sp.data : true) && (tiktokChecked ? !!tp.data : true)
       setHasPlan(hp)
 
@@ -396,36 +405,77 @@ function ReportPageInner() {
       setTiktokData(newTiktok)
       setRawInputs(newRaw)
 
-      // Pre-fill AI text from existing row (legacy stored shopee+tiktok joined w/ \n)
+      // Pre-fill AI from existing row.
+      // Schema version 2 (matrix) → reconstruct cells from per-hạng-mục columns.
+      // Schema version 1 (legacy) → fill aggregate fields from nhan_xet_*.
       if (existing) {
-        const splitNote = (s: string) => {
-          const parts = String(s || '').split('\n')
-          return { shopee: parts[0] || '', tiktok: parts.slice(1).join('\n') || '' }
+        const v2Cell = (prefix: string) => ({
+          plan: String(existing[`${prefix}_plan`] ?? ''),
+          actual: String(existing[`${prefix}_actual`] ?? ''),
+          danh_gia: String(existing[`${prefix}_danh_gia`] ?? ''),
+          giai_phap: String(existing[`${prefix}_giai_phap`] ?? ''),
+        })
+        const hasV2 =
+          Number(existing.ai_schema_version) === 2 ||
+          AI_MATRIX_KEYS.some(k => {
+            const prefix =
+              k === 'shopee_ads_cpc'
+                ? 's_cpc'
+                : k === 'shopee_ads_nd'
+                  ? 's_nd'
+                  : k === 'shopee_ads_live'
+                    ? 's_live'
+                    : k === 'tiktok_pgm'
+                      ? 't_pgm'
+                      : k === 'tiktok_lgm'
+                        ? 't_lgm'
+                        : k === 'tiktok_consideration'
+                          ? 't_con'
+                          : 't_brd'
+            return (
+              existing[`${prefix}_actual`] ||
+              existing[`${prefix}_danh_gia`] ||
+              existing[`${prefix}_giai_phap`]
+            )
+          })
+
+        if (hasV2) {
+          setAiResult(
+            parseAIResult({
+              highlight: String(existing.highlight ?? ''),
+              lowlight: String(existing.lowlight ?? ''),
+              shopee_ads_cpc: v2Cell('s_cpc'),
+              shopee_ads_nd: v2Cell('s_nd'),
+              shopee_ads_live: v2Cell('s_live'),
+              tiktok_pgm: v2Cell('t_pgm'),
+              tiktok_lgm: v2Cell('t_lgm'),
+              tiktok_consideration: v2Cell('t_con'),
+              tiktok_branding: v2Cell('t_brd'),
+            }),
+          )
+        } else {
+          // Legacy V1 → keep aggregate fields, matrix empty
+          const splitNote = (s: string) => {
+            const parts = String(s || '').split('\n')
+            return { shopee: parts[0] || '', tiktok: parts.slice(1).join('\n') || '' }
+          }
+          const tt = splitNote(String(existing.nhan_xet_thuc_trang || ''))
+          const vd = splitNote(String(existing.nhan_xet_van_de || ''))
+          const gp = splitNote(String(existing.nhan_xet_giai_phap || ''))
+          setAiResult({
+            ...emptyAIResult(),
+            highlight: String(existing.highlight || ''),
+            lowlight: String(existing.lowlight || ''),
+            shopee_thuc_trang: tt.shopee,
+            tiktok_thuc_trang: tt.tiktok,
+            shopee_van_de: vd.shopee,
+            tiktok_van_de: vd.tiktok,
+            shopee_giai_phap: gp.shopee,
+            tiktok_giai_phap: gp.tiktok,
+          })
         }
-        const tt = splitNote(String(existing.nhan_xet_thuc_trang || ''))
-        const vd = splitNote(String(existing.nhan_xet_van_de || ''))
-        const gp = splitNote(String(existing.nhan_xet_giai_phap || ''))
-        setAiResult({
-          highlight: String(existing.highlight || ''),
-          lowlight: String(existing.lowlight || ''),
-          shopee_thuc_trang: tt.shopee,
-          tiktok_thuc_trang: tt.tiktok,
-          shopee_van_de: vd.shopee,
-          tiktok_van_de: vd.tiktok,
-          shopee_giai_phap: gp.shopee,
-          tiktok_giai_phap: gp.tiktok,
-        })
       } else {
-        setAiResult({
-          highlight: '',
-          lowlight: '',
-          shopee_thuc_trang: '',
-          shopee_van_de: '',
-          shopee_giai_phap: '',
-          tiktok_thuc_trang: '',
-          tiktok_van_de: '',
-          tiktok_giai_phap: '',
-        })
+        setAiResult(emptyAIResult())
       }
       // Auto-clear stale upload data if brand/week changed since last upload.
       const currentCtx = `${selectedBrand}|${selMonth}|${selYear}|${selWeek}`
@@ -662,85 +712,29 @@ function ReportPageInner() {
     if (!weekInfo) return
     const openAiKey = typeof window !== 'undefined' ? localStorage.getItem('mo_openai_key') || '' : ''
     if (!openAiKey) {
-      showToast('Cần nhập OpenAI API Key — bấm 🔑 API Key trên nav', 'error')
+      showToast('Cần nhập OpenAI API Key — bấm API Key trên nav', 'error')
       setKeyModal(true)
       return
     }
     setAiLoading(true)
-    const wKey = `plan_w${weekInfo.weekNum}`
-    const pv = (plan: PlanData | null, key: string) => plan?.[key]?.[`w${weekInfo.weekNum}` as 'w1'] || 0
-    const fmtBig = (v: number) => (v ? v.toLocaleString('vi-VN') : '0')
-
-    const c = calcCPC(shopeeData),
-      cn = calcND(shopeeData),
-      cl = calcLive(shopeeData)
-    const cp = calcPGM(tiktokData),
-      cl2 = calcLGM(tiktokData),
-      cc = calcCon(tiktokData),
-      cb = calcBrd(tiktokData)
-    const sGmv = shopeeData.s_cpc_doanh_so + shopeeData.s_nd_gmv + shopeeData.s_live_gmv
-    const sCp = shopeeData.s_cpc_chi_phi + shopeeData.s_nd_chi_phi + shopeeData.s_live_chi_phi
-    const tGmv = tiktokData.t_pgm_doanh_so + tiktokData.t_lgm_doanhthu
-    const tCp =
-      tiktokData.t_pgm_chi_phi +
-      tiktokData.t_lgm_chi_phi +
-      tiktokData.t_con_chi_phi +
-      tiktokData.t_brd_chi_phi
-    const sPlanGmv = shopeePlan
-      ? pv(shopeePlan, 's_cpc_doanh_so') + pv(shopeePlan, 's_nd_gmv') + pv(shopeePlan, 's_live_gmv')
-      : 0
-    const tPlanGmv = tiktokPlan ? pv(tiktokPlan, 't_pgm_doanh_so') + pv(tiktokPlan, 't_lgm_doanhthu') : 0
 
     // Look up full brand row for context injection (filled at /hub/brands).
     const brandRow = brands.find(b => b.brand_name === selectedBrand) ?? null
-    const brandCtxBlock = buildBrandContext(brandRow)
 
-    let userMsg = brandCtxBlock
-    userMsg += `=== DATA BÁO CÁO TUẦN ===\nBrand: ${selectedBrand} | ${weekInfo.label} | Platform: ${[shopeeChecked ? 'Shopee' : '', tiktokChecked ? 'TikTok' : ''].filter(Boolean).join(', ')}\n\n`
-
-    if (shopeeChecked) {
-      const planCpcDs = pv(shopeePlan, 's_cpc_doanh_so'),
-        planCpcCp = pv(shopeePlan, 's_cpc_chi_phi')
-      const planNdGmv = pv(shopeePlan, 's_nd_gmv'),
-        planLvGmv = pv(shopeePlan, 's_live_gmv')
-      userMsg += `--- SHOPEE ADS ---\n`
-      userMsg += `Tổng GMV: ${fmtBig(sGmv)} | Plan: ${fmtBig(sPlanGmv)} | %TH: ${getPctStr(sGmv, sPlanGmv)}\n`
-      userMsg += `Tổng Chi phí: ${fmtBig(sCp)} | ROAS: ${sCp ? (sGmv / sCp).toFixed(2) : '—'}\n\n`
-      userMsg += `[CPC] Doanh số: ${fmtBig(shopeeData.s_cpc_doanh_so)} (Plan: ${fmtBig(planCpcDs)}, %TH: ${getPctStr(shopeeData.s_cpc_doanh_so, planCpcDs)})\n`
-      userMsg += `[CPC] Chi phí: ${fmtBig(shopeeData.s_cpc_chi_phi)} | ROAS: ${c.roas} | CPC: ${c.cpc} | CTR: ${c.ctr}% | CR: ${c.cr}% | AOV: ${c.aov}\n`
-      userMsg += `[CPC] Lượt xem: ${shopeeData.s_cpc_luot_xem.toLocaleString('vi-VN')} | Lượt click: ${shopeeData.s_cpc_luot_click.toLocaleString('vi-VN')} | Đơn hàng: ${shopeeData.s_cpc_don_hang}\n\n`
-      userMsg += `[ND] GMV: ${fmtBig(shopeeData.s_nd_gmv)} (Plan: ${fmtBig(planNdGmv)}) | Chi phí: ${fmtBig(shopeeData.s_nd_chi_phi)} | ROAS: ${cn.roas} | CTR: ${cn.ctr}%\n\n`
-      userMsg += `[Live] GMV: ${fmtBig(shopeeData.s_live_gmv)} (Plan: ${fmtBig(planLvGmv)}) | Chi phí: ${fmtBig(shopeeData.s_live_chi_phi)} | ROAS: ${cl.roas}\n\n`
-    }
-    if (tiktokChecked) {
-      const planPgmDs = pv(tiktokPlan, 't_pgm_doanh_so'),
-        planLgmDt = pv(tiktokPlan, 't_lgm_doanhthu')
-      userMsg += `--- TIKTOK SHOP ---\n`
-      userMsg += `Tổng GMV: ${fmtBig(tGmv)} | Plan: ${fmtBig(tPlanGmv)} | %TH: ${getPctStr(tGmv, tPlanGmv)}\n`
-      userMsg += `Tổng Chi phí: ${fmtBig(tCp)} | ROI: ${tCp ? (tGmv / tCp).toFixed(2) : '—'}\n\n`
-      userMsg += `[PGM] Doanh số: ${fmtBig(tiktokData.t_pgm_doanh_so)} (Plan: ${fmtBig(planPgmDs)}) | Chi phí: ${fmtBig(tiktokData.t_pgm_chi_phi)} | ROAS: ${cp.roas}\n`
-      userMsg += `[PGM] CTR: ${cp.ctr}% | CR: ${cp.cr}% | AOV: ${cp.aov} | CPC: ${cp.cpc} | CPM: ${cp.cpm}\n\n`
-      userMsg += `[LGM] Doanh thu: ${fmtBig(tiktokData.t_lgm_doanhthu)} (Plan: ${fmtBig(planLgmDt)}) | Chi phí: ${fmtBig(tiktokData.t_lgm_chi_phi)} | ROI: ${cl2.roi}\n\n`
-      userMsg += `[Con] Người tiếp cận: ${tiktokData.t_con_nguoi.toLocaleString('vi-VN')} | Chi phí: ${fmtBig(tiktokData.t_con_chi_phi)} | CPP: ${cc.cpa}\n`
-      userMsg += `[Branding] Lượt xem: ${tiktokData.t_brd_view.toLocaleString('vi-VN')} | Follow: ${tiktokData.t_brd_follow} | Chi phí: ${fmtBig(tiktokData.t_brd_chi_phi)} | CPA/follow: ${cb.cpa}\n\n`
-    }
-    // WoW comparison
-    const prevW = weekHistory
-      .filter(h => parseInt(String(h.week_num)) < weekInfo.weekNum)
-      .sort((a, b) => parseInt(String(b.week_num)) - parseInt(String(a.week_num)))[0]
-    if (prevW) {
-      userMsg += `--- SO SÁNH TUẦN TRƯỚC (W${prevW.week_num}) ---\n`
-      if (shopeeChecked) {
-        const prevSGmv =
-          (n(prevW.s_cpc_doanh_so) || 0) + (n(prevW.s_nd_gmv) || 0) + (n(prevW.s_live_gmv) || 0)
-        userMsg += `Shopee GMV: ${fmtBig(sGmv)} vs ${fmtBig(prevSGmv)} → ${getPctStr(sGmv, prevSGmv)} WoW\n`
-      }
-      if (tiktokChecked) {
-        const prevTGmv = (n(prevW.t_pgm_doanh_so) || 0) + (n(prevW.t_lgm_doanhthu) || 0)
-        userMsg += `TikTok GMV: ${fmtBig(tGmv)} vs ${fmtBig(prevTGmv)} → ${getPctStr(tGmv, prevTGmv)} WoW\n`
-      }
-    }
-    void wKey // suppress unused var warning
+    // Build the user message per Brief V10 §4.2 — brand context + per-hạng-mục
+    // blocks with plan/actual/derived + previous-week giải pháp + WoW table.
+    const userMsg = buildAIInput({
+      brand: brandRow,
+      weekInfo,
+      shopeeChecked,
+      tiktokChecked,
+      shopeeData,
+      tiktokData,
+      shopeePlan,
+      tiktokPlan,
+      previousSolutions,
+      weekHistory,
+    })
 
     const sysPrompt = effectivePrompt
 
@@ -764,16 +758,8 @@ function ReportPageInner() {
       }
       const j = await resp.json()
       const ai = JSON.parse(j.choices[0].message.content)
-      setAiResult({
-        highlight: ai.highlight || '',
-        lowlight: ai.lowlight || '',
-        shopee_thuc_trang: ai.shopee_thuc_trang || '',
-        shopee_van_de: ai.shopee_van_de || '',
-        shopee_giai_phap: ai.shopee_giai_phap || '',
-        tiktok_thuc_trang: ai.tiktok_thuc_trang || '',
-        tiktok_van_de: ai.tiktok_van_de || '',
-        tiktok_giai_phap: ai.tiktok_giai_phap || '',
-      })
+      // parseAIResult sanitises cells + derives V1 aggregate fields for legacy UI
+      setAiResult(parseAIResult(ai))
       showToast('AI generate xong!')
     } catch (e) {
       showToast('Lỗi AI: ' + String(e), 'error')
@@ -1578,9 +1564,9 @@ function ReportPageInner() {
         body += `<td rowspan="${rc}" style="${tdSm('text-align:center;font-weight:700;vertical-align:middle')}">${selectedBrand}</td>`
       body += `<td style="${tdSm('text-align:center;font-weight:600')}">${sanLabel}</td>`
       body += `<td style="${tdSm('text-align:center')}">Ads</td>`
-      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_thuc_trang` as keyof AIResult] as string)}</td>`
-      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_van_de` as keyof AIResult] as string)}</td>`
-      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_giai_phap` as keyof AIResult] as string)}</td>`
+      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_thuc_trang` as 'shopee_thuc_trang'] as string)}</td>`
+      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_van_de` as 'shopee_van_de'] as string)}</td>`
+      body += `<td style="${tdSm()}">${nl(aiResult[`${p}_giai_phap` as 'shopee_giai_phap'] as string)}</td>`
       body += `</tr>`
     })
     body += `</tbody></table>`
@@ -2350,9 +2336,9 @@ function ReportPageInner() {
         selectedBrand,
         p === 'shopee' ? 'Shopee' : 'TikTok',
         'Ads',
-        aiResult[`${p}_thuc_trang` as keyof AIResult] || '',
-        aiResult[`${p}_van_de` as keyof AIResult] || '',
-        aiResult[`${p}_giai_phap` as keyof AIResult] || '',
+        (aiResult[`${p}_thuc_trang` as 'shopee_thuc_trang'] as string) || '',
+        (aiResult[`${p}_van_de` as 'shopee_van_de'] as string) || '',
+        (aiResult[`${p}_giai_phap` as 'shopee_giai_phap'] as string) || '',
       ])
     })
 
@@ -2396,6 +2382,10 @@ function ReportPageInner() {
   async function saveReport() {
     if (!weekInfo || !user) return
     setSaving(true)
+    const ai_matrix = AI_MATRIX_KEYS.reduce<Record<string, unknown>>((acc, k) => {
+      acc[k] = aiResult[k]
+      return acc
+    }, {})
     const payload = {
       action: 'saveWeekly',
       username: user.username,
@@ -2409,6 +2399,8 @@ function ReportPageInner() {
       ...tiktokData,
       highlight: aiResult.highlight,
       lowlight: aiResult.lowlight,
+      // Legacy V1 aggregate columns — derived from V2 matrix in parseAIResult,
+      // kept for backward compat with old UI / queries.
       nhan_xet_thuc_trang:
         (shopeeChecked ? aiResult.shopee_thuc_trang : '') +
         (tiktokChecked ? '\n' + aiResult.tiktok_thuc_trang : ''),
@@ -2417,6 +2409,8 @@ function ReportPageInner() {
       nhan_xet_giai_phap:
         (shopeeChecked ? aiResult.shopee_giai_phap : '') +
         (tiktokChecked ? '\n' + aiResult.tiktok_giai_phap : ''),
+      // V2 matrix — writes 28 cells (server only writes if migration 05 applied)
+      ai_matrix,
     }
     const r = await fetch('/api/report', {
       method: 'POST',

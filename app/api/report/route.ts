@@ -4,22 +4,40 @@ import { notifyAdmins } from '@/lib/notify'
 
 /* ── Plan metric keys (full 25 keys = same as actual) ── */
 const SHOPEE_PLAN_KEYS = [
-  's_cpc_doanh_so','s_cpc_chi_phi','s_cpc_luot_xem','s_cpc_luot_click','s_cpc_don_hang',
-  's_nd_gmv','s_nd_chi_phi','s_nd_luot_xem','s_nd_luot_click',
-  's_live_gmv','s_live_chi_phi','s_live_luot_xem',
+  's_cpc_doanh_so',
+  's_cpc_chi_phi',
+  's_cpc_luot_xem',
+  's_cpc_luot_click',
+  's_cpc_don_hang',
+  's_nd_gmv',
+  's_nd_chi_phi',
+  's_nd_luot_xem',
+  's_nd_luot_click',
+  's_live_gmv',
+  's_live_chi_phi',
+  's_live_luot_xem',
 ]
 const TIKTOK_PLAN_KEYS = [
-  't_pgm_doanh_so','t_pgm_chi_phi','t_pgm_luot_xem','t_pgm_luot_click','t_pgm_don_hang',
-  't_lgm_doanhthu','t_lgm_chi_phi',
-  't_con_nguoi','t_con_chi_phi',
-  't_brd_view','t_brd_follow','t_brd_chi_phi',
+  't_pgm_doanh_so',
+  't_pgm_chi_phi',
+  't_pgm_luot_xem',
+  't_pgm_luot_click',
+  't_pgm_don_hang',
+  't_lgm_doanhthu',
+  't_lgm_chi_phi',
+  't_con_nguoi',
+  't_con_chi_phi',
+  't_brd_view',
+  't_brd_follow',
+  't_brd_chi_phi',
 ]
 const ALL_PLAN_KEYS = [...SHOPEE_PLAN_KEYS, ...TIKTOK_PLAN_KEYS]
-const PLAN_PERIODS = ['month','w1','w2','w3','w4','w5'] as const
+const PLAN_PERIODS = ['month', 'w1', 'w2', 'w3', 'w4', 'w5'] as const
 
 /* Flat row → JSONB { metric: { w1, w2, ..., month } } filtered by platform */
 function flatToJsonb(row: Record<string, unknown>, platform: string): Record<string, Record<string, number>> {
-  const keys = platform === 'shopee' ? SHOPEE_PLAN_KEYS : platform === 'tiktok' ? TIKTOK_PLAN_KEYS : ALL_PLAN_KEYS
+  const keys =
+    platform === 'shopee' ? SHOPEE_PLAN_KEYS : platform === 'tiktok' ? TIKTOK_PLAN_KEYS : ALL_PLAN_KEYS
   const result: Record<string, Record<string, number>> = {}
   keys.forEach(k => {
     result[k] = {}
@@ -38,7 +56,7 @@ function jsonbToFlat(plan: Record<string, Record<string, number>>): Record<strin
     if (!ALL_PLAN_KEYS.includes(metric)) return
     Object.entries(periods || {}).forEach(([period, val]) => {
       const sbPeriod = period === 'month' ? 'month' : period // 'w1'..'w5' or 'month'
-      if (!PLAN_PERIODS.includes(sbPeriod as typeof PLAN_PERIODS[number])) return
+      if (!PLAN_PERIODS.includes(sbPeriod as (typeof PLAN_PERIODS)[number])) return
       flat[`${metric}__plan_${sbPeriod}`] = Number(val) || 0
     })
   })
@@ -48,11 +66,11 @@ function jsonbToFlat(plan: Record<string, Record<string, number>>): Record<strin
 /* ── GET ── */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const action    = searchParams.get('action') || ''
-  const brand     = searchParams.get('brand') || ''
-  const platform  = searchParams.get('platform') || ''
-  const month     = parseInt(searchParams.get('month') || '0')
-  const year      = parseInt(searchParams.get('year') || '0')
+  const action = searchParams.get('action') || ''
+  const brand = searchParams.get('brand') || ''
+  const platform = searchParams.get('platform') || ''
+  const month = parseInt(searchParams.get('month') || '0')
+  const year = parseInt(searchParams.get('year') || '0')
 
   /* GET plan for a brand/platform/month/year (returns JSONB filtered by platform) */
   if (action === 'plan') {
@@ -92,6 +110,45 @@ export async function GET(req: NextRequest) {
       .limit(10)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data: data || [] })
+  }
+
+  /* GET previous-week giai_phap per hạng mục (for AI closed-loop track) */
+  if (action === 'previousSolutions') {
+    const week = parseInt(searchParams.get('week') || '0')
+    if (!brand || !month || !year || !week) {
+      return NextResponse.json({ data: null })
+    }
+    // Find the most recent report BEFORE the current (year, month, week_num)
+    // ordered lex on (year, month, week_num).
+    const { data, error } = await supabaseAdmin
+      .from('weekly_reports')
+      .select(
+        'year, month, week_num, s_cpc_giai_phap, s_nd_giai_phap, s_live_giai_phap, t_pgm_giai_phap, t_lgm_giai_phap, t_con_giai_phap, t_brd_giai_phap',
+      )
+      .eq('brand_name', brand)
+      .or(
+        `and(year.lt.${year}),and(year.eq.${year},month.lt.${month}),and(year.eq.${year},month.eq.${month},week_num.lt.${week})`,
+      )
+      .order('year', { ascending: false })
+      .order('month', { ascending: false })
+      .order('week_num', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error || !data) return NextResponse.json({ data: null })
+    return NextResponse.json({
+      data: {
+        year: data.year,
+        month: data.month,
+        week: data.week_num,
+        shopee_ads_cpc: data.s_cpc_giai_phap ?? '',
+        shopee_ads_nd: data.s_nd_giai_phap ?? '',
+        shopee_ads_live: data.s_live_giai_phap ?? '',
+        tiktok_pgm: data.t_pgm_giai_phap ?? '',
+        tiktok_lgm: data.t_lgm_giai_phap ?? '',
+        tiktok_consideration: data.t_con_giai_phap ?? '',
+        tiktok_branding: data.t_brd_giai_phap ?? '',
+      },
+    })
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
@@ -134,62 +191,120 @@ export async function POST(req: NextRequest) {
   /* ── Save weekly report row (uses exact DB column names) ── */
   if (action === 'saveWeekly') {
     const {
-      username, brand_name, month, year, week_num, week_start, week_end,
+      username,
+      brand_name,
+      month,
+      year,
+      week_num,
+      week_start,
+      week_end,
       // Shopee CPC
-      s_cpc_doanh_so, s_cpc_chi_phi, s_cpc_luot_xem, s_cpc_luot_click, s_cpc_don_hang,
+      s_cpc_doanh_so,
+      s_cpc_chi_phi,
+      s_cpc_luot_xem,
+      s_cpc_luot_click,
+      s_cpc_don_hang,
       // Shopee ND
-      s_nd_gmv, s_nd_chi_phi, s_nd_luot_xem, s_nd_luot_click,
+      s_nd_gmv,
+      s_nd_chi_phi,
+      s_nd_luot_xem,
+      s_nd_luot_click,
       // Shopee Live
-      s_live_gmv, s_live_chi_phi, s_live_luot_xem,
+      s_live_gmv,
+      s_live_chi_phi,
+      s_live_luot_xem,
       // TikTok PGM
-      t_pgm_doanh_so, t_pgm_chi_phi, t_pgm_luot_xem, t_pgm_luot_click, t_pgm_don_hang,
+      t_pgm_doanh_so,
+      t_pgm_chi_phi,
+      t_pgm_luot_xem,
+      t_pgm_luot_click,
+      t_pgm_don_hang,
       // TikTok LGM
-      t_lgm_doanhthu, t_lgm_chi_phi,
+      t_lgm_doanhthu,
+      t_lgm_chi_phi,
       // TikTok Con
-      t_con_nguoi, t_con_chi_phi,
+      t_con_nguoi,
+      t_con_chi_phi,
       // TikTok Brand
-      t_brd_view, t_brd_follow, t_brd_chi_phi,
-      // Notes
-      highlight, lowlight,
-      nhan_xet_thuc_trang, nhan_xet_van_de, nhan_xet_giai_phap,
+      t_brd_view,
+      t_brd_follow,
+      t_brd_chi_phi,
+      // Notes — V1 legacy
+      highlight,
+      lowlight,
+      nhan_xet_thuc_trang,
+      nhan_xet_van_de,
+      nhan_xet_giai_phap,
+      // V2 matrix (28 cells, all optional — written only if migration 05 applied)
+      ai_matrix,
     } = body
+
+    const baseRow: Record<string, unknown> = {
+      username,
+      brand_name,
+      month,
+      year,
+      week_num,
+      week_start: week_start || null,
+      week_end: week_end || null,
+      s_cpc_doanh_so: s_cpc_doanh_so || 0,
+      s_cpc_chi_phi: s_cpc_chi_phi || 0,
+      s_cpc_luot_xem: s_cpc_luot_xem || 0,
+      s_cpc_luot_click: s_cpc_luot_click || 0,
+      s_cpc_don_hang: s_cpc_don_hang || 0,
+      s_nd_gmv: s_nd_gmv || 0,
+      s_nd_chi_phi: s_nd_chi_phi || 0,
+      s_nd_luot_xem: s_nd_luot_xem || 0,
+      s_nd_luot_click: s_nd_luot_click || 0,
+      s_live_gmv: s_live_gmv || 0,
+      s_live_chi_phi: s_live_chi_phi || 0,
+      s_live_luot_xem: s_live_luot_xem || 0,
+      t_pgm_doanh_so: t_pgm_doanh_so || 0,
+      t_pgm_chi_phi: t_pgm_chi_phi || 0,
+      t_pgm_luot_xem: t_pgm_luot_xem || 0,
+      t_pgm_luot_click: t_pgm_luot_click || 0,
+      t_pgm_don_hang: t_pgm_don_hang || 0,
+      t_lgm_doanhthu: t_lgm_doanhthu || 0,
+      t_lgm_chi_phi: t_lgm_chi_phi || 0,
+      t_con_nguoi: t_con_nguoi || 0,
+      t_con_chi_phi: t_con_chi_phi || 0,
+      t_brd_view: t_brd_view || 0,
+      t_brd_follow: t_brd_follow || 0,
+      t_brd_chi_phi: t_brd_chi_phi || 0,
+      highlight: highlight || '',
+      lowlight: lowlight || '',
+      nhan_xet_thuc_trang: nhan_xet_thuc_trang || '',
+      nhan_xet_van_de: nhan_xet_van_de || '',
+      nhan_xet_giai_phap: nhan_xet_giai_phap || '',
+    }
+
+    // V2 matrix — write 28 cells if provided. Each entry: { plan, actual, danh_gia, giai_phap }
+    if (ai_matrix && typeof ai_matrix === 'object') {
+      const MATRIX_PREFIX: Record<string, string> = {
+        shopee_ads_cpc: 's_cpc',
+        shopee_ads_nd: 's_nd',
+        shopee_ads_live: 's_live',
+        tiktok_pgm: 't_pgm',
+        tiktok_lgm: 't_lgm',
+        tiktok_consideration: 't_con',
+        tiktok_branding: 't_brd',
+      }
+      for (const [k, prefix] of Object.entries(MATRIX_PREFIX)) {
+        const cell = (ai_matrix as Record<string, unknown>)[k]
+        if (cell && typeof cell === 'object') {
+          const c = cell as Record<string, unknown>
+          baseRow[`${prefix}_plan`] = typeof c.plan === 'string' ? c.plan : ''
+          baseRow[`${prefix}_actual`] = typeof c.actual === 'string' ? c.actual : ''
+          baseRow[`${prefix}_danh_gia`] = typeof c.danh_gia === 'string' ? c.danh_gia : ''
+          baseRow[`${prefix}_giai_phap`] = typeof c.giai_phap === 'string' ? c.giai_phap : ''
+        }
+      }
+      baseRow.ai_schema_version = 2
+    }
 
     const { error } = await supabaseAdmin
       .from('weekly_reports')
-      .upsert({
-        username, brand_name, month, year, week_num,
-        week_start: week_start || null,
-        week_end: week_end || null,
-        s_cpc_doanh_so:   s_cpc_doanh_so   || 0,
-        s_cpc_chi_phi:    s_cpc_chi_phi    || 0,
-        s_cpc_luot_xem:   s_cpc_luot_xem   || 0,
-        s_cpc_luot_click: s_cpc_luot_click || 0,
-        s_cpc_don_hang:   s_cpc_don_hang   || 0,
-        s_nd_gmv:         s_nd_gmv         || 0,
-        s_nd_chi_phi:     s_nd_chi_phi     || 0,
-        s_nd_luot_xem:    s_nd_luot_xem    || 0,
-        s_nd_luot_click:  s_nd_luot_click  || 0,
-        s_live_gmv:       s_live_gmv       || 0,
-        s_live_chi_phi:   s_live_chi_phi   || 0,
-        s_live_luot_xem:  s_live_luot_xem  || 0,
-        t_pgm_doanh_so:   t_pgm_doanh_so   || 0,
-        t_pgm_chi_phi:    t_pgm_chi_phi    || 0,
-        t_pgm_luot_xem:   t_pgm_luot_xem   || 0,
-        t_pgm_luot_click: t_pgm_luot_click || 0,
-        t_pgm_don_hang:   t_pgm_don_hang   || 0,
-        t_lgm_doanhthu:   t_lgm_doanhthu   || 0,
-        t_lgm_chi_phi:    t_lgm_chi_phi    || 0,
-        t_con_nguoi:      t_con_nguoi      || 0,
-        t_con_chi_phi:    t_con_chi_phi    || 0,
-        t_brd_view:       t_brd_view       || 0,
-        t_brd_follow:     t_brd_follow     || 0,
-        t_brd_chi_phi:    t_brd_chi_phi    || 0,
-        highlight:        highlight        || '',
-        lowlight:         lowlight         || '',
-        nhan_xet_thuc_trang: nhan_xet_thuc_trang || '',
-        nhan_xet_van_de:     nhan_xet_van_de     || '',
-        nhan_xet_giai_phap:  nhan_xet_giai_phap  || '',
-      }, { onConflict: 'username,brand_name,year,month,week_num' })
+      .upsert(baseRow, { onConflict: 'username,brand_name,year,month,week_num' })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     // Notify admins about new/updated weekly report
@@ -233,7 +348,7 @@ Chỉ trả về JSON hợp lệ, không text khác.`
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -272,9 +387,7 @@ Chỉ trả về JSON hợp lệ, không text khác.`
   if (action === 'addBrand') {
     const { brand_name } = body
     if (!brand_name) return NextResponse.json({ error: 'brand_name required' }, { status: 400 })
-    const { error } = await supabaseAdmin
-      .from('brands')
-      .insert({ brand_name })
+    const { error } = await supabaseAdmin.from('brands').insert({ brand_name })
     if (error && !error.message.includes('duplicate')) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
